@@ -1,3 +1,6 @@
+import { DisputeButton } from "@/components/intask/DisputeButton";
+import { BarChart2 } from "lucide-react";
+import { SaveTaskButton } from "@/components/intask/SaveTaskButton";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -166,7 +169,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
   const { data: tasks, isLoading } = useQuery({
     queryKey: ["feed", filter],
     queryFn: async () => {
-      let q = supabase.from("tasks").select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, role)").eq("status", "open").order("created_at", { ascending: false }).limit(40);
+      let q = supabase.from("tasks").select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, role)").eq("status", "open").order("featured", { ascending: false }).order("created_at", { ascending: false }).limit(40);
       if (filter !== "All") q = q.ilike("category", `%${filter}%`);
       const { data, error } = await q;
       if (error) throw error;
@@ -208,7 +211,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
             action={<Button onClick={onSwitchToPost} className="gap-1"><Plus className="size-4" /> Post a task</Button>}
           />
         )}
-        {tasks?.map((t) => <TaskCard key={t.id} task={t} />)}
+        {tasks?.map((t) => <TaskCard key={t.id} task={t} currentUserId={userId} />)}
       </section>
     </div>
   );
@@ -249,14 +252,19 @@ function ActiveTasksSection({ userId }: { userId?: string }) {
                 {t.status === "in_review" ? "In review" : t.status === "matched" ? "Awaiting payment" : "In progress"}
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <MessagePartyLink taskId={t.id} studentId={t.matched_student_id} posterId={t.poster_id} label="Message poster" />
-              <Button
-                onClick={() => nav({ to: "/app/tasks/$taskId/deliver", params: { taskId: t.id } })}
-                disabled={t.status !== "in_progress"}
-              >
-                Submit my work
-              </Button>
+            <div className="mt-3 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <MessagePartyLink taskId={t.id} studentId={t.matched_student_id} posterId={t.poster_id} label="Message poster" />
+                <Button
+                  onClick={() => nav({ to: "/app/tasks/$taskId/deliver", params: { taskId: t.id } })}
+                  disabled={t.status !== "in_progress"}
+                >
+                  Submit my work
+                </Button>
+              </div>
+              {t.status === "in_progress" && (
+                <DisputeButton taskId={t.id} taskTitle={t.title} />
+              )}
             </div>
           </div>
         ))}
@@ -318,7 +326,7 @@ function PostWorkView({ userId }: { userId?: string }) {
     in_progress: mine?.filter((t) => ["matched", "in_progress"].includes(t.status)) ?? [],
     in_review: mine?.filter((t) => t.status === "in_review") ?? [],
     completed: mine?.filter((t) => t.status === "completed") ?? [],
-    expired: mine?.filter((t) => t.status === "expired") ?? [],
+    expired: mine?.filter((t) => (t.status as string) === "expired") ?? [],
   };
 
   return (
@@ -362,16 +370,21 @@ function StatCard({ label, value, icon }: { label: string; value: number | strin
 function PosterTaskRow({ task }: { task: any }) {
   const nav = useNavigate();
   const count = useApplicantCount(task.id, task.applicants_count ?? 0);
-  const isMatched = task.status === "matched" || task.status === "in_progress";
-  const isReview = task.status === "in_review";
+  const taskStatus = task.status as string;
+  const isMatched = taskStatus === "matched" || taskStatus === "in_progress";
+  const isReview = taskStatus === "in_review";
   return (
     <div
       onClick={() => nav({ to: isReview ? "/app/tasks/$taskId/review" : "/app/tasks/$taskId/applicants", params: { taskId: task.id } })}
       className="block cursor-pointer rounded-xl border border-border bg-card p-4 shadow-card"
     >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="line-clamp-2 font-medium text-foreground">{task.title}</h3>
-        <span className="shrink-0 text-sm font-semibold text-success">{naira(task.budget)}</span>
+      <div className="flex items-start gap-2">
+        <h3 className="line-clamp-2 font-medium text-foreground flex-1">{task.title}</h3>
+        {task.featured && (
+        <span className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning">
+          ⭐ Featured
+        </span>
+        )}
       </div>
       {isReview && (
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning">
@@ -382,31 +395,78 @@ function PosterTaskRow({ task }: { task: any }) {
         <StatusPill status={task.status} />
         <span className="text-xs text-muted-foreground">{applicantLabel(count)}</span>
       </div>
-      {isMatched && task.matched_student_id && (
-        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-          <MessagePartyLink
-            taskId={task.id}
-            studentId={task.matched_student_id}
-            posterId={task.poster_id}
-            label="Message student"
-            className="w-full"
-          />
+      <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex gap-2">
+          {isMatched && task.matched_student_id && (
+            <MessagePartyLink
+              taskId={task.id}
+              studentId={task.matched_student_id}
+              posterId={task.poster_id}
+              label="Message student"
+              className="flex-1"
+            />
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 shrink-0"
+            onClick={() => nav({ to: "/app/tasks/$taskId/analytics", params: { taskId: task.id } })}
+          >
+            <BarChart2 className="size-3.5" /> Stats
+          </Button>
         </div>
-      )}
+        {taskStatus === "in_progress" && (
+          <DisputeButton taskId={task.id} taskTitle={task.title} />
+        )}
+      </div>
     </div>
   );
 }
 
-export function TaskCard({ task }: { task: any }) {
+const CATEGORY_AVERAGES: Record<string, number> = {
+  "Web Design": 25000,
+  "Mobile App Dev": 60000,
+  "UI/UX Design": 25000,
+  "Graphic Design": 15000,
+  "Content Writing": 8000,
+  "Copywriting": 8000,
+  "Video Editing": 20000,
+  "Photography": 15000,
+  "Data Analysis": 20000,
+  "Research": 12000,
+  "Python": 25000,
+  "JavaScript": 25000,
+  "Social Media": 12000,
+  "Math Tutoring": 8000,
+  "Science Tutoring": 8000,
+  "English Tutoring": 8000,
+  "Business Analysis": 20000,
+  "Product Management": 25000,
+  "Virtual Assistant": 12000,
+  "Excel/Spreadsheets": 12000,
+};
+
+function getAboveAverageThreshold(category: string): number {
+  return CATEGORY_AVERAGES[category] ?? 15000;
+}
+
+export function TaskCard({ task, currentUserId }: { task: any; currentUserId?: string }) {
   const count = useApplicantCount(task.id, task.applicants_count ?? 0);
   return (
     <Link to="/app/tasks/$taskId" params={{ taskId: task.id }} className="block">
       <article className="rounded-xl border border-border bg-card p-4 shadow-card transition-colors active:bg-accent/50">
         <div className="flex items-start justify-between gap-3">
           <h3 className="line-clamp-2 font-medium text-foreground">{task.title}</h3>
-          <span className="shrink-0 rounded-md bg-success/15 px-2 py-0.5 text-sm font-semibold text-success">
-            {task.budget_negotiable ? "Open" : naira(task.budget)}
-          </span>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <span className="rounded-md bg-success/15 px-2 py-0.5 text-sm font-semibold text-success">
+              {task.budget_negotiable ? "Open" : naira(task.budget)}
+            </span>
+            {!task.budget_negotiable && task.budget >= getAboveAverageThreshold(task.category) && (
+              <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning">
+                Above average pay
+              </span>
+            )}
+          </div>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-2 py-0.5">{task.category}</span>
@@ -418,7 +478,10 @@ export function TaskCard({ task }: { task: any }) {
             <InitialsAvatar name={task.poster?.full_name} size={24} />
             <span className="truncate text-xs text-foreground">{task.poster?.full_name ?? "Poster"}</span>
           </div>
-          <span className="shrink-0 text-xs text-muted-foreground">{count} applicant{count === 1 ? "" : "s"}</span>
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-xs text-muted-foreground">{count} applicant{count === 1 ? "" : "s"}</span>
+            <SaveTaskButton taskId={task.id} userId={currentUserId} />
+          </div>
         </div>
         <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
           <ShieldCheck className="size-3 text-success" /> Payment held safely until work is approved

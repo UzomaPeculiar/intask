@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const nav = useNavigate();
-  const [tab, setTab] = useState<"overview" | "students" | "companies" | "reports">("overview");
+  const [tab, setTab] = useState<"overview" | "students" | "companies" | "reports" | "disputes">("overview");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ function AdminPage() {
 
       <div className="mx-auto max-w-5xl px-6 py-6">
         <div className="flex gap-2 mb-6">
-          {(["overview", "students", "companies", "reports"] as const).map((t) => (
+          {(["overview", "students", "companies", "reports", "disputes"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -69,7 +69,7 @@ function AdminPage() {
                   : "bg-card border border-border text-foreground hover:bg-accent"
               }`}
             >
-              {t === "overview" ? "Overview" : t === "students" ? "Student Verifications" : t === "companies" ? "Company Verifications" : "Reports"}
+              {t === "overview" ? "Overview" : t === "students" ? "Student Verifications" : t === "companies" ? "Company Verifications" : t === "reports" ? "Reports" : "Disputes"}
             </button>
           ))}
         </div>
@@ -78,6 +78,7 @@ function AdminPage() {
         {tab === "students" && <StudentVerificationsTab />}
         {tab === "companies" && <CompanyVerificationsTab />}
         {tab === "reports" && <ReportsTab />}
+        {tab === "disputes" && <DisputesTab />}
       </div>
     </div>
   );
@@ -98,11 +99,18 @@ function OverviewTab() {
         .select("user_id")
         .eq("verified", false)
         .not("id_upload_path", "is", null);
-      
+
       const { data: pendingCompaniesData } = await supabase
         .from("company_profiles")
         .select("user_id")
         .eq("verified", false);
+
+      const { data: openTasks, error: tasksError } = await supabase
+        .from("tasks")
+        .select("id, title, featured, featured_until, poster_id")
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+        .limit(20);
 
       const totalPayout = (transactions.data ?? []).reduce((sum, t) => sum + Number(t.amount ?? 0), 0);
 
@@ -112,6 +120,7 @@ function OverviewTab() {
         totalPayout,
         pendingStudents: (pendingStudentsData ?? []).length,
         pendingCompanies: (pendingCompaniesData ?? []).length,
+        openTasks: openTasks ?? [],
       };
     },
   });
@@ -119,22 +128,35 @@ function OverviewTab() {
   const statCards = [
     { label: "Total users", value: stats?.users ?? 0, icon: Users, color: "text-primary bg-primary/10" },
     { label: "Total tasks", value: stats?.tasks ?? 0, icon: Briefcase, color: "text-success bg-success/15" },
-    { label: "Total paid out", value: `₦${(stats?.totalPayout ?? 0).toLocaleString("en-NG")}`, icon: DollarSign, color: "text-warning bg-warning/15" },
+    { label: "Total paid out", value: `₦${Number(stats?.totalPayout ?? 0).toLocaleString("en-NG")}`, icon: DollarSign, color: "text-warning bg-warning/15" },
     { label: "Pending student IDs", value: stats?.pendingStudents ?? 0, icon: Clock, color: "text-destructive bg-destructive/10" },
     { label: "Pending companies", value: stats?.pendingCompanies ?? 0, icon: Building2, color: "text-warning bg-warning/15" },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-      {statCards.map(({ label, value, icon: Icon, color }) => (
-        <div key={label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <div className={`grid size-9 place-items-center rounded-lg ${color} mb-3`}>
-            <Icon className="size-5" />
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        {statCards.map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className={`grid size-9 place-items-center rounded-lg ${color} mb-3`}>
+              <Icon className="size-5" />
+            </div>
+            <p className="text-2xl font-semibold text-foreground">{value}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
           </div>
-          <p className="text-2xl font-semibold text-foreground">{value}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+        ))}
+      </div>
+
+      {stats?.openTasks && stats.openTasks.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-3">Manage featured tasks</h2>
+          <div className="space-y-3">
+            {stats.openTasks.map((t: any) => (
+              <FeaturedTaskRow key={t.id} task={t} />
+            ))}
+          </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -528,6 +550,214 @@ function ReportsTab() {
               </span>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FeaturedTaskRow({ task }: { task: any }) {
+  const qc = useQueryClient();
+  const [loading, setLoading] = useState(false);
+
+  async function toggleFeatured() {
+    setLoading(true);
+    const nowFeatured = !task.featured;
+    await (supabase as any)
+      .from("tasks")
+      .update({
+        featured: nowFeatured,
+        featured_until: nowFeatured
+          ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          : null,
+      })
+      .eq("id", task.id);
+    setLoading(false);
+    qc.invalidateQueries({ queryKey: ["admin-stats"] });
+    toast.success(nowFeatured ? "Task featured for 7 days" : "Task unfeatured");
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">{task.title}</p>
+        <p className="text-xs text-muted-foreground">{task.poster?.full_name}</p>
+        {task.featured && task.featured_until && (
+          <p className="text-xs text-warning">
+            Featured until {new Date(task.featured_until).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+          </p>
+        )}
+      </div>
+      <Button
+        size="sm"
+        variant={task.featured ? "outline" : "default"}
+        disabled={loading}
+        onClick={toggleFeatured}
+        className={task.featured ? "text-muted-foreground" : ""}
+      >
+        {loading ? "..." : task.featured ? "Unfeature" : "⭐ Feature"}
+      </Button>
+    </div>
+  );
+}
+
+function DisputesTab() {
+  const qc = useQueryClient();
+
+  const { data: disputes, isLoading, refetch } = useQuery({
+    queryKey: ["admin-disputes"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("disputes")
+        .select("*, task:tasks(id, title, budget), raiser:profiles!disputes_raised_by_fkey(id, full_name, email)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const resolve = useMutation({
+    mutationFn: async ({ disputeId, resolution, releaseToStudent }: { disputeId: string; resolution: string; releaseToStudent: boolean }) => {
+      await (supabase as any)
+        .from("disputes")
+        .update({ status: "resolved", resolution, updated_at: new Date().toISOString() })
+        .eq("id", disputeId);
+      if (releaseToStudent) {
+        const dispute = disputes?.find((d: any) => d.id === disputeId);
+        if (dispute?.task_id) {
+          await supabase.from("transactions")
+            .update({ status: "released" } as any)
+            .eq("task_id", dispute.task_id);
+          await supabase.from("tasks")
+            .update({ status: "completed" } as any)
+            .eq("id", dispute.task_id);
+        }
+      } else {
+        const dispute = disputes?.find((d: any) => d.id === disputeId);
+        if (dispute?.task_id) {
+          await supabase.from("transactions")
+            .update({ status: "refunded" } as any)
+            .eq("task_id", dispute.task_id);
+          await supabase.from("tasks")
+            .update({ status: "cancelled" } as any)
+            .eq("id", dispute.task_id);
+        }
+      }
+    },
+    onSuccess: () => {
+      toast.success("Dispute resolved");
+      refetch();
+      qc.invalidateQueries({ queryKey: ["admin-stats"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not resolve dispute"),
+  });
+
+  if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
+
+  if (!disputes || disputes.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-10 text-center">
+        <CheckCircle2 className="size-8 text-success mx-auto mb-3" />
+        <p className="font-medium text-foreground">No disputes</p>
+        <p className="text-sm text-muted-foreground mt-1">All transactions are running smoothly</p>
+      </div>
+    );
+  }
+
+  const open = disputes.filter((d: any) => d.status === "open");
+  const resolved = disputes.filter((d: any) => d.status === "resolved");
+
+  return (
+    <div className="space-y-6">
+      {open.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-foreground">{open.length} open dispute{open.length === 1 ? "" : "s"}</p>
+          {open.map((d: any) => (
+            <DisputeCard key={d.id} dispute={d} onResolve={resolve.mutate} pending={resolve.isPending} />
+          ))}
+        </div>
+      )}
+      {resolved.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground">{resolved.length} resolved dispute{resolved.length === 1 ? "" : "s"}</p>
+          {resolved.map((d: any) => (
+            <div key={d.id} className="rounded-xl border border-border bg-card p-4 opacity-60">
+              <p className="text-sm font-medium text-foreground">{d.task?.title}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Raised by {d.raiser?.full_name} · {d.reason}</p>
+              <p className="text-xs text-success mt-1">Resolved: {d.resolution}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DisputeCard({ dispute, onResolve, pending }: { dispute: any; onResolve: (args: any) => void; pending: boolean }) {
+  const [resolution, setResolution] = useState("");
+  const [showForm, setShowForm] = useState(false);
+
+  return (
+    <div className="rounded-xl border border-destructive/30 bg-card p-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <p className="font-medium text-foreground">{dispute.task?.title}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Raised by <span className="font-medium">{dispute.raiser?.full_name}</span> · {dispute.raiser?.email}
+          </p>
+          <p className="mt-2 text-sm text-foreground">{dispute.reason}</p>
+          {dispute.details && <p className="mt-1 text-sm text-muted-foreground">{dispute.details}</p>}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {new Date(dispute.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}
+          </p>
+          {dispute.task?.budget && (
+            <p className="mt-1 text-sm font-medium text-success">
+              Escrow: ₦{Number(dispute.task.budget).toLocaleString("en-NG")}
+            </p>
+          )}
+        </div>
+        <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-medium text-destructive shrink-0">
+          Open
+        </span>
+      </div>
+
+      {!showForm ? (
+        <Button size="sm" variant="outline" onClick={() => setShowForm(true)} className="w-full">
+          Resolve this dispute
+        </Button>
+      ) : (
+        <div className="space-y-3 mt-3 border-t border-border pt-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Resolution note</label>
+            <textarea
+              rows={2}
+              value={resolution}
+              onChange={(e) => setResolution(e.target.value)}
+              placeholder="Describe how this was resolved..."
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            />
+          </div>
+          <p className="text-xs font-medium text-foreground">Where should the escrow funds go?</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              size="sm"
+              className="bg-success text-success-foreground hover:bg-success/90"
+              disabled={!resolution || pending}
+              onClick={() => onResolve({ disputeId: dispute.id, resolution, releaseToStudent: true })}
+            >
+              Release to student
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive border-destructive/30"
+              disabled={!resolution || pending}
+              onClick={() => onResolve({ disputeId: dispute.id, resolution, releaseToStudent: false })}
+            >
+              Refund to poster
+            </Button>
+          </div>
+          <button className="text-xs text-muted-foreground" onClick={() => setShowForm(false)}>Cancel</button>
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { ReportButton } from "@/components/intask/ReportButton";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +21,10 @@ export const Route = createFileRoute("/app/tasks/$taskId/")({
 
 function TaskDetail() {
   const { taskId } = Route.useParams();
+    useEffect(() => {
+    if (!taskId) return;
+    (supabase as any).rpc("increment_task_views", { task_uuid: taskId });
+  }, [taskId]);
   const nav = useNavigate();
 
   const { data: task, isLoading } = useQuery({

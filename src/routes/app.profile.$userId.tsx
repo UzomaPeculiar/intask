@@ -1,3 +1,4 @@
+import { Share2 } from "lucide-react";
 import { ReportButton } from "@/components/intask/ReportButton";
 import { Link } from "@tanstack/react-router";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -218,6 +219,18 @@ function ProfilePage() {
           <div className="mt-4 flex flex-col items-start gap-2">
             <Button variant="outline" size="sm" className="gap-1" onClick={() => setEditing(true)}>
               <Edit3 className="size-3.5" /> Edit profile
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => {
+                const url = `${window.location.origin}/app/profile/${targetId}`;
+                navigator.clipboard.writeText(url);
+                toast.success("Profile link copied to clipboard");
+              }}
+            >
+              <Share2 className="size-3.5" /> Share profile
             </Button>
             {isStudent && (
               <button onClick={() => setUpgradeOpen(true)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">

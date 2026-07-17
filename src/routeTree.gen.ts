@@ -28,6 +28,7 @@ import { Route as AppTasksTaskIdReviewRouteImport } from './routes/app.tasks.$ta
 import { Route as AppTasksTaskIdRateRouteImport } from './routes/app.tasks.$taskId.rate'
 import { Route as AppTasksTaskIdDeliverRouteImport } from './routes/app.tasks.$taskId.deliver'
 import { Route as AppTasksTaskIdApplicantsRouteImport } from './routes/app.tasks.$taskId.applicants'
+import { Route as AppTasksTaskIdAnalyticsRouteImport } from './routes/app.tasks.$taskId.analytics'
 import { Route as ApiPublicWebhooksPaystackRouteImport } from './routes/api/public/webhooks/paystack'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -127,6 +128,11 @@ const AppTasksTaskIdApplicantsRoute =
     path: '/tasks/$taskId/applicants',
     getParentRoute: () => AppRoute,
   } as any)
+const AppTasksTaskIdAnalyticsRoute = AppTasksTaskIdAnalyticsRouteImport.update({
+  id: '/tasks/$taskId/analytics',
+  path: '/tasks/$taskId/analytics',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiPublicWebhooksPaystackRoute =
   ApiPublicWebhooksPaystackRouteImport.update({
     id: '/api/public/webhooks/paystack',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/app/profile/$userId': typeof AppProfileUserIdRoute
   '/app/tasks/create': typeof AppTasksCreateRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
+  '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
   '/app/tasks/$taskId/applicants': typeof AppTasksTaskIdApplicantsRoute
   '/app/tasks/$taskId/deliver': typeof AppTasksTaskIdDeliverRoute
   '/app/tasks/$taskId/rate': typeof AppTasksTaskIdRateRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/app/profile/$userId': typeof AppProfileUserIdRoute
   '/app/tasks/create': typeof AppTasksCreateRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
+  '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
   '/app/tasks/$taskId/applicants': typeof AppTasksTaskIdApplicantsRoute
   '/app/tasks/$taskId/deliver': typeof AppTasksTaskIdDeliverRoute
   '/app/tasks/$taskId/rate': typeof AppTasksTaskIdRateRoute
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/app/profile/$userId': typeof AppProfileUserIdRoute
   '/app/tasks/create': typeof AppTasksCreateRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
+  '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
   '/app/tasks/$taskId/applicants': typeof AppTasksTaskIdApplicantsRoute
   '/app/tasks/$taskId/deliver': typeof AppTasksTaskIdDeliverRoute
   '/app/tasks/$taskId/rate': typeof AppTasksTaskIdRateRoute
@@ -218,6 +227,7 @@ export interface FileRouteTypes {
     | '/app/profile/$userId'
     | '/app/tasks/create'
     | '/api/public/webhooks/paystack'
+    | '/app/tasks/$taskId/analytics'
     | '/app/tasks/$taskId/applicants'
     | '/app/tasks/$taskId/deliver'
     | '/app/tasks/$taskId/rate'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/app/profile/$userId'
     | '/app/tasks/create'
     | '/api/public/webhooks/paystack'
+    | '/app/tasks/$taskId/analytics'
     | '/app/tasks/$taskId/applicants'
     | '/app/tasks/$taskId/deliver'
     | '/app/tasks/$taskId/rate'
@@ -261,6 +272,7 @@ export interface FileRouteTypes {
     | '/app/profile/$userId'
     | '/app/tasks/create'
     | '/api/public/webhooks/paystack'
+    | '/app/tasks/$taskId/analytics'
     | '/app/tasks/$taskId/applicants'
     | '/app/tasks/$taskId/deliver'
     | '/app/tasks/$taskId/rate'
@@ -413,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTasksTaskIdApplicantsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tasks/$taskId/analytics': {
+      id: '/app/tasks/$taskId/analytics'
+      path: '/tasks/$taskId/analytics'
+      fullPath: '/app/tasks/$taskId/analytics'
+      preLoaderRoute: typeof AppTasksTaskIdAnalyticsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/public/webhooks/paystack': {
       id: '/api/public/webhooks/paystack'
       path: '/api/public/webhooks/paystack'
@@ -443,6 +462,7 @@ interface AppRouteChildren {
   AppPaymentTaskIdRoute: typeof AppPaymentTaskIdRoute
   AppProfileUserIdRoute: typeof AppProfileUserIdRoute
   AppTasksCreateRoute: typeof AppTasksCreateRoute
+  AppTasksTaskIdAnalyticsRoute: typeof AppTasksTaskIdAnalyticsRoute
   AppTasksTaskIdApplicantsRoute: typeof AppTasksTaskIdApplicantsRoute
   AppTasksTaskIdDeliverRoute: typeof AppTasksTaskIdDeliverRoute
   AppTasksTaskIdRateRoute: typeof AppTasksTaskIdRateRoute
@@ -458,6 +478,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPaymentTaskIdRoute: AppPaymentTaskIdRoute,
   AppProfileUserIdRoute: AppProfileUserIdRoute,
   AppTasksCreateRoute: AppTasksCreateRoute,
+  AppTasksTaskIdAnalyticsRoute: AppTasksTaskIdAnalyticsRoute,
   AppTasksTaskIdApplicantsRoute: AppTasksTaskIdApplicantsRoute,
   AppTasksTaskIdDeliverRoute: AppTasksTaskIdDeliverRoute,
   AppTasksTaskIdRateRoute: AppTasksTaskIdRateRoute,

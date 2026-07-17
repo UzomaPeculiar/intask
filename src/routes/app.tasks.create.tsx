@@ -15,6 +15,29 @@ export const Route = createFileRoute("/app/tasks/create")({
   component: CreateTaskPage,
 });
 
+const CATEGORY_MINIMUMS: Record<string, number> = {
+  "Web Design": 10000,
+  "Mobile App Dev": 20000,
+  "UI/UX Design": 10000,
+  "Graphic Design": 5000,
+  "Content Writing": 3000,
+  "Copywriting": 3000,
+  "Video Editing": 8000,
+  "Photography": 5000,
+  "Data Analysis": 8000,
+  "Research": 5000,
+  "Python": 10000,
+  "JavaScript": 10000,
+  "Social Media": 5000,
+  "Math Tutoring": 3000,
+  "Science Tutoring": 3000,
+  "English Tutoring": 3000,
+  "Business Analysis": 8000,
+  "Product Management": 10000,
+  "Virtual Assistant": 5000,
+  "Excel/Spreadsheets": 5000,
+};
+
 function CreateTaskPage() {
   const nav = useNavigate();
   const [title, setTitle] = useState("");
@@ -31,7 +54,11 @@ function CreateTaskPage() {
     if (!title.trim()) return toast.error("Add a title");
     if (!category) return toast.error("Pick a category");
     if (!description.trim()) return toast.error("Describe the task");
-    if (!negotiable && (!budget || Number(budget) < 500)) return toast.error("Enter a budget of at least ₦500");
+
+  const minForCategory = CATEGORY_MINIMUMS[category] ?? 3000;
+  if (!negotiable && (!budget || Number(budget) < minForCategory)) {
+    return toast.error(`Minimum budget for ${category || "this category"} is ₦${minForCategory.toLocaleString("en-NG")}. This ensures fair pay for students.`);
+  }
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return toast.error("Not signed in"); }
@@ -87,6 +114,19 @@ function CreateTaskPage() {
             <span>I'm open to negotiation</span>
             <Switch checked={negotiable} onCheckedChange={setNegotiable} />
           </label>
+        {category && !negotiable && (
+          <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
+            {CATEGORY_MINIMUMS[category] ? (
+              <>
+                <span className="font-medium text-foreground">Suggested range for {category}:</span>{" "}
+                ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")} – ₦{(CATEGORY_MINIMUMS[category] * 8).toLocaleString("en-NG")}
+                {" · "}Minimum: ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")}
+              </>
+            ) : (
+              <span>Set a fair budget — students depend on this income.</span>
+            )}
+          </div>
+        )}
           <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
             <ShieldCheck className="size-3 text-success" /> Funds are held safely in escrow until you approve the work.
           </p>

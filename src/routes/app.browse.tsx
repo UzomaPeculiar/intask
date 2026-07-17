@@ -1,3 +1,4 @@
+import { SaveTaskButton } from "@/components/intask/SaveTaskButton";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/app/browse")({
 });
 
 function BrowsePage() {
-  const [tab, setTab] = useState<"tasks" | "people">("tasks");
+  const [tab, setTab] = useState<"tasks" | "people" | "saved">("tasks");
   const [filter, setFilter] = useState("All");
   const [q, setQ] = useState("");
   const [minBudget, setMinBudget] = useState("");
@@ -29,7 +30,7 @@ function BrowsePage() {
       <h1 className="text-2xl font-semibold tracking-tight">Browse</h1>
 
       {/* Tab toggle */}
-      <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1 text-sm font-medium">
+      <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted p-1 text-sm font-medium">
         <button
           onClick={() => setTab("tasks")}
           className={`rounded-md py-2 transition-colors ${tab === "tasks" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
@@ -41,6 +42,12 @@ function BrowsePage() {
           className={`rounded-md py-2 transition-colors ${tab === "people" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
         >
           People
+        </button>
+        <button
+          onClick={() => setTab("saved")}
+          className={`rounded-md py-2 transition-colors ${tab === "saved" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
+        >
+          Saved
         </button>
       </div>
 
@@ -123,11 +130,9 @@ function BrowsePage() {
       )}
 
       {/* Results */}
-      {tab === "tasks" ? (
-        <TasksResults q={q} filter={filter} minBudget={minBudget} maxBudget={maxBudget} />
-      ) : (
-        <PeopleResults q={q} />
-      )}
+      {tab === "tasks" && <TasksResults q={q} filter={filter} minBudget={minBudget} maxBudget={maxBudget} />}
+      {tab === "people" && <PeopleResults q={q} />}
+      {tab === "saved" && <SavedTasksResults />}
 
       <div className="h-4" />
       {tab === "tasks" && (
@@ -150,6 +155,7 @@ function TasksResults({ q, filter, minBudget, maxBudget }: { q: string; filter: 
         .from("tasks")
         .select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, role)")
         .eq("status", "open")
+        .order("featured", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(60);
       if (filter !== "All") query = query.ilike("category", `%${filter}%`);
@@ -168,7 +174,11 @@ function TasksResults({ q, filter, minBudget, maxBudget }: { q: string; filter: 
     return <EmptyState icon={Inbox} title="Nothing matches" description="Try clearing filters or searching for something else." />;
   }
 
-  return <div className="space-y-3">{tasks?.map((t) => <TaskCard key={t.id} task={t} />)}</div>;
+  const { data: me } = useQuery({
+  queryKey: ["me-id"],
+  queryFn: async () => (await supabase.auth.getUser()).data.user,
+  });
+  return <div className="space-y-3">{tasks?.map((t) => <TaskCard key={t.id} task={t} currentUserId={me?.id} />)}</div>;
 }
 
 function PeopleResults({ q }: { q: string }) {
@@ -271,6 +281,50 @@ function PeopleResults({ q }: { q: string }) {
             </div>
           </div>
         </Link>
+      ))}
+    </div>
+  );
+}
+function SavedTasksResults() {
+  const { data: me } = useQuery({
+    queryKey: ["me-id"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user,
+  });
+
+  const { data: saved, isLoading } = useQuery({
+    queryKey: ["saved-tasks"],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("saved_tasks")
+        .select("task_id, tasks(*, poster:profiles!tasks_poster_id_fkey(id, full_name, role))")
+        .eq("user_id", me!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((s: any) => s.tasks).filter(Boolean);
+    },
+  });
+
+  if (isLoading) return (
+    <div className="space-y-3">
+      {[0, 1, 2].map((i) => <div key={i} className="h-32 animate-pulse rounded-xl border border-border bg-card" />)}
+    </div>
+  );
+
+  if (!saved || saved.length === 0) {
+    return (
+      <EmptyState
+        icon={Inbox}
+        title="No saved tasks yet"
+        description="Tap the bookmark icon on any task to save it for later."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {saved.map((t: any) => (
+        <TaskCard key={t.id} task={t} currentUserId={me?.id} />
       ))}
     </div>
   );
