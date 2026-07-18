@@ -39,6 +39,8 @@ const CATEGORY_MINIMUMS: Record<string, number> = {
 };
 
 function CreateTaskPage() {
+  const [isTeamTask, setIsTeamTask] = useState(false);
+  const [teamSize, setTeamSize] = useState(2);
   const nav = useNavigate();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -73,7 +75,9 @@ function CreateTaskPage() {
       work_type: workType,
       skills_needed: skills,
       status: "open",
-    }).select("id").single();
+      is_team_task: isTeamTask,
+      team_size: isTeamTask ? teamSize : 1,
+    } as any ).select("id").single();
     setLoading(false);
     if (error || !data) return toast.error(error?.message ?? "Couldn't post");
     toast.success("Task posted");
@@ -145,6 +149,34 @@ function CreateTaskPage() {
               </button>
             ))}
           </div>
+        </Field>
+        
+        <Field label="Team task">
+          <label className="flex items-center justify-between rounded-lg border border-border bg-card p-3 cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-foreground">This is a team task</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Hire multiple students to work together</p>
+            </div>
+            <Switch checked={isTeamTask} onCheckedChange={setIsTeamTask} />
+          </label>
+          {isTeamTask && (
+            <div className="mt-3 space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Number of students needed</label>
+              <select
+                value={teamSize}
+                onChange={(e) => setTeamSize(Number(e.target.value))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {[2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>{n} students</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Budget of ₦{budget ? Number(budget).toLocaleString("en-NG") : "0"} will be split equally — 
+                ₦{budget && teamSize ? Math.floor(Number(budget) / teamSize).toLocaleString("en-NG") : "0"} per student
+              </p>
+            </div>
+          )}
         </Field>
 
         <Field label="Skills needed">

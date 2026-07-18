@@ -122,22 +122,32 @@ function Dashboard() {
 }
 
 function MentorshipSection() {
+  const nav = useNavigate();
   return (
     <div className="px-4 pt-4">
       <div className="rounded-xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-card">
-        <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-lg bg-warning/20 text-warning">
-            <GraduationCap className="size-4" />
-          </span>
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Mentorship</h2>
-            <p className="text-xs text-muted-foreground">Share what you wish you knew in school.</p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-lg bg-warning/20 text-warning">
+              <GraduationCap className="size-4" />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Mentorship</h2>
+              <p className="text-xs text-muted-foreground">Share your expertise and earn</p>
+            </div>
           </div>
+          <Button size="sm" variant="outline" onClick={() => nav({ to: "/app/mentorship/manage" as any })}>
+            Manage
+          </Button>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Soon you'll be able to take 1:1 mentorship requests from students at your alma mater — paid or pro bono.
-        </p>
-        <Button size="sm" variant="outline" className="mt-3 w-full" disabled>Coming soon</Button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button size="sm" className="w-full" onClick={() => nav({ to: "/app/mentorship" as any})}>
+            Browse mentors
+          </Button>
+          <Button size="sm" variant="outline" className="w-full" onClick={() => nav({ to: "/app/mentorship/bookings" as any })}>
+            My bookings
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -151,6 +161,7 @@ function greeting() {
 }
 
 function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: string; filter: string; onFilter: (f: string) => void; onSwitchToPost: () => void }) {
+  const nav = useNavigate();
   const { data: stats } = useQuery({
     queryKey: ["student-stats", userId],
     enabled: !!userId,
@@ -184,6 +195,24 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
         <StatCard label="Active" value={stats?.active ?? 0} />
         <StatCard label="Rating" value={stats?.rating ? Number(stats.rating).toFixed(1) : "—"} icon={<Star className="size-3.5 fill-warning text-warning" />} />
       </div>
+
+      <div
+        onClick={() => nav({ to: "/app/mentorship" as any })}
+        className="cursor-pointer rounded-xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-card"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-lg bg-warning/20 text-warning">
+              <GraduationCap className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Mentorship</p>
+              <p className="text-xs text-muted-foreground">Book 1-on-1 sessions with alumni</p>
+            </div>
+          </div>
+        <span className="text-xs font-medium text-warning">Browse →</span>
+      </div>
+    </div>
 
       <div className="relative -mx-4">
         <div className="flex gap-2 overflow-x-auto px-4 pb-1 pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -470,6 +499,11 @@ export function TaskCard({ task, currentUserId }: { task: any; currentUserId?: s
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-2 py-0.5">{task.category}</span>
+          {(task as any).is_team_task && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+              👥 Team · {(task as any).team_size} students
+            </span>
+          )}
           {task.deadline && <span>Due {new Date(task.deadline).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}</span>}
           <span>· {timeAgo(task.created_at)}</span>
         </div>

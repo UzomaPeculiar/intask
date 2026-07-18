@@ -109,7 +109,7 @@ function BottomNav({ path }: { path: string }) {
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur">
       <ul className="mx-auto grid max-w-md grid-cols-4">
         <NavItem to="/app" label="Home" icon={Home} active={path === "/app" || path === "/app/"} badge={0} />
-        <NavItem to="/app/browse" label="Browse" icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} badge={0} />
+        <NavItem to="/app/browse" label="Browse" icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks") || path.startsWith("/app/mentorship")} badge={0} />
         <NavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} />
         <li>
           <Link to="/app/profile/$userId" params={{ userId: "me" }} className="relative flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium">

@@ -18,11 +18,15 @@ import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/app.messages'
+import { Route as AppMentorshipRouteImport } from './routes/app.mentorship'
 import { Route as AppBrowseRouteImport } from './routes/app.browse'
 import { Route as AppTasksCreateRouteImport } from './routes/app.tasks.create'
 import { Route as AppProfileUserIdRouteImport } from './routes/app.profile.$userId'
 import { Route as AppPaymentTaskIdRouteImport } from './routes/app.payment.$taskId'
 import { Route as AppMessagesConversationIdRouteImport } from './routes/app.messages.$conversationId'
+import { Route as AppMentorshipManageRouteImport } from './routes/app.mentorship.manage'
+import { Route as AppMentorshipBookingsRouteImport } from './routes/app.mentorship.bookings'
+import { Route as AppMentorshipServiceIdRouteImport } from './routes/app.mentorship.$serviceId'
 import { Route as AppTasksTaskIdIndexRouteImport } from './routes/app.tasks.$taskId.index'
 import { Route as AppTasksTaskIdReviewRouteImport } from './routes/app.tasks.$taskId.review'
 import { Route as AppTasksTaskIdRateRouteImport } from './routes/app.tasks.$taskId.rate'
@@ -76,6 +80,11 @@ const AppMessagesRoute = AppMessagesRouteImport.update({
   path: '/messages',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMentorshipRoute = AppMentorshipRouteImport.update({
+  id: '/mentorship',
+  path: '/mentorship',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBrowseRoute = AppBrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
@@ -102,6 +111,21 @@ const AppMessagesConversationIdRoute =
     path: '/$conversationId',
     getParentRoute: () => AppMessagesRoute,
   } as any)
+const AppMentorshipManageRoute = AppMentorshipManageRouteImport.update({
+  id: '/manage',
+  path: '/manage',
+  getParentRoute: () => AppMentorshipRoute,
+} as any)
+const AppMentorshipBookingsRoute = AppMentorshipBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => AppMentorshipRoute,
+} as any)
+const AppMentorshipServiceIdRoute = AppMentorshipServiceIdRouteImport.update({
+  id: '/$serviceId',
+  path: '/$serviceId',
+  getParentRoute: () => AppMentorshipRoute,
+} as any)
 const AppTasksTaskIdIndexRoute = AppTasksTaskIdIndexRouteImport.update({
   id: '/tasks/$taskId/',
   path: '/tasks/$taskId/',
@@ -146,11 +170,15 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/app/browse': typeof AppBrowseRoute
+  '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
+  '/app/mentorship/$serviceId': typeof AppMentorshipServiceIdRoute
+  '/app/mentorship/bookings': typeof AppMentorshipBookingsRoute
+  '/app/mentorship/manage': typeof AppMentorshipManageRoute
   '/app/messages/$conversationId': typeof AppMessagesConversationIdRoute
   '/app/payment/$taskId': typeof AppPaymentTaskIdRoute
   '/app/profile/$userId': typeof AppProfileUserIdRoute
@@ -168,11 +196,15 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/app/browse': typeof AppBrowseRoute
+  '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app': typeof AppIndexRoute
+  '/app/mentorship/$serviceId': typeof AppMentorshipServiceIdRoute
+  '/app/mentorship/bookings': typeof AppMentorshipBookingsRoute
+  '/app/mentorship/manage': typeof AppMentorshipManageRoute
   '/app/messages/$conversationId': typeof AppMessagesConversationIdRoute
   '/app/payment/$taskId': typeof AppPaymentTaskIdRoute
   '/app/profile/$userId': typeof AppProfileUserIdRoute
@@ -192,11 +224,15 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/app/browse': typeof AppBrowseRoute
+  '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
+  '/app/mentorship/$serviceId': typeof AppMentorshipServiceIdRoute
+  '/app/mentorship/bookings': typeof AppMentorshipBookingsRoute
+  '/app/mentorship/manage': typeof AppMentorshipManageRoute
   '/app/messages/$conversationId': typeof AppMessagesConversationIdRoute
   '/app/payment/$taskId': typeof AppPaymentTaskIdRoute
   '/app/profile/$userId': typeof AppProfileUserIdRoute
@@ -217,11 +253,15 @@ export interface FileRouteTypes {
     | '/app'
     | '/sitemap.xml'
     | '/app/browse'
+    | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
     | '/auth/login'
     | '/auth/signup'
     | '/app/'
+    | '/app/mentorship/$serviceId'
+    | '/app/mentorship/bookings'
+    | '/app/mentorship/manage'
     | '/app/messages/$conversationId'
     | '/app/payment/$taskId'
     | '/app/profile/$userId'
@@ -239,11 +279,15 @@ export interface FileRouteTypes {
     | '/admin'
     | '/sitemap.xml'
     | '/app/browse'
+    | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
     | '/auth/login'
     | '/auth/signup'
     | '/app'
+    | '/app/mentorship/$serviceId'
+    | '/app/mentorship/bookings'
+    | '/app/mentorship/manage'
     | '/app/messages/$conversationId'
     | '/app/payment/$taskId'
     | '/app/profile/$userId'
@@ -262,11 +306,15 @@ export interface FileRouteTypes {
     | '/app'
     | '/sitemap.xml'
     | '/app/browse'
+    | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
     | '/auth/login'
     | '/auth/signup'
     | '/app/'
+    | '/app/mentorship/$serviceId'
+    | '/app/mentorship/bookings'
+    | '/app/mentorship/manage'
     | '/app/messages/$conversationId'
     | '/app/payment/$taskId'
     | '/app/profile/$userId'
@@ -355,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMessagesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/mentorship': {
+      id: '/app/mentorship'
+      path: '/mentorship'
+      fullPath: '/app/mentorship'
+      preLoaderRoute: typeof AppMentorshipRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/browse': {
       id: '/app/browse'
       path: '/browse'
@@ -389,6 +444,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/messages/$conversationId'
       preLoaderRoute: typeof AppMessagesConversationIdRouteImport
       parentRoute: typeof AppMessagesRoute
+    }
+    '/app/mentorship/manage': {
+      id: '/app/mentorship/manage'
+      path: '/manage'
+      fullPath: '/app/mentorship/manage'
+      preLoaderRoute: typeof AppMentorshipManageRouteImport
+      parentRoute: typeof AppMentorshipRoute
+    }
+    '/app/mentorship/bookings': {
+      id: '/app/mentorship/bookings'
+      path: '/bookings'
+      fullPath: '/app/mentorship/bookings'
+      preLoaderRoute: typeof AppMentorshipBookingsRouteImport
+      parentRoute: typeof AppMentorshipRoute
+    }
+    '/app/mentorship/$serviceId': {
+      id: '/app/mentorship/$serviceId'
+      path: '/$serviceId'
+      fullPath: '/app/mentorship/$serviceId'
+      preLoaderRoute: typeof AppMentorshipServiceIdRouteImport
+      parentRoute: typeof AppMentorshipRoute
     }
     '/app/tasks/$taskId/': {
       id: '/app/tasks/$taskId/'
@@ -442,6 +518,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppMentorshipRouteChildren {
+  AppMentorshipServiceIdRoute: typeof AppMentorshipServiceIdRoute
+  AppMentorshipBookingsRoute: typeof AppMentorshipBookingsRoute
+  AppMentorshipManageRoute: typeof AppMentorshipManageRoute
+}
+
+const AppMentorshipRouteChildren: AppMentorshipRouteChildren = {
+  AppMentorshipServiceIdRoute: AppMentorshipServiceIdRoute,
+  AppMentorshipBookingsRoute: AppMentorshipBookingsRoute,
+  AppMentorshipManageRoute: AppMentorshipManageRoute,
+}
+
+const AppMentorshipRouteWithChildren = AppMentorshipRoute._addFileChildren(
+  AppMentorshipRouteChildren,
+)
+
 interface AppMessagesRouteChildren {
   AppMessagesConversationIdRoute: typeof AppMessagesConversationIdRoute
 }
@@ -456,6 +548,7 @@ const AppMessagesRouteWithChildren = AppMessagesRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppBrowseRoute: typeof AppBrowseRoute
+  AppMentorshipRoute: typeof AppMentorshipRouteWithChildren
   AppMessagesRoute: typeof AppMessagesRouteWithChildren
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -472,6 +565,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppBrowseRoute: AppBrowseRoute,
+  AppMentorshipRoute: AppMentorshipRouteWithChildren,
   AppMessagesRoute: AppMessagesRouteWithChildren,
   AppNotificationsRoute: AppNotificationsRoute,
   AppIndexRoute: AppIndexRoute,
