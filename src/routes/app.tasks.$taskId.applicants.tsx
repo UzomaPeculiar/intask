@@ -58,18 +58,49 @@ function ApplicantsPage() {
   const accept = useMutation({
     mutationFn: async ({ appId, studentId, agreedPrice }: { appId: string; studentId: string; agreedPrice?: number }) => {
       const { error: ae } = await supabase.from("applications").update({ status: "accepted" }).eq("id", appId);
-      if (ae) throw ae;
-      const taskUpdate: any = { status: "matched", matched_student_id: studentId };
-      if (agreedPrice) taskUpdate.budget = agreedPrice;
-      const { error: te } = await supabase.from("tasks").update(taskUpdate).eq("id", taskId);
-      if (te) throw te;
+      if (ae) throw ae; 
+
+      const isTeamTask = (task as any)?.is_team_task;
+      const teamSize = (task as any)?.team_size ?? 1;
+
+      if (isTeamTask) {
+        const { data: existingMembers } = await (supabase as any)
+          .from("task_team_members")
+          .select("id")
+          .eq("task_id", taskId);
+
+        const currentCount = existingMembers?.length ?? 0;
+        const paymentShare = agreedPrice
+          ? agreedPrice / teamSize
+          : (task?.budget ?? 0) / teamSize;
+
+        await (supabase as any).from("task_team_members").insert({
+          task_id: taskId,
+          student_id: studentId,
+          role: currentCount === 0 ? "lead" : "member",
+          payment_share: Math.floor(paymentShare),
+          status: "active",
+        });
+  
+        if (currentCount + 1 >= teamSize) {
+          const taskUpdate: any = { status: "matched", matched_student_id: studentId };
+          if (agreedPrice) taskUpdate.budget = agreedPrice;
+          await supabase.from("tasks").update(taskUpdate).eq("id", taskId);
+        }
+      } else {
+        const taskUpdate: any = { status: "matched", matched_student_id: studentId };
+        if (agreedPrice) taskUpdate.budget = agreedPrice;
+        await supabase.from("tasks").update(taskUpdate).eq("id", taskId);
+      }
     },
     onSuccess: () => {
-      toast.success("Student accepted. Fund escrow next.");
+      const isTeamTask = (task as any)?.is_team_task;
+      const teamSize = (task as any)?.team_size ?? 1;
+      toast.success(isTeamTask ? `Student added to team. ${teamSize} students needed total.` : "Student accepted. Fund escrow next.");
       qc.invalidateQueries({ queryKey: ["applicants", taskId] });
       qc.invalidateQueries({ queryKey: ["task", taskId] });
       qc.invalidateQueries({ queryKey: ["my-tasks"] });
-      nav({ to: "/app/payment/$taskId", params: { taskId } });
+      if (!isTeamTask) nav({ to: "/app/payment/$taskId", params: { taskId } });
     },
     onError: (e: any) => toast.error(e.message ?? "Couldn't accept"),
   });
@@ -285,5 +316,49 @@ function AcceptSheet({ studentName, budget, negotiable, taskId, onConfirm, pendi
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function TeamMembersSection({ taskId, teamSize }: { taskId: string; teamSize: number }) {
+  const { data: members } = useQuery({
+    queryKey: ["team-members", taskId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("task_team_members")
+        .select("*, student:profiles!task_team_members_student_id_fkey(id, full_name)")
+        .eq("task_id", taskId);
+      return data ?? [];
+    },
+  });
+
+  if (!members || members.length === 0) return null;
+
+  return (
+    <div className="px-4 pt-4">
+      <h2 className="text-sm font-semibold text-foreground mb-2">
+        Team ({members.length}/{teamSize} filled)
+      </h2>
+      <div className="space-y-2">
+        {members.map((m: any) => (
+          <div key={m.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center gap-2">
+              <InitialsAvatar name={m.student?.full_name} size={32} />
+              <div>
+                <p className="text-sm font-medium text-foreground">{m.student?.full_name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{m.role}</p>
+              </div>
+            </div>
+            <span className="text-sm font-medium text-success">
+              ₦{Number(m.payment_share).toLocaleString("en-NG")}
+            </span>
+          </div>
+        ))}
+      </div>
+      {members.length < teamSize && (
+        <p className="mt-2 text-xs text-muted-foreground text-center">
+          {teamSize - members.length} more student{teamSize - members.length === 1 ? "" : "s"} needed
+        </p>
+      )}
+    </div>
   );
 }
