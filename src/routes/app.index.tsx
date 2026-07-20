@@ -1,3 +1,4 @@
+import { Search } from "lucide-react";
 import { DisputeButton } from "@/components/intask/DisputeButton";
 import { BarChart2 } from "lucide-react";
 import { SaveTaskButton } from "@/components/intask/SaveTaskButton";
@@ -146,6 +147,9 @@ function MentorshipSection() {
           </Button>
           <Button size="sm" variant="outline" className="w-full" onClick={() => nav({ to: "/app/mentorship/bookings" as any })}>
             My bookings
+          </Button>
+          <Button size="sm" variant="outline" className="w-full gap-1" onClick={() => nav({ to: "/app/talent" as any })}>
+            <Search className="size-3.5" /> Search talent
           </Button>
         </div>
       </div>
@@ -542,10 +546,11 @@ function SubscriptionBanner({ userId }: { userId?: string }) {
   const { data: sub } = useQuery({
     queryKey: ["my-subscription", userId],
     enabled: !!userId,
+    staleTime: 30000,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("company_subscriptions")
-        .select("*, plan:subscription_plans(name, max_active_posts)")
+        .select("*, plan:subscription_plans(name, max_active_posts, can_search_talent)")
         .eq("company_id", userId!)
         .eq("status", "active")
         .maybeSingle();
@@ -555,6 +560,7 @@ function SubscriptionBanner({ userId }: { userId?: string }) {
 
   if (sub) {
     return (
+      <div className="space-y-2">
       <div className="rounded-xl border border-success/30 bg-success/10 p-3 flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-success">{sub.plan?.name} plan</p>
@@ -566,8 +572,18 @@ function SubscriptionBanner({ userId }: { userId?: string }) {
           Manage
         </Button>
       </div>
-    );
-  }
+      {sub.plan?.can_search_talent && (
+        <Button 
+          variant="outline"
+          className="w-full gap-2"
+          onClick={() => nav({ to: "/app/talent" as any })}
+        >
+          <Search className="size-4" /> Search talent pool
+        </Button>
+      )}
+    </div>
+  );
+}
 
   return (
     <div

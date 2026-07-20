@@ -58,21 +58,24 @@ function SubscriptionPage() {
             expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           });
         if (error) throw error;
-        return;
+        return { free: true };
       }
 
       const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
       if (!paystackKey) throw new Error("Payment not configured");
+      if (!(window as any).PaystackPop) throw new Error("Paystack not loaded. Please refresh and try again.");
 
-      return new Promise((resolve, reject) => {
+      return new Promise<any>((resolve, reject) => {
+        const ref = `sub_${me.id}_${Date.now()}`;
+
         const handler = (window as any).PaystackPop.setup({
           key: paystackKey,
-          email: me.email ?? "",
+          email: me.email,
           amount: plan.price * 100,
-          currency: "NGN",
-          ref: `sub_${me.id}_${Date.now()}`,
-          callback: async (response: any) => {
-            const { error } = await (supabase as any)
+          ref,
+          callback: function (response: any) {
+            console.log("Paystack callback fired:", response);
+            (supabase as any)
               .from("company_subscriptions")
               .upsert({
                 company_id: me.id,
@@ -81,27 +84,33 @@ function SubscriptionPage() {
                 started_at: new Date().toISOString(),
                 expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
                 paystack_reference: response.reference,
+              }, { onConflict: ["company_id"] })
+              .then(({ error }: any) => {
+                if (error) {
+                  console.log("Upsert error:", error);
+                  reject(error);
+                } else {
+                  console.log("Upsert success");
+                  resolve(response);
+                }
               });
-            if (error) reject(error);
-            else resolve(response);
           },
-          onClose: () => reject(new Error("Payment cancelled")),
+          onClose: function () {
+            console.log("Payment closed");
+          },
         });
-
-        if (!handler) {
-          reject(new Error("Paystack not loaded. Please refresh and try again."));
-          return;
-        }
         handler.openIframe();
       });
     },
-    onSuccess: (result: any) => {
+    onSuccess: async (result: any) => {
       if (result?.free) {
         toast.success("Free plan activated");
       } else {
         toast.success("Subscription activated successfully");
       }
-      qc.invalidateQueries({ queryKey: ["my-subscription"] });
+      await new Promise((r) => setTimeout(r, 1000));
+      qc.invalidateQueries({ queryKey: ["my-subscription", me?.id] });
+      qc.refetchQueries({ queryKey: ["my-subscription", me?.id] });
     },
     onError: (e: any) => {
       if (e.message === "Payment cancelled") return;

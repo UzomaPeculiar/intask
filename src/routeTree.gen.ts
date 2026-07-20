@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AppTalentRouteImport } from './routes/app.talent'
 import { Route as AppSubscriptionRouteImport } from './routes/app.subscription'
 import { Route as AppPartnershipRouteImport } from './routes/app.partnership'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
@@ -72,6 +73,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppTalentRoute = AppTalentRouteImport.update({
+  id: '/talent',
+  path: '/talent',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSubscriptionRoute = AppSubscriptionRouteImport.update({
   id: '/subscription',
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/subscription': typeof AppSubscriptionRoute
+  '/app/talent': typeof AppTalentRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
@@ -223,6 +230,7 @@ export interface FileRoutesByTo {
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/subscription': typeof AppSubscriptionRoute
+  '/app/talent': typeof AppTalentRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app': typeof AppIndexRoute
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/subscription': typeof AppSubscriptionRoute
+  '/app/talent': typeof AppTalentRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
@@ -286,6 +295,7 @@ export interface FileRouteTypes {
     | '/app/notifications'
     | '/app/partnership'
     | '/app/subscription'
+    | '/app/talent'
     | '/auth/login'
     | '/auth/signup'
     | '/app/'
@@ -315,6 +325,7 @@ export interface FileRouteTypes {
     | '/app/notifications'
     | '/app/partnership'
     | '/app/subscription'
+    | '/app/talent'
     | '/auth/login'
     | '/auth/signup'
     | '/app'
@@ -345,6 +356,7 @@ export interface FileRouteTypes {
     | '/app/notifications'
     | '/app/partnership'
     | '/app/subscription'
+    | '/app/talent'
     | '/auth/login'
     | '/auth/signup'
     | '/app/'
@@ -424,6 +436,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/login'
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/talent': {
+      id: '/app/talent'
+      path: '/talent'
+      fullPath: '/app/talent'
+      preLoaderRoute: typeof AppTalentRouteImport
+      parentRoute: typeof AppRoute
     }
     '/app/subscription': {
       id: '/app/subscription'
@@ -611,6 +630,7 @@ interface AppRouteChildren {
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPartnershipRoute: typeof AppPartnershipRoute
   AppSubscriptionRoute: typeof AppSubscriptionRoute
+  AppTalentRoute: typeof AppTalentRoute
   AppIndexRoute: typeof AppIndexRoute
   AppPaymentTaskIdRoute: typeof AppPaymentTaskIdRoute
   AppProfileUserIdRoute: typeof AppProfileUserIdRoute
@@ -631,6 +651,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppNotificationsRoute: AppNotificationsRoute,
   AppPartnershipRoute: AppPartnershipRoute,
   AppSubscriptionRoute: AppSubscriptionRoute,
+  AppTalentRoute: AppTalentRoute,
   AppIndexRoute: AppIndexRoute,
   AppPaymentTaskIdRoute: AppPaymentTaskIdRoute,
   AppProfileUserIdRoute: AppProfileUserIdRoute,
