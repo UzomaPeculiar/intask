@@ -231,6 +231,46 @@ function Landing() {
           </div>
         </div>
       </section>
+      
+      <section className="border-t border-border bg-card">
+        <div className="mx-auto max-w-6xl px-4 py-14">
+          <div className="grid gap-8 md:grid-cols-2 items-center">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/15 px-3 py-1 text-xs font-medium text-warning mb-4">
+                <GraduationCap className="size-3" /> For Universities
+              </span>
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Partner with InTask</h2>
+              <p className="mt-4 text-muted-foreground">
+                Give your students access to real paid work while they study. InTask partners with Nigerian universities to bridge the gap between education and employment.
+              </p>
+              <ul className="mt-4 space-y-2">
+                {["Free for institutions", "Students earn real income on campus", "Verified work experience before graduation", "Dashboard showing your students' activity"].map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle2 className="size-4 text-success shrink-0" /> {item}
+                  </li>
+                ))}
+              </ul>
+              <Link to="/app/partnership">
+                <Button className="mt-6 gap-2">Request a partnership <ArrowRight className="size-4" /></Button>
+              </Link>
+            </div>
+            <div className="rounded-2xl border border-border bg-background p-6 space-y-4">
+              <p className="text-sm font-medium text-foreground">Partnership benefits at a glance</p>
+              {[
+                { label: "Student employability", value: "Higher" },
+                { label: "Graduate readiness", value: "Verified" },
+                { label: "Cost to university", value: "Free" },
+                { label: "Setup time", value: "3 days" },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                  <p className="text-sm font-semibold text-foreground">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* CTA banner */}
       <section className="border-t border-border bg-primary">
@@ -271,6 +311,7 @@ function Landing() {
           <div className="flex flex-wrap gap-4 text-xs">
             <a className="hover:text-foreground" href="#">About</a>
             <a className="hover:text-foreground" href="#">Contact</a>
+            <Link to="/app/partnership" className="hover:text-foreground">Universities</Link>
             <a className="hover:text-foreground" href="#">Terms</a>
             <a className="hover:text-foreground" href="#">Privacy</a>
           </div>

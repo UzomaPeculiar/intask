@@ -1,3 +1,4 @@
+import { Award } from "lucide-react";
 import { Share2 } from "lucide-react";
 import { ReportButton } from "@/components/intask/ReportButton";
 import { Link } from "@tanstack/react-router";
@@ -42,6 +43,19 @@ function ProfilePage() {
   });
   const me = meData;
 
+  const { data: skillBadges } = useQuery({
+    queryKey: ["skill-badges", targetId],
+    enabled: !!targetId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("student_skill_badges")
+        .select("skill, score, passed, earned_at")
+        .eq("user_id", targetId)
+        .eq("passed", true);
+      return data ?? [];
+    },
+  });
+  
   const { data, isLoading } = useQuery({
     queryKey: ["profile", targetId],
     enabled: !!targetId,
@@ -217,9 +231,15 @@ function ProfilePage() {
 
         {isOwn && !editing && (
           <div className="mt-4 flex flex-col items-start gap-2">
-            <Button variant="outline" size="sm" className="gap-1" onClick={() => setEditing(true)}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1" 
+              onClick={() => setEditing(true)}
+            >
               <Edit3 className="size-3.5" /> Edit profile
             </Button>
+
             <Button
               variant="outline"
               size="sm"
@@ -232,9 +252,23 @@ function ProfilePage() {
             >
               <Share2 className="size-3.5" /> Share profile
             </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => nav({ to: "/app/assessments" as any })}
+            >
+              <Award className="size-3.5" /> Take skill assessments
+            </Button>
+            
             {isStudent && (
-              <button onClick={() => setUpgradeOpen(true)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                <GraduationCap className="size-3.5" /> Have you graduated? Upgrade to Alumni →
+              <button 
+                onClick={() => setUpgradeOpen(true)} 
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <GraduationCap className="size-3.5" /> 
+                Have you graduated? Upgrade to Alumni →
               </button>
             )}
           </div>
@@ -253,11 +287,18 @@ function ProfilePage() {
       {isStudentOrAlumni && student && (student.skills?.length ?? 0) > 0 && (
         <section className="px-4 pt-6">
           <h2 className="text-sm font-semibold">Skills</h2>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {student.skills!.map((s: string) => (
-              <span key={s} className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">{s}</span>
-            ))}
-          </div>
+          {skillBadges && skillBadges.length > 0 && (
+            <div className="mt-2 mb-3">
+              <p className="text-xs text-muted-foreground mb-2">Verified badges</p>
+              <div className="flex flex-wrap gap-2">
+                {skillBadges.map((b: any) => (
+                  <span key={b.skill} className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success">
+                    <Award className="size-3" /> {b.skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
 

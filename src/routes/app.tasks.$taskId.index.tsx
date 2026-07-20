@@ -21,10 +21,11 @@ export const Route = createFileRoute("/app/tasks/$taskId/")({
 
 function TaskDetail() {
   const { taskId } = Route.useParams();
-    useEffect(() => {
+  useEffect(() => {
     if (!taskId) return;
     (supabase as any).rpc("increment_task_views", { task_uuid: taskId });
   }, [taskId]);
+
   const nav = useNavigate();
 
   const { data: task, isLoading } = useQuery({
@@ -59,14 +60,15 @@ function TaskDetail() {
     enabled: !!me?.id,
     queryFn: async () => (await supabase.from("profiles").select("role").eq("id", me!.id).maybeSingle()).data,
   });
+
   const myRole = (myProfile?.role ?? "student") as "student" | "alumni" | "company" | "individual";
   const canApply = myRole === "student" || myRole === "alumni";
-
   const liveApplicantCount = useApplicantCount(task?.id, task?.applicants_count ?? 0);
 
   if (isLoading) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>;
   }
+
   if (!task) return <div className="px-4 pt-10 text-center text-muted-foreground">Task not found.</div>;
 
   const isOwn = me?.id === task.poster_id;
@@ -124,17 +126,29 @@ function TaskDetail() {
             </div>
           </Link>
         </section>
+
         {task.poster_id !== me?.id && (
           <div className="mt-2">
-            <ReportButton 
-              reportedId={task.poster_id} 
-              reportedName={task.poster?.full_name ?? "this poster"} 
-            />
+            <ReportButton reportedId={task.poster_id} reportedName={task.poster?.full_name ?? "this poster"} />
           </div>
         )}
       </div>
 
-      {/* Action bar */}
+      {(task as any)?.is_team_task && (
+        <TeamMembersSection taskId={taskId} teamSize={(task as any).team_size} />
+      )}
+
+      {(task as any).is_team_task && (
+        <div className="mx-4 mb-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+          <p className="text-sm font-medium text-primary">
+            👥 Team task — {(task as any).team_size} students needed
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Each student earns ₦{task.budget ? Math.floor(task.budget / (task as any).team_size).toLocaleString("en-NG") : "0"} upon completion
+          </p>
+        </div>
+      )}
+
       {!isOwn && task.matched_student_id === me?.id && (
         <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
           <div className="mx-auto max-w-md space-y-2">
@@ -148,25 +162,6 @@ function TaskDetail() {
               <Link to="/app/tasks/$taskId/rate" params={{ taskId: task.id }}>
                 <Button size="lg" variant="outline" className="w-full">Leave a review</Button>
               </Link>
-            )}
-          </div>
-        </div>
-      )}
-
-      {!isOwn && task.matched_student_id !== me?.id && task.status === "open" && (
-        <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
-          <div className="mx-auto max-w-md">
-            {canApply ? (
-              myApp ? (
-                <Button disabled size="lg" className="w-full">Application submitted</Button>
-              ) : (
-                <ApplySheet taskId={task.id} budget={task.budget} negotiable={task.budget_negotiable}/>
-              )
-            ) : (
-              <p className="text-center text-xs text-muted-foreground">Only verified students can apply for tasks.</p>
-            )}
-            {canApply && (
-              <p className="mt-1.5 text-center text-[11px] text-muted-foreground">{liveApplicantCount} student{liveApplicantCount === 1 ? "" : "s"} applied</p>
             )}
           </div>
         </div>
@@ -199,6 +194,67 @@ function TaskDetail() {
           </div>
         </div>
       )}
+
+      {!isOwn && (
+        <>
+          {canApply ? (
+            myApp ? (
+              <Button disabled size="lg" className="w-full">Application submitted</Button>
+            ) : (
+              <ApplySheet taskId={task.id} budget={task.budget} negotiable={task.budget_negotiable} />
+            )
+          ) : (
+            <p className="text-center text-xs text-muted-foreground">Only verified students can apply for tasks.</p>
+          )}
+          {canApply && (
+            <p className="mt-1.5 text-center text-[11px] text-muted-foreground">{liveApplicantCount} student{liveApplicantCount === 1 ? "" : "s"} applied</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function TeamMembersSection({ taskId, teamSize }: { taskId: string; teamSize: number }) {
+  const { data: members } = useQuery({
+    queryKey: ["team-members", taskId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("task_team_members")
+        .select("*, student:profiles!task_team_members_student_id_fkey(id, full_name)")
+        .eq("task_id", taskId);
+      return data ?? [];
+    },
+  });
+
+  if (!members || members.length === 0) return null;
+
+  return (
+    <div className="px-4 pt-4">
+      <h2 className="mb-2 text-sm font-semibold text-foreground">
+        Team ({members.length}/{teamSize} filled)
+      </h2>
+      <div className="space-y-2">
+        {members.map((m: any) => (
+          <div key={m.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center gap-2">
+              <InitialsAvatar name={m.student?.full_name} size={32} />
+              <div>
+                <p className="text-sm font-medium text-foreground">{m.student?.full_name}</p>
+                <p className="text-xs capitalize text-muted-foreground">{m.role}</p>
+              </div>
+            </div>
+            <span className="text-sm font-medium text-success">
+              ₦{Number(m.payment_share).toLocaleString("en-NG")}
+            </span>
+          </div>
+        ))}
+      </div>
+      {members.length < teamSize && (
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          {teamSize - members.length} more student{teamSize - members.length === 1 ? "" : "s"} needed
+        </p>
+      )}
     </div>
   );
 }
@@ -212,16 +268,26 @@ function ApplySheet({ taskId, budget, negotiable }: { taskId: string; budget: nu
   const apply = useMutation({
     mutationFn: async () => {
       const { data: { user }, error: authErr } = await supabase.auth.getUser();
-      if (authErr) { console.error("[apply] auth error", authErr); throw authErr; }
+      if (authErr) {
+        console.error("[apply] auth error", authErr);
+        throw authErr;
+      }
       if (!user) throw new Error("Not signed in");
-      const { data, error } = await supabase.from("applications").insert({
-        task_id: taskId, 
-        student_id: user.id, 
-        message: msg.trim(), 
-        status: "pending",
-        proposed_rate: (proposedRate ? Number(proposedRate) : null) as never,
-      }).select().single();
-      if (error) { console.error("[apply] insert error", error); throw error; }
+      const { data, error } = await supabase
+        .from("applications")
+        .insert({
+          task_id: taskId,
+          student_id: user.id,
+          message: msg.trim(),
+          status: "pending",
+          proposed_rate: (proposedRate ? Number(proposedRate) : null) as never,
+        })
+        .select()
+        .single();
+      if (error) {
+        console.error("[apply] insert error", error);
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -237,10 +303,11 @@ function ApplySheet({ taskId, budget, negotiable }: { taskId: string; budget: nu
     },
   });
 
-
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild><Button size="lg" className="w-full">Apply for this task</Button></SheetTrigger>
+      <SheetTrigger asChild>
+        <Button size="lg" className="w-full">Apply for this task</Button>
+      </SheetTrigger>
       <SheetContent side="bottom" className="rounded-t-2xl">
         <SheetHeader className="text-left">
           <SheetTitle>Apply — {negotiable ? "Open to negotiation" : naira(budget)}</SheetTitle>
@@ -251,11 +318,11 @@ function ApplySheet({ taskId, budget, negotiable }: { taskId: string; budget: nu
           {negotiable && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Your proposed rate (₦)</label>
-              <Input 
+              <Input
                 type="number"
-                value={proposedRate} 
-                onChange={(e) => setProposedRate(e.target.value)} 
-                placeholder="e.g. 15000" 
+                value={proposedRate}
+                onChange={(e) => setProposedRate(e.target.value)}
+                placeholder="e.g. 15000"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <p className="text-xs text-muted-foreground">The poster will see your proposed rate alongside your application.</p>
@@ -267,7 +334,9 @@ function ApplySheet({ taskId, budget, negotiable }: { taskId: string; budget: nu
           <Button className="w-full" size="lg" disabled={!msg.trim() || apply.isPending} onClick={() => apply.mutate()}>
             {apply.isPending ? "Submitting…" : "Submit application"}
           </Button>
-          <button className="w-full text-center text-sm text-muted-foreground" onClick={() => setOpen(false)}>Cancel</button>
+          <button className="w-full text-center text-sm text-muted-foreground" onClick={() => setOpen(false)}>
+            Cancel
+          </button>
         </div>
       </SheetContent>
     </Sheet>

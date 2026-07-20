@@ -16,10 +16,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AppSubscriptionRouteImport } from './routes/app.subscription'
+import { Route as AppPartnershipRouteImport } from './routes/app.partnership'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/app.messages'
 import { Route as AppMentorshipRouteImport } from './routes/app.mentorship'
 import { Route as AppBrowseRouteImport } from './routes/app.browse'
+import { Route as AppAssessmentsRouteImport } from './routes/app.assessments'
 import { Route as AppTasksCreateRouteImport } from './routes/app.tasks.create'
 import { Route as AppProfileUserIdRouteImport } from './routes/app.profile.$userId'
 import { Route as AppPaymentTaskIdRouteImport } from './routes/app.payment.$taskId'
@@ -70,6 +73,16 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSubscriptionRoute = AppSubscriptionRouteImport.update({
+  id: '/subscription',
+  path: '/subscription',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPartnershipRoute = AppPartnershipRouteImport.update({
+  id: '/partnership',
+  path: '/partnership',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -88,6 +101,11 @@ const AppMentorshipRoute = AppMentorshipRouteImport.update({
 const AppBrowseRoute = AppBrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssessmentsRoute = AppAssessmentsRouteImport.update({
+  id: '/assessments',
+  path: '/assessments',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTasksCreateRoute = AppTasksCreateRouteImport.update({
@@ -169,10 +187,13 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/app': typeof AppRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
+  '/app/partnership': typeof AppPartnershipRoute
+  '/app/subscription': typeof AppSubscriptionRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
@@ -195,10 +216,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
+  '/app/partnership': typeof AppPartnershipRoute
+  '/app/subscription': typeof AppSubscriptionRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app': typeof AppIndexRoute
@@ -223,10 +247,13 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/app': typeof AppRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
+  '/app/partnership': typeof AppPartnershipRoute
+  '/app/subscription': typeof AppSubscriptionRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
@@ -252,10 +279,13 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/sitemap.xml'
+    | '/app/assessments'
     | '/app/browse'
     | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
+    | '/app/partnership'
+    | '/app/subscription'
     | '/auth/login'
     | '/auth/signup'
     | '/app/'
@@ -278,10 +308,13 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/sitemap.xml'
+    | '/app/assessments'
     | '/app/browse'
     | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
+    | '/app/partnership'
+    | '/app/subscription'
     | '/auth/login'
     | '/auth/signup'
     | '/app'
@@ -305,10 +338,13 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/sitemap.xml'
+    | '/app/assessments'
     | '/app/browse'
     | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
+    | '/app/partnership'
+    | '/app/subscription'
     | '/auth/login'
     | '/auth/signup'
     | '/app/'
@@ -389,6 +425,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/subscription': {
+      id: '/app/subscription'
+      path: '/subscription'
+      fullPath: '/app/subscription'
+      preLoaderRoute: typeof AppSubscriptionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/partnership': {
+      id: '/app/partnership'
+      path: '/partnership'
+      fullPath: '/app/partnership'
+      preLoaderRoute: typeof AppPartnershipRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/notifications': {
       id: '/app/notifications'
       path: '/notifications'
@@ -415,6 +465,13 @@ declare module '@tanstack/react-router' {
       path: '/browse'
       fullPath: '/app/browse'
       preLoaderRoute: typeof AppBrowseRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/assessments': {
+      id: '/app/assessments'
+      path: '/assessments'
+      fullPath: '/app/assessments'
+      preLoaderRoute: typeof AppAssessmentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/tasks/create': {
@@ -547,10 +604,13 @@ const AppMessagesRouteWithChildren = AppMessagesRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAssessmentsRoute: typeof AppAssessmentsRoute
   AppBrowseRoute: typeof AppBrowseRoute
   AppMentorshipRoute: typeof AppMentorshipRouteWithChildren
   AppMessagesRoute: typeof AppMessagesRouteWithChildren
   AppNotificationsRoute: typeof AppNotificationsRoute
+  AppPartnershipRoute: typeof AppPartnershipRoute
+  AppSubscriptionRoute: typeof AppSubscriptionRoute
   AppIndexRoute: typeof AppIndexRoute
   AppPaymentTaskIdRoute: typeof AppPaymentTaskIdRoute
   AppProfileUserIdRoute: typeof AppProfileUserIdRoute
@@ -564,10 +624,13 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAssessmentsRoute: AppAssessmentsRoute,
   AppBrowseRoute: AppBrowseRoute,
   AppMentorshipRoute: AppMentorshipRouteWithChildren,
   AppMessagesRoute: AppMessagesRouteWithChildren,
   AppNotificationsRoute: AppNotificationsRoute,
+  AppPartnershipRoute: AppPartnershipRoute,
+  AppSubscriptionRoute: AppSubscriptionRoute,
   AppIndexRoute: AppIndexRoute,
   AppPaymentTaskIdRoute: AppPaymentTaskIdRoute,
   AppProfileUserIdRoute: AppProfileUserIdRoute,

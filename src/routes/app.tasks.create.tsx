@@ -64,6 +64,30 @@ function CreateTaskPage() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return toast.error("Not signed in"); }
+
+    const { data: subData } = await (supabase as any)
+      .from("company_subscriptions")
+      .select("*, plan:subscription_plans(max_active_posts)")
+      .eq("company_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    const maxPosts = subData?.plan?.max_active_posts ?? 2;
+
+    if (maxPosts !== 999) {
+      const { count } = await supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("poster_id", user.id)
+        .eq("status", "open");
+
+      if ((count ?? 0) >= maxPosts) {
+        toast.error(`Your current plan allows ${maxPosts} active task${maxPosts === 1 ? "" : "s"}. Upgrade to post more.`);
+        setLoading(false);
+        return;
+      }
+    }
+
     const { data, error } = await supabase.from("tasks").insert({
       poster_id: user.id,
       title: title.trim(),

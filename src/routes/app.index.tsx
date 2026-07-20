@@ -364,6 +364,8 @@ function PostWorkView({ userId }: { userId?: string }) {
         <Plus className="size-4" /> Post a new task
       </Button>
 
+      <SubscriptionBanner userId={userId} />
+
       {isLoading && <SkeletonList />}
 
       {!isLoading && (mine?.length ?? 0) === 0 && (
@@ -531,6 +533,52 @@ function SkeletonList() {
       {[0, 1, 2].map((i) => (
         <div key={i} className="h-32 animate-pulse rounded-xl border border-border bg-card" />
       ))}
+    </div>
+  );
+}
+
+function SubscriptionBanner({ userId }: { userId?: string }) {
+  const nav = useNavigate();
+  const { data: sub } = useQuery({
+    queryKey: ["my-subscription", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("company_subscriptions")
+        .select("*, plan:subscription_plans(name, max_active_posts)")
+        .eq("company_id", userId!)
+        .eq("status", "active")
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  if (sub) {
+    return (
+      <div className="rounded-xl border border-success/30 bg-success/10 p-3 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-success">{sub.plan?.name} plan</p>
+          <p className="text-xs text-muted-foreground">
+            {sub.plan?.max_active_posts === 999 ? "Unlimited posts" : `${sub.plan?.max_active_posts} active posts`}
+          </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => nav({ to: "/app/subscription" as any })}>
+          Manage
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="cursor-pointer rounded-xl border border-primary/30 bg-primary/5 p-3 flex items-center justify-between"
+      onClick={() => nav({ to: "/app/subscription" as any })}
+    >
+      <div>
+        <p className="text-sm font-medium text-foreground">Upgrade your plan</p>
+        <p className="text-xs text-muted-foreground">Post more tasks and search talent directly</p>
+      </div>
+      <span className="text-xs font-medium text-primary">View plans →</span>
     </div>
   );
 }

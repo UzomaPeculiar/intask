@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const nav = useNavigate();
-  const [tab, setTab] = useState<"overview" | "students" | "companies" | "reports" | "disputes">("overview");
+  const [tab, setTab] = useState<"overview" | "students" | "companies" | "reports" | "disputes" | "partnerships">("overview");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ function AdminPage() {
 
       <div className="mx-auto max-w-5xl px-6 py-6">
         <div className="flex gap-2 mb-6">
-          {(["overview", "students", "companies", "reports", "disputes"] as const).map((t) => (
+          {(["overview", "students", "companies", "reports", "disputes", "partnerships"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -69,7 +69,7 @@ function AdminPage() {
                   : "bg-card border border-border text-foreground hover:bg-accent"
               }`}
             >
-              {t === "overview" ? "Overview" : t === "students" ? "Student Verifications" : t === "companies" ? "Company Verifications" : t === "reports" ? "Reports" : "Disputes"}
+              {t === "overview" ? "Overview" : t === "students" ? "Student Verifications" : t === "companies" ? "Company Verifications" : t === "reports" ? "Reports" : t === "disputes" ? "Disputes" : "Partnerships"}
             </button>
           ))}
         </div>
@@ -79,6 +79,7 @@ function AdminPage() {
         {tab === "companies" && <CompanyVerificationsTab />}
         {tab === "reports" && <ReportsTab />}
         {tab === "disputes" && <DisputesTab />}
+        {tab === "partnerships" && <PartnershipsTab />}
       </div>
     </div>
   );
@@ -758,6 +759,106 @@ function DisputeCard({ dispute, onResolve, pending }: { dispute: any; onResolve:
             </Button>
           </div>
           <button className="text-xs text-muted-foreground" onClick={() => setShowForm(false)}>Cancel</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PartnershipsTab() {
+  const qc = useQueryClient();
+
+  const { data: partnerships, isLoading, refetch } = useQuery({
+    queryKey: ["admin-partnerships"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("university_partnerships")
+        .select("*")
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const approve = useMutation({
+    mutationFn: async (id: string) => {
+      await (supabase as any)
+        .from("university_partnerships")
+        .update({ status: "approved", updated_at: new Date().toISOString() })
+        .eq("id", id);
+    },
+    onSuccess: () => { toast.success("Partnership approved"); refetch(); },
+  });
+
+  const reject = useMutation({
+    mutationFn: async (id: string) => {
+      await (supabase as any)
+        .from("university_partnerships")
+        .update({ status: "rejected", updated_at: new Date().toISOString() })
+        .eq("id", id);
+    },
+    onSuccess: () => { toast.success("Partnership rejected"); refetch(); },
+  });
+
+  if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
+
+  if (!partnerships || partnerships.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-10 text-center">
+        <CheckCircle2 className="size-8 text-success mx-auto mb-3" />
+        <p className="font-medium text-foreground">No partnership requests yet</p>
+        <p className="text-sm text-muted-foreground mt-1">Requests from universities will appear here</p>
+      </div>
+    );
+  }
+
+  const pending = partnerships.filter((p: any) => p.status === "pending");
+  const others = partnerships.filter((p: any) => p.status !== "pending");
+
+  return (
+    <div className="space-y-6">
+      {pending.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-foreground">{pending.length} pending request{pending.length === 1 ? "" : "s"}</p>
+          {pending.map((p: any) => (
+            <div key={p.id} className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <p className="font-medium text-foreground">{p.university_name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{p.contact_name} · {p.contact_email}</p>
+                  {p.notes && <p className="text-xs text-muted-foreground mt-1 italic">"{p.notes}"</p>}
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(p.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</p>
+                </div>
+                <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning shrink-0">Pending</span>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="flex-1 bg-success text-success-foreground hover:bg-success/90" disabled={approve.isPending} onClick={() => approve.mutate(p.id)}>
+                  <CheckCircle2 className="size-3.5 mr-1" /> Approve
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1 text-destructive border-destructive/30" disabled={reject.isPending} onClick={() => reject.mutate(p.id)}>
+                  <XCircle className="size-3.5 mr-1" /> Reject
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {others.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground">Previous requests</p>
+          {others.map((p: any) => (
+            <div key={p.id} className="rounded-xl border border-border bg-card p-4 opacity-70">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium text-foreground">{p.university_name}</p>
+                  <p className="text-xs text-muted-foreground">{p.contact_name} · {p.contact_email}</p>
+                </div>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${p.status === "approved" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                  {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
