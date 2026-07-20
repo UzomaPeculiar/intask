@@ -1,3 +1,4 @@
+import { Award } from "lucide-react";
 import { Search } from "lucide-react";
 import { DisputeButton } from "@/components/intask/DisputeButton";
 import { BarChart2 } from "lucide-react";
@@ -48,6 +49,20 @@ function Dashboard() {
     },
   });
 
+  const { data: alumniProSub } = useQuery({
+    queryKey: ["alumni-pro-sub", user?.id],
+    enabled: role === "alumni" && !!user?.id,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("alumni_pro_subscriptions")
+        .select("id, status")
+        .eq("alumni_id", user!.id)
+        .eq("status", "active")
+        .maybeSingle();
+      return data;
+    },
+  });
+
   useEffect(() => {
     if (role === "company" || role === "individual") {
       setMode("post");
@@ -76,7 +91,7 @@ function Dashboard() {
               </span>
             )}
             {role === "student" && <VerifiedBadge role="student" verified={verified} />}
-            {role === "alumni" && <VerifiedBadge role="alumni" />}
+            {role === "alumni" && <VerifiedBadge role="alumni" isPro={!!alumniProSub} />}
             {(role === "company" || role === "individual") && <VerifiedBadge role={role} />}
           </div>
         </div>
@@ -151,6 +166,9 @@ function MentorshipSection() {
           <Button size="sm" variant="outline" className="w-full gap-1" onClick={() => nav({ to: "/app/talent" as any })}>
             <Search className="size-3.5" /> Search talent
           </Button>
+          <Button size="sm" variant="outline" className="w-full gap-1 col-span-2 border-warning/30 text-warning hover:bg-warning/10" onClick={() => nav({ to: "/app/alumni-pro" as any })}>
+            <Award className="size-3.5" /> Alumni Pro
+          </Button>
         </div>
       </div>
     </div>
@@ -200,23 +218,43 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
         <StatCard label="Rating" value={stats?.rating ? Number(stats.rating).toFixed(1) : "—"} icon={<Star className="size-3.5 fill-warning text-warning" />} />
       </div>
 
-      <div
-        onClick={() => nav({ to: "/app/mentorship" as any })}
-        className="cursor-pointer rounded-xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-card"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-lg bg-warning/20 text-warning">
-              <GraduationCap className="size-4" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Mentorship</p>
-              <p className="text-xs text-muted-foreground">Book 1-on-1 sessions with alumni</p>
+      <div className="space-y-2">
+        <Link
+          to="/app/mentorship"
+          className="block rounded-xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-card"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-lg bg-warning/20 text-warning">
+                <GraduationCap className="size-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Mentorship</p>
+                <p className="text-xs text-muted-foreground">Book 1-on-1 sessions with alumni</p>
+              </div>
             </div>
+            <span className="text-xs font-medium text-warning">Browse →</span>
           </div>
-        <span className="text-xs font-medium text-warning">Browse →</span>
+        </Link>
+
+        <Link
+          to="/app/internships"
+          className="block rounded-xl border border-border bg-card p-4 shadow-card transition-colors active:bg-accent/50"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Briefcase className="size-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Internships</p>
+                <p className="text-xs text-muted-foreground">Longer-term opportunities from companies</p>
+              </div>
+            </div>
+            <span className="text-xs font-medium text-primary">Browse →</span>
+          </div>
+        </Link>
       </div>
-    </div>
 
       <div className="relative -mx-4">
         <div className="flex gap-2 overflow-x-auto px-4 pb-1 pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

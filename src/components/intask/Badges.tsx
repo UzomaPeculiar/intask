@@ -1,6 +1,7 @@
+import { Award } from "lucide-react";
 import { CheckCircle2, Building2, GraduationCap, Clock } from "lucide-react";
 
-export function VerifiedBadge({ role, verified }: { role?: "student" | "alumni" | "company" | "individual" | null; verified?: boolean }) {
+export function VerifiedBadge({ role, verified, isPro }: { role?: "student" | "alumni" | "company" | "individual" | null; verified?: boolean; isPro?: boolean }) {
   if (role === "company") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
@@ -9,6 +10,13 @@ export function VerifiedBadge({ role, verified }: { role?: "student" | "alumni" 
     );
   }
   if (role === "alumni") {
+    if (isPro) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">
+          <GraduationCap className="size-3" /> Alumni Pro
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">
         <GraduationCap className="size-3" /> Alumni

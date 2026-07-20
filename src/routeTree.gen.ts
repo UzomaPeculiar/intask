@@ -22,8 +22,10 @@ import { Route as AppPartnershipRouteImport } from './routes/app.partnership'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/app.messages'
 import { Route as AppMentorshipRouteImport } from './routes/app.mentorship'
+import { Route as AppInternshipsRouteImport } from './routes/app.internships'
 import { Route as AppBrowseRouteImport } from './routes/app.browse'
 import { Route as AppAssessmentsRouteImport } from './routes/app.assessments'
+import { Route as AppAlumniProRouteImport } from './routes/app.alumni-pro'
 import { Route as AppTasksCreateRouteImport } from './routes/app.tasks.create'
 import { Route as AppProfileUserIdRouteImport } from './routes/app.profile.$userId'
 import { Route as AppPaymentTaskIdRouteImport } from './routes/app.payment.$taskId'
@@ -104,6 +106,11 @@ const AppMentorshipRoute = AppMentorshipRouteImport.update({
   path: '/mentorship',
   getParentRoute: () => AppRoute,
 } as any)
+const AppInternshipsRoute = AppInternshipsRouteImport.update({
+  id: '/internships',
+  path: '/internships',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBrowseRoute = AppBrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
@@ -112,6 +119,11 @@ const AppBrowseRoute = AppBrowseRouteImport.update({
 const AppAssessmentsRoute = AppAssessmentsRouteImport.update({
   id: '/assessments',
   path: '/assessments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAlumniProRoute = AppAlumniProRouteImport.update({
+  id: '/alumni-pro',
+  path: '/alumni-pro',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTasksCreateRoute = AppTasksCreateRouteImport.update({
@@ -193,8 +205,10 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/app': typeof AppRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/app/alumni-pro': typeof AppAlumniProRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
+  '/app/internships': typeof AppInternshipsRoute
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
@@ -223,8 +237,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/app/alumni-pro': typeof AppAlumniProRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
+  '/app/internships': typeof AppInternshipsRoute
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
@@ -255,8 +271,10 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/app': typeof AppRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/app/alumni-pro': typeof AppAlumniProRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
+  '/app/internships': typeof AppInternshipsRoute
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
@@ -288,8 +306,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/sitemap.xml'
+    | '/app/alumni-pro'
     | '/app/assessments'
     | '/app/browse'
+    | '/app/internships'
     | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
@@ -318,8 +338,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/sitemap.xml'
+    | '/app/alumni-pro'
     | '/app/assessments'
     | '/app/browse'
+    | '/app/internships'
     | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
@@ -349,8 +371,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/sitemap.xml'
+    | '/app/alumni-pro'
     | '/app/assessments'
     | '/app/browse'
+    | '/app/internships'
     | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
@@ -479,6 +503,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMentorshipRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/internships': {
+      id: '/app/internships'
+      path: '/internships'
+      fullPath: '/app/internships'
+      preLoaderRoute: typeof AppInternshipsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/browse': {
       id: '/app/browse'
       path: '/browse'
@@ -491,6 +522,13 @@ declare module '@tanstack/react-router' {
       path: '/assessments'
       fullPath: '/app/assessments'
       preLoaderRoute: typeof AppAssessmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/alumni-pro': {
+      id: '/app/alumni-pro'
+      path: '/alumni-pro'
+      fullPath: '/app/alumni-pro'
+      preLoaderRoute: typeof AppAlumniProRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/tasks/create': {
@@ -623,8 +661,10 @@ const AppMessagesRouteWithChildren = AppMessagesRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAlumniProRoute: typeof AppAlumniProRoute
   AppAssessmentsRoute: typeof AppAssessmentsRoute
   AppBrowseRoute: typeof AppBrowseRoute
+  AppInternshipsRoute: typeof AppInternshipsRoute
   AppMentorshipRoute: typeof AppMentorshipRouteWithChildren
   AppMessagesRoute: typeof AppMessagesRouteWithChildren
   AppNotificationsRoute: typeof AppNotificationsRoute
@@ -644,8 +684,10 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAlumniProRoute: AppAlumniProRoute,
   AppAssessmentsRoute: AppAssessmentsRoute,
   AppBrowseRoute: AppBrowseRoute,
+  AppInternshipsRoute: AppInternshipsRoute,
   AppMentorshipRoute: AppMentorshipRouteWithChildren,
   AppMessagesRoute: AppMessagesRouteWithChildren,
   AppNotificationsRoute: AppNotificationsRoute,

@@ -114,6 +114,19 @@ function ProfilePage() {
     },
   });
 
+  const { data: alumniProSub } = useQuery({
+    queryKey: ["alumni-pro-sub", targetId],
+    enabled: !!targetId && data?.profile?.role === "alumni",
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("alumni_pro_subscriptions")
+        .select("id, status")
+        .eq("alumni_id", targetId!)
+        .eq("status", "active")
+        .maybeSingle();
+      return data;
+    },
+  });
 
   const [editing, setEditing] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -182,7 +195,7 @@ function ProfilePage() {
             {isCompany && company?.company_name && (
               <p className="truncate text-sm text-muted-foreground">{company.company_name}</p>
             )}
-            <div className="mt-1.5"><VerifiedBadge role={profile.role} verified={student?.verified} /></div>
+            <div className="mt-1.5"><VerifiedBadge role={profile.role} verified={student?.verified} isPro={!!alumniProSub} /></div>
               {isOwn && profile.role === "student" && student?.verification_method === "id_upload" && !student?.verified && (
                 <ReuploadIDSection userId={profile.id} />
               )}

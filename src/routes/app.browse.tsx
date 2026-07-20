@@ -138,9 +138,9 @@ function BrowsePage() {
       {tab === "tasks" && (
         <p className="text-center text-xs text-muted-foreground">
           Looking to hire?{" "}
-          <Link to="/app/tasks/create" className="font-medium text-primary hover:underline">
-            Post a task
-          </Link>
+          <Link to="/app/tasks/create" className="font-medium text-primary hover:underline">Post a task</Link>
+          {" . "}
+          <Link to="/app/internships" className="font-medium text-primary hover:underline">Browse internships</Link>
         </p>
       )}
     </div>
