@@ -16,23 +16,27 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AppWalletRouteImport } from './routes/app.wallet'
 import { Route as AppTalentRouteImport } from './routes/app.talent'
 import { Route as AppSubscriptionRouteImport } from './routes/app.subscription'
 import { Route as AppPartnershipRouteImport } from './routes/app.partnership'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/app.messages'
 import { Route as AppMentorshipRouteImport } from './routes/app.mentorship'
+import { Route as AppLearnRouteImport } from './routes/app.learn'
 import { Route as AppInternshipsRouteImport } from './routes/app.internships'
 import { Route as AppBrowseRouteImport } from './routes/app.browse'
 import { Route as AppAssessmentsRouteImport } from './routes/app.assessments'
 import { Route as AppAlumniProRouteImport } from './routes/app.alumni-pro'
 import { Route as AppTasksCreateRouteImport } from './routes/app.tasks.create'
+import { Route as AppRoomsRoomIdRouteImport } from './routes/app.rooms.$roomId'
 import { Route as AppProfileUserIdRouteImport } from './routes/app.profile.$userId'
 import { Route as AppPaymentTaskIdRouteImport } from './routes/app.payment.$taskId'
 import { Route as AppMessagesConversationIdRouteImport } from './routes/app.messages.$conversationId'
 import { Route as AppMentorshipManageRouteImport } from './routes/app.mentorship.manage'
 import { Route as AppMentorshipBookingsRouteImport } from './routes/app.mentorship.bookings'
 import { Route as AppMentorshipServiceIdRouteImport } from './routes/app.mentorship.$serviceId'
+import { Route as AppLearnCourseIdRouteImport } from './routes/app.learn.$courseId'
 import { Route as AppTasksTaskIdIndexRouteImport } from './routes/app.tasks.$taskId.index'
 import { Route as AppTasksTaskIdReviewRouteImport } from './routes/app.tasks.$taskId.review'
 import { Route as AppTasksTaskIdRateRouteImport } from './routes/app.tasks.$taskId.rate'
@@ -76,6 +80,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppWalletRoute = AppWalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTalentRoute = AppTalentRouteImport.update({
   id: '/talent',
   path: '/talent',
@@ -106,6 +115,11 @@ const AppMentorshipRoute = AppMentorshipRouteImport.update({
   path: '/mentorship',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLearnRoute = AppLearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppInternshipsRoute = AppInternshipsRouteImport.update({
   id: '/internships',
   path: '/internships',
@@ -129,6 +143,11 @@ const AppAlumniProRoute = AppAlumniProRouteImport.update({
 const AppTasksCreateRoute = AppTasksCreateRouteImport.update({
   id: '/tasks/create',
   path: '/tasks/create',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRoomsRoomIdRoute = AppRoomsRoomIdRouteImport.update({
+  id: '/rooms/$roomId',
+  path: '/rooms/$roomId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProfileUserIdRoute = AppProfileUserIdRouteImport.update({
@@ -161,6 +180,11 @@ const AppMentorshipServiceIdRoute = AppMentorshipServiceIdRouteImport.update({
   id: '/$serviceId',
   path: '/$serviceId',
   getParentRoute: () => AppMentorshipRoute,
+} as any)
+const AppLearnCourseIdRoute = AppLearnCourseIdRouteImport.update({
+  id: '/$courseId',
+  path: '/$courseId',
+  getParentRoute: () => AppLearnRoute,
 } as any)
 const AppTasksTaskIdIndexRoute = AppTasksTaskIdIndexRouteImport.update({
   id: '/tasks/$taskId/',
@@ -209,21 +233,25 @@ export interface FileRoutesByFullPath {
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/internships': typeof AppInternshipsRoute
+  '/app/learn': typeof AppLearnRouteWithChildren
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
+  '/app/wallet': typeof AppWalletRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
+  '/app/learn/$courseId': typeof AppLearnCourseIdRoute
   '/app/mentorship/$serviceId': typeof AppMentorshipServiceIdRoute
   '/app/mentorship/bookings': typeof AppMentorshipBookingsRoute
   '/app/mentorship/manage': typeof AppMentorshipManageRoute
   '/app/messages/$conversationId': typeof AppMessagesConversationIdRoute
   '/app/payment/$taskId': typeof AppPaymentTaskIdRoute
   '/app/profile/$userId': typeof AppProfileUserIdRoute
+  '/app/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/app/tasks/create': typeof AppTasksCreateRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
   '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
@@ -241,21 +269,25 @@ export interface FileRoutesByTo {
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/internships': typeof AppInternshipsRoute
+  '/app/learn': typeof AppLearnRouteWithChildren
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
+  '/app/wallet': typeof AppWalletRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app': typeof AppIndexRoute
+  '/app/learn/$courseId': typeof AppLearnCourseIdRoute
   '/app/mentorship/$serviceId': typeof AppMentorshipServiceIdRoute
   '/app/mentorship/bookings': typeof AppMentorshipBookingsRoute
   '/app/mentorship/manage': typeof AppMentorshipManageRoute
   '/app/messages/$conversationId': typeof AppMessagesConversationIdRoute
   '/app/payment/$taskId': typeof AppPaymentTaskIdRoute
   '/app/profile/$userId': typeof AppProfileUserIdRoute
+  '/app/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/app/tasks/create': typeof AppTasksCreateRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
   '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
@@ -275,21 +307,25 @@ export interface FileRoutesById {
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/internships': typeof AppInternshipsRoute
+  '/app/learn': typeof AppLearnRouteWithChildren
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
+  '/app/wallet': typeof AppWalletRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
+  '/app/learn/$courseId': typeof AppLearnCourseIdRoute
   '/app/mentorship/$serviceId': typeof AppMentorshipServiceIdRoute
   '/app/mentorship/bookings': typeof AppMentorshipBookingsRoute
   '/app/mentorship/manage': typeof AppMentorshipManageRoute
   '/app/messages/$conversationId': typeof AppMessagesConversationIdRoute
   '/app/payment/$taskId': typeof AppPaymentTaskIdRoute
   '/app/profile/$userId': typeof AppProfileUserIdRoute
+  '/app/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/app/tasks/create': typeof AppTasksCreateRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
   '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
@@ -310,21 +346,25 @@ export interface FileRouteTypes {
     | '/app/assessments'
     | '/app/browse'
     | '/app/internships'
+    | '/app/learn'
     | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
     | '/app/partnership'
     | '/app/subscription'
     | '/app/talent'
+    | '/app/wallet'
     | '/auth/login'
     | '/auth/signup'
     | '/app/'
+    | '/app/learn/$courseId'
     | '/app/mentorship/$serviceId'
     | '/app/mentorship/bookings'
     | '/app/mentorship/manage'
     | '/app/messages/$conversationId'
     | '/app/payment/$taskId'
     | '/app/profile/$userId'
+    | '/app/rooms/$roomId'
     | '/app/tasks/create'
     | '/api/public/webhooks/paystack'
     | '/app/tasks/$taskId/analytics'
@@ -342,21 +382,25 @@ export interface FileRouteTypes {
     | '/app/assessments'
     | '/app/browse'
     | '/app/internships'
+    | '/app/learn'
     | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
     | '/app/partnership'
     | '/app/subscription'
     | '/app/talent'
+    | '/app/wallet'
     | '/auth/login'
     | '/auth/signup'
     | '/app'
+    | '/app/learn/$courseId'
     | '/app/mentorship/$serviceId'
     | '/app/mentorship/bookings'
     | '/app/mentorship/manage'
     | '/app/messages/$conversationId'
     | '/app/payment/$taskId'
     | '/app/profile/$userId'
+    | '/app/rooms/$roomId'
     | '/app/tasks/create'
     | '/api/public/webhooks/paystack'
     | '/app/tasks/$taskId/analytics'
@@ -375,21 +419,25 @@ export interface FileRouteTypes {
     | '/app/assessments'
     | '/app/browse'
     | '/app/internships'
+    | '/app/learn'
     | '/app/mentorship'
     | '/app/messages'
     | '/app/notifications'
     | '/app/partnership'
     | '/app/subscription'
     | '/app/talent'
+    | '/app/wallet'
     | '/auth/login'
     | '/auth/signup'
     | '/app/'
+    | '/app/learn/$courseId'
     | '/app/mentorship/$serviceId'
     | '/app/mentorship/bookings'
     | '/app/mentorship/manage'
     | '/app/messages/$conversationId'
     | '/app/payment/$taskId'
     | '/app/profile/$userId'
+    | '/app/rooms/$roomId'
     | '/app/tasks/create'
     | '/api/public/webhooks/paystack'
     | '/app/tasks/$taskId/analytics'
@@ -461,6 +509,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/wallet': {
+      id: '/app/wallet'
+      path: '/wallet'
+      fullPath: '/app/wallet'
+      preLoaderRoute: typeof AppWalletRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/talent': {
       id: '/app/talent'
       path: '/talent'
@@ -503,6 +558,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMentorshipRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/learn': {
+      id: '/app/learn'
+      path: '/learn'
+      fullPath: '/app/learn'
+      preLoaderRoute: typeof AppLearnRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/internships': {
       id: '/app/internships'
       path: '/internships'
@@ -536,6 +598,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks/create'
       fullPath: '/app/tasks/create'
       preLoaderRoute: typeof AppTasksCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/rooms/$roomId': {
+      id: '/app/rooms/$roomId'
+      path: '/rooms/$roomId'
+      fullPath: '/app/rooms/$roomId'
+      preLoaderRoute: typeof AppRoomsRoomIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/profile/$userId': {
@@ -579,6 +648,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/mentorship/$serviceId'
       preLoaderRoute: typeof AppMentorshipServiceIdRouteImport
       parentRoute: typeof AppMentorshipRoute
+    }
+    '/app/learn/$courseId': {
+      id: '/app/learn/$courseId'
+      path: '/$courseId'
+      fullPath: '/app/learn/$courseId'
+      preLoaderRoute: typeof AppLearnCourseIdRouteImport
+      parentRoute: typeof AppLearnRoute
     }
     '/app/tasks/$taskId/': {
       id: '/app/tasks/$taskId/'
@@ -632,6 +708,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppLearnRouteChildren {
+  AppLearnCourseIdRoute: typeof AppLearnCourseIdRoute
+}
+
+const AppLearnRouteChildren: AppLearnRouteChildren = {
+  AppLearnCourseIdRoute: AppLearnCourseIdRoute,
+}
+
+const AppLearnRouteWithChildren = AppLearnRoute._addFileChildren(
+  AppLearnRouteChildren,
+)
+
 interface AppMentorshipRouteChildren {
   AppMentorshipServiceIdRoute: typeof AppMentorshipServiceIdRoute
   AppMentorshipBookingsRoute: typeof AppMentorshipBookingsRoute
@@ -665,15 +753,18 @@ interface AppRouteChildren {
   AppAssessmentsRoute: typeof AppAssessmentsRoute
   AppBrowseRoute: typeof AppBrowseRoute
   AppInternshipsRoute: typeof AppInternshipsRoute
+  AppLearnRoute: typeof AppLearnRouteWithChildren
   AppMentorshipRoute: typeof AppMentorshipRouteWithChildren
   AppMessagesRoute: typeof AppMessagesRouteWithChildren
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPartnershipRoute: typeof AppPartnershipRoute
   AppSubscriptionRoute: typeof AppSubscriptionRoute
   AppTalentRoute: typeof AppTalentRoute
+  AppWalletRoute: typeof AppWalletRoute
   AppIndexRoute: typeof AppIndexRoute
   AppPaymentTaskIdRoute: typeof AppPaymentTaskIdRoute
   AppProfileUserIdRoute: typeof AppProfileUserIdRoute
+  AppRoomsRoomIdRoute: typeof AppRoomsRoomIdRoute
   AppTasksCreateRoute: typeof AppTasksCreateRoute
   AppTasksTaskIdAnalyticsRoute: typeof AppTasksTaskIdAnalyticsRoute
   AppTasksTaskIdApplicantsRoute: typeof AppTasksTaskIdApplicantsRoute
@@ -688,15 +779,18 @@ const AppRouteChildren: AppRouteChildren = {
   AppAssessmentsRoute: AppAssessmentsRoute,
   AppBrowseRoute: AppBrowseRoute,
   AppInternshipsRoute: AppInternshipsRoute,
+  AppLearnRoute: AppLearnRouteWithChildren,
   AppMentorshipRoute: AppMentorshipRouteWithChildren,
   AppMessagesRoute: AppMessagesRouteWithChildren,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPartnershipRoute: AppPartnershipRoute,
   AppSubscriptionRoute: AppSubscriptionRoute,
   AppTalentRoute: AppTalentRoute,
+  AppWalletRoute: AppWalletRoute,
   AppIndexRoute: AppIndexRoute,
   AppPaymentTaskIdRoute: AppPaymentTaskIdRoute,
   AppProfileUserIdRoute: AppProfileUserIdRoute,
+  AppRoomsRoomIdRoute: AppRoomsRoomIdRoute,
   AppTasksCreateRoute: AppTasksCreateRoute,
   AppTasksTaskIdAnalyticsRoute: AppTasksTaskIdAnalyticsRoute,
   AppTasksTaskIdApplicantsRoute: AppTasksTaskIdApplicantsRoute,

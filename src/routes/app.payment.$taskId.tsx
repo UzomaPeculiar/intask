@@ -10,6 +10,14 @@ import { ShieldCheck, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getPaystackPublicKey, initEscrow, verifyEscrow } from "@/lib/paystack.functions";
 
+function getPaystack() {
+  const ps = (window as any).PaystackPop ?? (window as any).Paystack;
+  if (!ps || typeof ps.setup !== "function") {
+    throw new Error("Paystack is not loaded. Please refresh the page and try again.");
+  }
+  return ps;
+}
+
 declare global {
   interface Window { PaystackPop?: any }
 }
@@ -64,7 +72,7 @@ function PaymentPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (window.PaystackPop) {
+    if ((window as any).PaystackPop || (window as any).Paystack) {
       setPaystackReady(true);
       return;
     }
@@ -101,16 +109,12 @@ function PaymentPage() {
     setBusy(true);
     try {
       const { reference } = await init({ data: { taskId } });
-      if (!window.PaystackPop) {
-        toast.error("Payment script still loading — try again");
-        setBusy(false);
-        return;
-      }
-      const popup = new window.PaystackPop();
-      popup.newTransaction({
+      const paystack = getPaystack();
+      const popup = paystack.setup({
         key: keyData.publicKey,
-        email: (await supabase.auth.getUser()).data.user?.email,
+        email: user?.email ?? (await supabase.auth.getUser()).data.user?.email ?? "",
         amount: Math.round(total * 100),
+        currency: "NGN",
         reference,
         onSuccess: async (trx: any) => {
           try {
@@ -127,6 +131,7 @@ function PaymentPage() {
           setBusy(false);
         },
       });
+      popup.openIframe();
     } catch (e: any) {
       toast.error(e.message ?? "Could not start payment");
       setBusy(false);

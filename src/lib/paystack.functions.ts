@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const FEE_RATE = 0.08;
 
 export const getPaystackPublicKey = createServerFn({ method: "GET" }).handler(async () => {
-  return { publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? "" };
+  return { publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? process.env.VITE_PAYSTACK_PUBLIC_KEY ?? "" };
 });
 
 export const initEscrow = createServerFn({ method: "POST" })

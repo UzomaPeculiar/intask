@@ -1,3 +1,4 @@
+import { BookOpen } from "lucide-react";
 import { Award } from "lucide-react";
 import { Search } from "lucide-react";
 import { DisputeButton } from "@/components/intask/DisputeButton";
@@ -15,7 +16,7 @@ import { EmptyState } from "@/components/intask/EmptyState";
 import { Button } from "@/components/ui/button";
 import { naira, timeAgo } from "@/lib/format";
 import { FEED_FILTERS } from "@/lib/constants";
-import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle } from "lucide-react";
+import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle, Users, Wallet } from "lucide-react";
 import { useApplicantCount, applicantLabel } from "@/hooks/useApplicantCount";
 import { MessagePartyLink } from "@/components/intask/MessagePartyLink";
 
@@ -196,6 +197,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
       ]);
       const avg = (studentProfile.data?.rating_count ?? 0) > 0 ? studentProfile.data?.rating_average : null;
       return { applied: apps.count ?? 0, active: active.count ?? 0, rating: avg };
+      <WalletBalanceCard userId={userId} />
     },
   });
 
@@ -254,6 +256,24 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
             <span className="text-xs font-medium text-primary">Browse →</span>
           </div>
         </Link>
+
+        <div
+          onClick={() => nav({ to: "/app/learn" as any })}
+          className="cursor-pointer rounded-xl border border-border bg-card p-4 shadow-card transition-colors active:bg-accent/50"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-lg bg-warning/10 text-warning">
+                <BookOpen className="size-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground">InTask Learn</p>
+                <p className="text-xs text-muted-foreground">Short courses to boost your skills and earnings</p>
+              </div>
+            </div>
+            <span className="text-xs font-medium text-warning">Browse →</span>
+          </div>
+        </div>
       </div>
 
       <div className="relative -mx-4">
@@ -524,6 +544,7 @@ function getAboveAverageThreshold(category: string): number {
 }
 
 export function TaskCard({ task, currentUserId }: { task: any; currentUserId?: string }) {
+  const nav = useNavigate();
   const count = useApplicantCount(task.id, task.applicants_count ?? 0);
   return (
     <Link to="/app/tasks/$taskId" params={{ taskId: task.id }} className="block">
@@ -545,7 +566,7 @@ export function TaskCard({ task, currentUserId }: { task: any; currentUserId?: s
           <span className="rounded-full bg-muted px-2 py-0.5">{task.category}</span>
           {(task as any).is_team_task && (
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-              👥 Team · {(task as any).team_size} students
+              👥 Team · {(task as any).team_size} students · ₦{task.budget ? Math.floor((task.budget * 0.92) / (task as any).team_size).toLocaleString("en-NG") : "0"} each
             </span>
           )}
           {task.deadline && <span>Due {new Date(task.deadline).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}</span>}
@@ -561,6 +582,27 @@ export function TaskCard({ task, currentUserId }: { task: any; currentUserId?: s
             <SaveTaskButton taskId={task.id} userId={currentUserId} />
           </div>
         </div>
+        {(task as any).is_team_task && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 w-full gap-1"
+            onClick={async () => {
+              const { data: room } = await (supabase as any)
+                .from("project_rooms")
+                .select("id")
+                .eq("task_id", task.id)
+                .maybeSingle();
+              if (room) {
+                nav({ to: "/app/rooms/$roomId" as any, params: { roomId: room.id } } as any);
+              } else {
+                toast.error("Project room not found");
+              }
+            }}
+          >
+            <Users className="size-3.5" /> Open project room
+          </Button>
+        )}
         <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
           <ShieldCheck className="size-3 text-success" /> Payment held safely until work is approved
         </p>
@@ -633,6 +675,40 @@ function SubscriptionBanner({ userId }: { userId?: string }) {
         <p className="text-xs text-muted-foreground">Post more tasks and search talent directly</p>
       </div>
       <span className="text-xs font-medium text-primary">View plans →</span>
+    </div>
+  );
+}
+
+function WalletBalanceCard({ userId }: { userId?: string }) {
+  const nav = useNavigate();
+  const { data: wallet } = useQuery({
+    queryKey: ["wallet", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("wallets")
+        .select("balance")
+        .eq("user_id", userId!)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  if (!wallet) return null;
+
+  return (
+    <div
+      className="cursor-pointer rounded-xl border border-success/30 bg-success/10 p-3 flex items-center justify-between"
+      onClick={() => nav({ to: "/app/wallet" as any })}
+    >
+      <div className="flex items-center gap-2">
+        <Wallet className="size-4 text-success" />
+        <div>
+          <p className="text-xs text-muted-foreground">Wallet balance</p>
+          <p className="text-sm font-semibold text-success">₦{Number(wallet.balance ?? 0).toLocaleString("en-NG")}</p>
+        </div>
+      </div>
+      <span className="text-xs text-success font-medium">View →</span>
     </div>
   );
 }

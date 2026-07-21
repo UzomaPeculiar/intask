@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const nav = useNavigate();
-  const [tab, setTab] = useState<"overview" | "students" | "companies" | "reports" | "disputes" | "partnerships">("overview");
+  const [tab, setTab] = useState<"overview" | "students" | "companies" | "reports" | "disputes" | "partnerships" | "withdrawals">("overview");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ function AdminPage() {
 
       <div className="mx-auto max-w-5xl px-6 py-6">
         <div className="flex gap-2 mb-6">
-          {(["overview", "students", "companies", "reports", "disputes", "partnerships"] as const).map((t) => (
+          {(["overview", "students", "companies", "reports", "disputes", "partnerships", "withdrawals"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -69,7 +69,7 @@ function AdminPage() {
                   : "bg-card border border-border text-foreground hover:bg-accent"
               }`}
             >
-              {t === "overview" ? "Overview" : t === "students" ? "Student Verifications" : t === "companies" ? "Company Verifications" : t === "reports" ? "Reports" : t === "disputes" ? "Disputes" : "Partnerships"}
+              {t === "overview" ? "Overview" : t === "students" ? "Student Verifications" : t === "companies" ? "Company Verifications" : t === "reports" ? "Reports" : t === "disputes" ? "Disputes" : t === "partnerships" ? "Partnerships" : "Withdrawals"}
             </button>
           ))}
         </div>
@@ -80,6 +80,7 @@ function AdminPage() {
         {tab === "reports" && <ReportsTab />}
         {tab === "disputes" && <DisputesTab />}
         {tab === "partnerships" && <PartnershipsTab />}
+        {tab === "withdrawals" && <WithdrawalsTab />}
       </div>
     </div>
   );
@@ -855,6 +856,138 @@ function PartnershipsTab() {
                 </div>
                 <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${p.status === "approved" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
                   {p.status.charAt(0).toUpperCase() + p.status.slice(1)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WithdrawalsTab() {
+  const qc = useQueryClient();
+
+  const { data: withdrawals, isLoading, refetch } = useQuery({
+    queryKey: ["admin-withdrawals"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("withdrawal_requests")
+        .select("*, user:profiles!withdrawal_requests_user_id_fkey(full_name, email)")
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const process = useMutation({
+    mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
+      await (supabase as any)
+        .from("withdrawal_requests")
+        .update({ status, notes: notes ?? null, processed_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (status === "rejected") {
+        const withdrawal = withdrawals?.find((w: any) => w.id === id);
+        if (withdrawal) {
+          await (supabase as any).from("wallets").update({
+            balance: (withdrawal.amount),
+          }).eq("user_id", withdrawal.user_id);
+          await supabase.from("notifications").insert({
+            user_id: withdrawal.user_id,
+            type: "withdrawal_rejected",
+            message: `Your withdrawal of ₦${Number(withdrawal.amount).toLocaleString("en-NG")} was rejected. Funds have been returned to your wallet.`,
+            link: "/app/wallet",
+          });
+        }
+      } else if (status === "completed") {
+        const withdrawal = withdrawals?.find((w: any) => w.id === id);
+        if (withdrawal) {
+          await supabase.from("notifications").insert({
+            user_id: withdrawal.user_id,
+            type: "withdrawal_completed",
+            message: `Your withdrawal of ₦${Number(withdrawal.amount).toLocaleString("en-NG")} has been processed successfully.`,
+            link: "/app/wallet",
+          });
+        }
+      }
+    },
+    onSuccess: () => {
+      toast.success("Withdrawal updated");
+      refetch();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not process"),
+  });
+
+  if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
+
+  if (!withdrawals || withdrawals.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-10 text-center">
+        <CheckCircle2 className="size-8 text-success mx-auto mb-3" />
+        <p className="font-medium">No withdrawal requests</p>
+        <p className="text-sm text-muted-foreground mt-1">Withdrawal requests will appear here</p>
+      </div>
+    );
+  }
+
+  const pending = withdrawals.filter((w: any) => w.status === "pending");
+  const processed = withdrawals.filter((w: any) => w.status !== "pending");
+
+  return (
+    <div className="space-y-6">
+      {pending.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium">{pending.length} pending withdrawal{pending.length === 1 ? "" : "s"}</p>
+          {pending.map((w: any) => (
+            <div key={w.id} className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <p className="font-medium text-foreground">{w.user?.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{w.user?.email}</p>
+                  <p className="text-lg font-bold text-success mt-1">₦{Number(w.amount).toLocaleString("en-NG")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{w.bank_name} · {w.account_number}</p>
+                  <p className="text-xs font-medium text-foreground">{w.account_name}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                </div>
+                <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning shrink-0">Pending</span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1 bg-success text-success-foreground hover:bg-success/90"
+                  disabled={process.isPending}
+                  onClick={() => process.mutate({ id: w.id, status: "completed" })}
+                >
+                  <CheckCircle2 className="size-3.5 mr-1" /> Mark as paid
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-destructive border-destructive/30"
+                  disabled={process.isPending}
+                  onClick={() => process.mutate({ id: w.id, status: "rejected", notes: "Rejected by admin" })}
+                >
+                  <XCircle className="size-3.5 mr-1" /> Reject
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {processed.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground">Processed requests</p>
+          {processed.map((w: any) => (
+            <div key={w.id} className="rounded-xl border border-border bg-card p-3 opacity-70">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{w.user?.full_name}</p>
+                  <p className="text-xs text-muted-foreground">₦{Number(w.amount).toLocaleString("en-NG")} · {w.bank_name}</p>
+                </div>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${w.status === "completed" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                  {w.status.charAt(0).toUpperCase() + w.status.slice(1)}
                 </span>
               </div>
             </div>

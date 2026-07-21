@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Star, ExternalLink, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { releaseEscrow, requestRevision } from "@/lib/paystack.functions";
 import { naira } from "@/lib/format";
@@ -22,6 +22,11 @@ function ReviewPage() {
   const revise = useServerFn(requestRevision);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [meId, setMeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setMeId(data.user?.id ?? null));
+  }, []);
 
   const { data: task } = useQuery({
     queryKey: ["task", taskId],
@@ -29,12 +34,27 @@ function ReviewPage() {
   });
 
   async function approve() {
+    if (!task || !meId) return;
     setBusy(true);
     try {
+      const revieweeId = meId === task.poster_id ? task.matched_student_id : task.poster_id;
+      if (!revieweeId) {
+        throw new Error("Nothing to release to yet");
+      }
+
       const r = await release({ data: { taskId } });
+      await (supabase as any).rpc("credit_wallet", {
+        p_user_id: revieweeId,
+        p_amount: Number(task.budget) * 0.92,
+        p_description: `Payment for "${task.title}"`,
+        p_reference: taskId,
+      });
       toast.success(`Released — student gets ${naira(r.payout)}`);
       nav({ to: "/app/tasks/$taskId/rate", params: { taskId } });
-    } catch (e: any) { toast.error(e.message); setBusy(false); }
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not release payment");
+      setBusy(false);
+    }
   }
   async function revision() {
     if (!notes.trim()) { toast.error("Tell the student what to fix"); return; }

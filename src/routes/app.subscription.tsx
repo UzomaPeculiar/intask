@@ -1,9 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle2, Zap, Star, Building2 } from "lucide-react";
 import { toast } from "sonner";
+
+function getPaystack() {
+  const ps = (window as any).PaystackPop ?? (window as any).Paystack;
+  if (!ps || typeof ps.setup !== "function") {
+    throw new Error("Paystack is not loaded. Please refresh the page and try again.");
+  }
+  return ps;
+}
+
+declare global {
+  interface Window {
+    PaystackPop?: any;
+    Paystack?: any;
+  }
+}
 
 export const Route = createFileRoute("/app/subscription")({
   head: () => ({ meta: [{ title: "Subscription — InTask" }] }),
@@ -13,6 +29,38 @@ export const Route = createFileRoute("/app/subscription")({
 function SubscriptionPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
+  const [paystackReady, setPaystackReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if ((window as any).PaystackPop || (window as any).Paystack) {
+      setPaystackReady(true);
+      return;
+    }
+
+    const existingScript = document.getElementById("paystack-inline") as HTMLScriptElement | null;
+    if (existingScript) {
+      if (existingScript.getAttribute("data-loaded") === "true") {
+        setPaystackReady(true);
+      } else {
+        existingScript.addEventListener("load", () => {
+          existingScript.setAttribute("data-loaded", "true");
+          setPaystackReady(true);
+        });
+      }
+      return;
+    }
+
+    const s = document.createElement("script");
+    s.id = "paystack-inline";
+    s.src = "https://js.paystack.co/v2/inline.js";
+    s.async = true;
+    s.onload = () => {
+      s.setAttribute("data-loaded", "true");
+      setPaystackReady(true);
+    };
+    document.body.appendChild(s);
+  }, []);
 
   const { data: me } = useQuery({
     queryKey: ["me-id"],
@@ -47,6 +95,7 @@ function SubscriptionPage() {
   const subscribe = useMutation({
     mutationFn: async (plan: any) => {
       if (!me) throw new Error("Not signed in");
+      if (!paystackReady && plan.price !== 0) throw new Error("Paystack is not loaded. Please refresh the page and try again.");
       if (plan.price === 0) {
         const { error } = await (supabase as any)
           .from("company_subscriptions")
@@ -63,18 +112,18 @@ function SubscriptionPage() {
 
       const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
       if (!paystackKey) throw new Error("Payment not configured");
-      if (!(window as any).PaystackPop) throw new Error("Paystack not loaded. Please refresh and try again.");
+
+      const paystack = getPaystack();
 
       return new Promise<any>((resolve, reject) => {
         const ref = `sub_${me.id}_${Date.now()}`;
 
-        const handler = (window as any).PaystackPop.setup({
+        const handler = paystack.setup({
           key: paystackKey,
-          email: me.email,
+          email: me.email ?? "",
           amount: plan.price * 100,
           ref,
           callback: function (response: any) {
-            console.log("Paystack callback fired:", response);
             (supabase as any)
               .from("company_subscriptions")
               .upsert({
@@ -86,17 +135,12 @@ function SubscriptionPage() {
                 paystack_reference: response.reference,
               }, { onConflict: ["company_id"] })
               .then(({ error }: any) => {
-                if (error) {
-                  console.log("Upsert error:", error);
-                  reject(error);
-                } else {
-                  console.log("Upsert success");
-                  resolve(response);
-                }
+                if (error) reject(error);
+                else resolve(response);
               });
           },
           onClose: function () {
-            console.log("Payment closed");
+            toast.message("Payment cancelled — you can try again");
           },
         });
         handler.openIframe();

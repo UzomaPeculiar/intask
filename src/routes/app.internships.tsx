@@ -74,11 +74,11 @@ function InternshipsPage() {
   const canApply = myProfile?.role === "student" || myProfile?.role === "alumni";
 
   const apply = useMutation({
-    mutationFn: async ({ internshipId, coverLetter }: { internshipId: string; coverLetter: string }) => {
+    mutationFn: async ({ internshipId, coverLetter, resumeUrl }: { internshipId: string; coverLetter: string; resumeUrl?: string }) => {
       if (!me) throw new Error("Not signed in");
       const { error } = await (supabase as any)
         .from("internship_applications")
-        .insert({ internship_id: internshipId, student_id: me.id, cover_letter: coverLetter });
+        .insert({ internship_id: internshipId, student_id: me.id, cover_letter: coverLetter, resume_url: resumeUrl ?? null });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -173,7 +173,7 @@ function InternshipsPage() {
                     appStatus ? (
                       <span className="text-xs font-medium text-success">Applied ✓</span>
                     ) : (
-                      <ApplyInternshipSheet internshipId={i.id} title={i.title} onApply={(coverLetter) => apply.mutate({ internshipId: i.id, coverLetter })} isPending={apply.isPending} />
+                      <ApplyInternshipSheet internshipId={i.id} title={i.title} onApply={(coverLetter, resumeUrl) => apply.mutate({ internshipId: i.id, coverLetter, resumeUrl })} isPending={apply.isPending} />
                     )
                   )}
                 </div>
@@ -188,31 +188,110 @@ function InternshipsPage() {
   );
 }
 
-function ApplyInternshipSheet({ internshipId, title, onApply, isPending }: { internshipId: string; title: string; onApply: (coverLetter: string) => void; isPending: boolean }) {
+function ApplyInternshipSheet({ internshipId, title, onApply, isPending }: { internshipId: string; title: string; onApply: (coverLetter: string, resumeUrl?: string) => void; isPending: boolean }) {
   const [open, setOpen] = useState(false);
   const [coverLetter, setCoverLetter] = useState("");
+  const [resumeUrl, setResumeUrl] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false)
+
+  async function handleSubmit() {
+    if (!coverLetter.trim()) {
+      toast.error("Please write a cover letter");
+      return;
+    }
+    let finalResumeUrl = resumeUrl.trim() || undefined;
+    if (resumeFile) {
+      setUploading(true);
+      const { data: me } = await supabase.auth.getUser();
+      const fileExt = resumeFile.name.split(".").pop();
+      const filePath = `${me.user?.id}/resume.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from("resumes")
+        .upload(filePath, resumeFile, { upsert: true });
+      setUploading(false);
+      if (uploadError) {
+        toast.error("Resume upload failed. Please try again.");
+        return;
+      }
+      const { data: signedData } = await supabase.storage
+        .from("resumes")
+        .createSignedUrl(filePath, 60 * 60 * 24 * 7);
+      finalResumeUrl = signedData?.signedUrl;
+    }
+    onApply(coverLetter, finalResumeUrl);
+    setOpen(false);
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button size="sm">Apply</Button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-2xl">
+      <SheetContent side="bottom" className="rounded-t-2xl max-h-[90vh] overflow-y-auto">
         <SheetHeader className="text-left">
           <SheetTitle>Apply for internship</SheetTitle>
         </SheetHeader>
         <div className="space-y-4 px-4 pb-6 pt-2">
           <p className="text-sm text-muted-foreground">{title}</p>
+
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Cover letter</label>
-            <textarea rows={5} value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} placeholder="Tell them why you are a great fit for this internship. Mention relevant skills, projects, and what you hope to learn..." className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+            <textarea 
+              rows={5} 
+              value={coverLetter} 
+              onChange={(e) => setCoverLetter(e.target.value)} 
+              placeholder="Tell them why you are a great fit for this internship. Mention relevant skills, projects, and what you hope to learn..." 
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" 
+            />
           </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Resume</label>
+            <div className="space-y-2">
+              <div
+                className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => document.getElementById("resume-upload")?.click()}
+              >
+                {resumeFile ? (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-success">✓ {resumeFile.name}</p>
+                    <p className="text-xs text-muted-foreground">Tap to change</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Upload your resume</p>
+                    <p className="text-xs text-muted-foreground">PDF or Word · Max 5MB</p>
+                  </div>
+                )}
+              </div>
+              <input
+                id="resume-upload"
+                type="file"
+                accept=".pdf,.doc,.docx"
+                className="hidden"
+                onChange={(e) => { setResumeFile(e.target.files?.[0] ?? null); setResumeUrl(""); }}
+              />
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">or paste a link</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <Input
+                value={resumeUrl}
+                onChange={(e) => { setResumeUrl(e.target.value); setResumeFile(null); }}
+                placeholder="e.g. https://drive.google.com/your-resume"
+              />
+            </div>
+          </div>
+
           <p className="flex items-center gap-2 text-xs text-muted-foreground rounded-lg bg-muted/50 p-3">
             <ShieldCheck className="size-4 text-success shrink-0" />
             Your InTask profile will be shared with the employer alongside your application.
           </p>
-          <Button className="w-full" size="lg" disabled={!coverLetter.trim() || isPending} onClick={() => { onApply(coverLetter); setOpen(false); }}>
-            {isPending ? "Submitting..." : "Submit application"}
+
+          <Button className="w-full" size="lg" disabled={!coverLetter.trim() || isPending || uploading} onClick={handleSubmit}>
+            {uploading ? "Uploading resume..." : isPending ? "Submitting..." : "Submit application"}
           </Button>
         </div>
       </SheetContent>

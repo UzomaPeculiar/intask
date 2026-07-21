@@ -93,14 +93,49 @@ function ApplicantsPage() {
         await supabase.from("tasks").update(taskUpdate).eq("id", taskId);
       }
     },
-    onSuccess: () => {
+    onSuccess: async (_data, variables) => {
       const isTeamTask = (task as any)?.is_team_task;
       const teamSize = (task as any)?.team_size ?? 1;
+      const acceptedStudentId = variables.studentId;
       toast.success(isTeamTask ? `Student added to team. ${teamSize} students needed total.` : "Student accepted. Fund escrow next.");
       qc.invalidateQueries({ queryKey: ["applicants", taskId] });
       qc.invalidateQueries({ queryKey: ["task", taskId] });
       qc.invalidateQueries({ queryKey: ["my-tasks"] });
       if (!isTeamTask) nav({ to: "/app/payment/$taskId", params: { taskId } });
+      if ((task as any)?.is_team_task) {
+        const { data: existingRoom } = await (supabase as any)
+          .from("project_rooms")
+          .select("id")
+          .eq("task_id", taskId)
+          .maybeSingle();
+
+        if (!existingRoom) {
+          const { data: newRoom } = await (supabase as any)
+            .from("project_rooms")
+            .insert({
+              task_id: taskId,
+              name: task?.title ?? "Project Room",
+              description: task?.description,
+              created_by: me?.id,
+              status: "active",
+            })
+            .select("id")
+            .single();
+
+          if (newRoom) {
+            await (supabase as any).from("project_room_members").insert([
+              { room_id: newRoom.id, user_id: me?.id, role: "owner" },
+              { room_id: newRoom.id, user_id: acceptedStudentId, role: "member" },
+            ]);
+          }
+        } else {
+          await (supabase as any).from("project_room_members").insert({
+            room_id: existingRoom.id,
+            user_id: acceptedStudentId,
+            role: "member",
+          }).on("conflict", "do nothing");
+        }
+      }
     },
     onError: (e: any) => toast.error(e.message ?? "Couldn't accept"),
   });

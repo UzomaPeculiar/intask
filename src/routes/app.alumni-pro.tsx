@@ -1,9 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle2, Star, Briefcase, GraduationCap, Search, Award, Users } from "lucide-react";
 import { toast } from "sonner";
+
+function getPaystack() {
+  const ps = (window as any).PaystackPop ?? (window as any).Paystack;
+  if (!ps || typeof ps.setup !== "function") {
+    throw new Error("Paystack is not loaded. Please refresh the page and try again.");
+  }
+  return ps;
+}
+
+declare global {
+  interface Window {
+    PaystackPop?: any;
+    Paystack?: any;
+  }
+}
 
 export const Route = createFileRoute("/app/alumni-pro")({
   head: () => ({ meta: [{ title: "InTask Alumni Pro — InTask" }] }),
@@ -24,6 +40,38 @@ const PRO_FEATURES = [
 function AlumniProPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
+  const [paystackReady, setPaystackReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if ((window as any).PaystackPop || (window as any).Paystack) {
+      setPaystackReady(true);
+      return;
+    }
+
+    const existingScript = document.getElementById("paystack-inline") as HTMLScriptElement | null;
+    if (existingScript) {
+      if (existingScript.getAttribute("data-loaded") === "true") {
+        setPaystackReady(true);
+      } else {
+        existingScript.addEventListener("load", () => {
+          existingScript.setAttribute("data-loaded", "true");
+          setPaystackReady(true);
+        });
+      }
+      return;
+    }
+
+    const s = document.createElement("script");
+    s.id = "paystack-inline";
+    s.src = "https://js.paystack.co/v2/inline.js";
+    s.async = true;
+    s.onload = () => {
+      s.setAttribute("data-loaded", "true");
+      setPaystackReady(true);
+    };
+    document.body.appendChild(s);
+  }, []);
 
   const { data: me } = useQuery({
     queryKey: ["me-id"],
@@ -47,12 +95,16 @@ function AlumniProPage() {
   const subscribe = useMutation({
     mutationFn: async () => {
       if (!me) throw new Error("Not signed in");
-      if (!(window as any).PaystackPop) throw new Error("Paystack not loaded. Please refresh.");
+      if (!paystackReady) throw new Error("Paystack is not loaded. Please refresh the page and try again.");
+      const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+      if (!paystackKey) throw new Error("Payment not configured");
+
+      const paystack = getPaystack();
 
       return new Promise<any>((resolve, reject) => {
         const ref = `alumni_pro_${me.id}_${Date.now()}`;
-        const handler = (window as any).PaystackPop.setup({
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+        const handler = paystack.setup({
+          key: paystackKey,
           email: me.email ?? "",
           amount: ALUMNI_PRO_PRICE * 100,
           currency: "NGN",
@@ -169,7 +221,7 @@ function AlumniProPage() {
             <Button
               className="w-full mt-4 bg-warning text-warning-foreground hover:bg-warning/90"
               size="lg"
-              disabled={subscribe.isPending}
+              disabled={subscribe.isPending || !paystackReady}
               onClick={() => subscribe.mutate()}
             >
               {subscribe.isPending ? "Processing..." : "Upgrade to Alumni Pro"}

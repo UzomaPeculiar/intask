@@ -139,12 +139,12 @@ function TaskDetail() {
       )}
 
       {(task as any).is_team_task && (
-        <div className="mx-4 mb-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+        <div className="mb-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
           <p className="text-sm font-medium text-primary">
             👥 Team task — {(task as any).team_size} students needed
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Each student earns ₦{task.budget ? Math.floor(task.budget / (task as any).team_size).toLocaleString("en-NG") : "0"} upon completion
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Total budget: ₦{task.budget ? Number(task.budget).toLocaleString("en-NG") : "0"} · Each student receives ₦{task.budget ? Math.floor((task.budget * 0.92) / (task as any).team_size).toLocaleString("en-NG") : "0"} after platform fee
           </p>
         </div>
       )}

@@ -1,3 +1,4 @@
+import { Wallet } from "lucide-react";
 import { Award } from "lucide-react";
 import { Share2 } from "lucide-react";
 import { ReportButton } from "@/components/intask/ReportButton";
@@ -107,7 +108,7 @@ function ProfilePage() {
       const { data } = await supabase
         .from("tasks")
         .select("id, title, budget, budget_negotiable, category, status, created_at")
-        .eq("poster_id", targetId)
+        .eq("poster_id", targetId!)
         .order("created_at", { ascending: false })
         .limit(10);
       return data ?? [];
@@ -274,6 +275,17 @@ function ProfilePage() {
             >
               <Award className="size-3.5" /> Take skill assessments
             </Button>
+            
+            {(profile.role === "student" || profile.role === "alumni") && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => nav({ to: "/app/wallet" as any })}
+              >   
+                <Wallet className="size-3.5" /> My wallet
+              </Button>
+            )}
             
             {isStudent && (
               <button 
