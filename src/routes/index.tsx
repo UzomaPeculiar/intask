@@ -63,7 +63,7 @@ function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
@@ -107,7 +107,7 @@ function Landing() {
           {/* Floating mock task card */}
           <div className="relative">
             <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-tr from-primary/15 via-accent to-success/10 blur-2xl" />
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
+            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-[0_18px_48px_-24px_rgba(37,99,235,0.38)]">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-muted-foreground">Web Design · Remote</p>
@@ -142,7 +142,7 @@ function Landing() {
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Who is InTask for?</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {WHO_IS_IT_FOR.map((w) => (
-              <div key={w.title} className="rounded-xl border border-border bg-background p-5">
+              <div key={w.title} className="rounded-2xl border border-border/80 bg-background p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
                 <div className={`grid size-9 place-items-center rounded-lg ${w.color}`}>
                   <w.icon className="size-5" />
                 </div>
@@ -163,7 +163,7 @@ function Landing() {
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">How it works</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {HOW_IT_WORKS.map((s) => (
-              <div key={s.n} className="rounded-xl border border-border bg-card p-5">
+              <div key={s.n} className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
                 <div className="grid size-8 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{s.n}</div>
                 <h3 className="mt-3 font-medium text-foreground">{s.title}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{s.body}</p>
@@ -196,7 +196,7 @@ function Landing() {
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Why InTask?</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {TRUST.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="rounded-xl border border-border bg-card p-5">
+              <div key={title} className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
                 <div className="grid size-9 place-items-center rounded-lg bg-success/15 text-success">
                   <Icon className="size-5" />
                 </div>

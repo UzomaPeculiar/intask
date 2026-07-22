@@ -56,7 +56,7 @@ function PartnershipPage() {
         <p className="mt-3 text-muted-foreground">
           Thank you for your interest in partnering with InTask. Our team will review your request and reach out to <span className="font-medium text-foreground">{contactEmail}</span> within 3 business days.
         </p>
-        <div className="mt-6 rounded-xl border border-border bg-card p-4 text-left space-y-2">
+        <div className="mt-6 rounded-2xl border border-border/80 bg-card/90 p-4 text-left space-y-2 shadow-sm">
           <p className="text-sm font-medium text-foreground">What happens next</p>
           <p className="text-xs text-muted-foreground">1. Our team reviews your request</p>
           <p className="text-xs text-muted-foreground">2. We schedule a brief call to discuss the partnership</p>
@@ -70,10 +70,12 @@ function PartnershipPage() {
   return (
     <div className="mx-auto max-w-md pb-10">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card">
+        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
-        <h1 className="text-lg font-semibold">University Partnership</h1>
+        <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4 py-3 shadow-sm">
+          <h1 className="text-lg font-semibold">University Partnership</h1>
+        </div>
       </header>
 
       <div className="px-4 pt-4 space-y-6">
@@ -89,7 +91,7 @@ function PartnershipPage() {
 
         <div className="grid grid-cols-2 gap-3">
           {benefits.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="rounded-xl border border-border bg-card p-3">
+            <div key={title} className="rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
               <Icon className="size-5 text-primary mb-2" />
               <p className="text-xs font-semibold text-foreground">{title}</p>
               <p className="text-xs text-muted-foreground mt-1">{body}</p>

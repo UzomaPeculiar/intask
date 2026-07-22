@@ -27,10 +27,13 @@ function BrowsePage() {
 
   return (
     <div className="mx-auto max-w-md space-y-4 px-4 pt-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Browse</h1>
+      <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Discover</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Browse</h1>
+      </div>
 
       {/* Tab toggle */}
-      <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted p-1 text-sm font-medium">
+      <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border/80 bg-muted p-1 text-sm font-medium shadow-sm">
         <button
           onClick={() => setTab("tasks")}
           className={`rounded-md py-2 transition-colors ${tab === "tasks" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
@@ -76,7 +79,7 @@ function BrowsePage() {
 
       {/* Advanced filters for tasks */}
       {tab === "tasks" && showFilters && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="rounded-2xl border border-border/80 bg-card/90 p-4 space-y-3 shadow-sm">
           <p className="text-sm font-medium text-foreground">Filter by budget (₦)</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">

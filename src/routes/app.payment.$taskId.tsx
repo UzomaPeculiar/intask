@@ -145,7 +145,7 @@ function PaymentPage() {
   return (
     <div className="mx-auto max-w-md pb-32">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => nav({ to: "/app/tasks/$taskId", params: { taskId } })} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card">
+        <button onClick={() => nav({ to: "/app/tasks/$taskId", params: { taskId } })} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
       </header>
@@ -154,7 +154,7 @@ function PaymentPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Fund escrow</h1>
         <p className="mt-1 text-sm text-muted-foreground">Pay safely to lock in this student. Money is only released after you approve the work.</p>
 
-        <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-card">
+        <div className="mt-6 rounded-3xl border border-border/80 bg-card/90 p-5 shadow-[0_18px_50px_-24px_rgba(37,99,235,0.32)]">
           <p className="text-xs font-medium text-muted-foreground">Task</p>
           <p className="mt-0.5 font-medium">{task.title}</p>
           <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">

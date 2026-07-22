@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -31,6 +32,15 @@ function LearnPage() {
   const { data: me } = useQuery({
     queryKey: ["me-id"],
     queryFn: async () => (await supabase.auth.getUser()).data.user,
+  });
+
+  const { data: myProfile } = useQuery({
+    queryKey: ["my-profile", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("role").eq("id", me!.id).maybeSingle();
+      return data;
+    },
   });
 
   const { data: courses, isLoading } = useQuery({
@@ -115,14 +125,33 @@ function LearnPage() {
       </header>
 
       <div className="px-4 pt-4 space-y-4">
-        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="size-5 text-primary" />
-            <p className="font-semibold text-foreground">Learn and earn more</p>
+        <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
+              <BookOpen className="size-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Learn and earn more</p>
+              <p className="text-xs text-muted-foreground">Practical courses from verified alumni and pros</p>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Short practical courses taught by verified alumni and professionals. Complete a course to add a certificate to your profile.
+          <p className="text-sm leading-6 text-muted-foreground">
+            Short, focused modules that help you build real-world skills and add more proof to your profile.
           </p>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl border border-border bg-card/80 px-2 py-2">
+              <p className="text-sm font-semibold text-foreground">Fast</p>
+              <p className="text-[11px] text-muted-foreground">bite-sized</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card/80 px-2 py-2">
+              <p className="text-sm font-semibold text-foreground">Trusted</p>
+              <p className="text-[11px] text-muted-foreground">verified experts</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card/80 px-2 py-2">
+              <p className="text-sm font-semibold text-foreground">Practical</p>
+              <p className="text-[11px] text-muted-foreground">career-ready</p>
+            </div>
+          </div>
         </div>
 
         {myEnrollments && Object.keys(myEnrollments).length > 0 && (
@@ -154,12 +183,24 @@ function LearnPage() {
 
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search courses..." className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input placeholder="Search courses..." className="pl-9 h-11 rounded-xl border-border bg-card/80" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Explore</p>
+            <h1 className="text-2xl font-semibold tracking-tight">InTask Learn</h1>
+          </div>
+          {myProfile?.role === "alumni" && (
+            <Button size="sm" className="gap-1 rounded-full" onClick={() => nav({ to: "/app/learn/create" as any })}>
+              <Plus className="size-3.5" /> Create course
+            </Button>
+          )}
+        </div>
+        
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {COURSE_CATEGORIES.map((c) => (
-            <button key={c} onClick={() => setCategory(c)} className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${category === c ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>
+            <button key={c} onClick={() => setCategory(c)} className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-all ${category === c ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-card text-foreground hover:border-primary/50"}`}>
               {c}
             </button>
           ))}
@@ -167,7 +208,7 @@ function LearnPage() {
 
         <div className="flex gap-2">
           {LEVELS.map((l) => (
-            <button key={l} onClick={() => setLevel(l)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs capitalize transition-colors ${level === l ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
+            <button key={l} onClick={() => setLevel(l)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs capitalize transition-all ${level === l ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
               {l}
             </button>
           ))}
@@ -190,34 +231,36 @@ function LearnPage() {
             const isCompleted = enrollment?.completed;
 
             return (
-              <div key={c.id} className="rounded-xl border border-border bg-card overflow-hidden shadow-card">
-                <div className="h-32 bg-gradient-to-br from-primary/20 to-accent flex items-center justify-center">
-                  <BookOpen className="size-10 text-primary/50" />
+              <div key={c.id} className="rounded-2xl border border-border/80 bg-card/90 overflow-hidden shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                <div className="h-32 bg-gradient-to-br from-primary/20 via-primary/5 to-accent/20 flex items-center justify-center">
+                  <div className="grid size-14 place-items-center rounded-2xl bg-background/80 ring-1 ring-border/70">
+                    <BookOpen className="size-7 text-primary/70" />
+                  </div>
                 </div>
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="min-w-0 flex-1">
-                      <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{c.category} · {c.level}</span>
-                      <p className="font-semibold text-foreground mt-0.5 line-clamp-2">{c.title}</p>
+                      <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.18em]">{c.category} · {c.level}</span>
+                      <p className="font-semibold text-foreground mt-1 line-clamp-2 leading-6">{c.title}</p>
                     </div>
-                    <span className={`shrink-0 rounded-md px-2 py-0.5 text-sm font-semibold ${c.is_free ? "bg-success/15 text-success" : "bg-muted text-foreground"}`}>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${c.is_free ? "bg-success/15 text-success" : "bg-muted text-foreground"}`}>
                       {c.is_free ? "Free" : `₦${Number(c.price).toLocaleString("en-NG")}`}
                     </span>
                   </div>
 
-                  <p className="text-sm text-muted-foreground line-clamp-2">{c.description}</p>
+                  <p className="text-sm leading-6 text-muted-foreground line-clamp-2">{c.description}</p>
 
                   <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1"><Clock className="size-3" /> {c.duration_hours}h</span>
                     <span className="flex items-center gap-1"><Users className="size-3" /> {c.enrolled_count} enrolled</span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 min-w-0">
                       <InitialsAvatar name={c.instructor?.full_name} size={16} />
-                      <span>{c.instructor?.full_name}</span>
+                      <span className="truncate">{c.instructor?.full_name}</span>
                     </div>
                   </div>
 
                   {isEnrolled && (
-                    <div className="mt-3">
+                    <div className="mt-3 rounded-xl border border-border bg-muted/30 p-2.5">
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
                         <span>Progress</span>
                         <span>{enrollment.progress}%</span>
@@ -229,19 +272,33 @@ function LearnPage() {
                   )}
 
                   <div className="mt-3">
+                    {me?.id === c.instructor_id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full mb-2 rounded-xl"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          nav({ to: "/app/learn/$courseId/manage" as any, params: { courseId: c.id } } as any);
+                        }}
+                      >
+                        Manage course
+                      </Button>
+                    )}
+
                     {isCompleted ? (
-                      <Button variant="outline" className="w-full gap-1 text-success border-success/30" disabled>
+                      <Button variant="outline" className="w-full gap-1 text-success border-success/30 rounded-xl" disabled>
                         <CheckCircle2 className="size-4" /> Completed
                       </Button>
                     ) : isEnrolled ? (
                       <Link to="/app/learn/$courseId" params={{ courseId: c.id }} className="block">
-                        <Button className="w-full gap-1">
+                        <Button className="w-full gap-1 rounded-xl">
                           <Play className="size-4" /> Continue learning
                         </Button>
                       </Link>
                     ) : (
                       <Button
-                        className="w-full"
+                        className="w-full rounded-xl"
                         disabled={enroll.isPending}
                         onClick={() => enroll.mutate({ courseId: c.id, price: c.is_free ? 0 : c.price })}
                       >

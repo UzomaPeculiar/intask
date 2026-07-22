@@ -36,6 +36,7 @@ import { Route as AppMessagesConversationIdRouteImport } from './routes/app.mess
 import { Route as AppMentorshipManageRouteImport } from './routes/app.mentorship.manage'
 import { Route as AppMentorshipBookingsRouteImport } from './routes/app.mentorship.bookings'
 import { Route as AppMentorshipServiceIdRouteImport } from './routes/app.mentorship.$serviceId'
+import { Route as AppLearnCreateRouteImport } from './routes/app.learn.create'
 import { Route as AppLearnCourseIdRouteImport } from './routes/app.learn.$courseId'
 import { Route as AppTasksTaskIdIndexRouteImport } from './routes/app.tasks.$taskId.index'
 import { Route as AppTasksTaskIdReviewRouteImport } from './routes/app.tasks.$taskId.review'
@@ -43,6 +44,7 @@ import { Route as AppTasksTaskIdRateRouteImport } from './routes/app.tasks.$task
 import { Route as AppTasksTaskIdDeliverRouteImport } from './routes/app.tasks.$taskId.deliver'
 import { Route as AppTasksTaskIdApplicantsRouteImport } from './routes/app.tasks.$taskId.applicants'
 import { Route as AppTasksTaskIdAnalyticsRouteImport } from './routes/app.tasks.$taskId.analytics'
+import { Route as AppLearnCourseIdManageRouteImport } from './routes/app.learn.$courseId.manage'
 import { Route as ApiPublicWebhooksPaystackRouteImport } from './routes/api/public/webhooks/paystack'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -181,6 +183,11 @@ const AppMentorshipServiceIdRoute = AppMentorshipServiceIdRouteImport.update({
   path: '/$serviceId',
   getParentRoute: () => AppMentorshipRoute,
 } as any)
+const AppLearnCreateRoute = AppLearnCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => AppLearnRoute,
+} as any)
 const AppLearnCourseIdRoute = AppLearnCourseIdRouteImport.update({
   id: '/$courseId',
   path: '/$courseId',
@@ -217,6 +224,11 @@ const AppTasksTaskIdAnalyticsRoute = AppTasksTaskIdAnalyticsRouteImport.update({
   path: '/tasks/$taskId/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLearnCourseIdManageRoute = AppLearnCourseIdManageRouteImport.update({
+  id: '/manage',
+  path: '/manage',
+  getParentRoute: () => AppLearnCourseIdRoute,
+} as any)
 const ApiPublicWebhooksPaystackRoute =
   ApiPublicWebhooksPaystackRouteImport.update({
     id: '/api/public/webhooks/paystack',
@@ -244,7 +256,8 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
-  '/app/learn/$courseId': typeof AppLearnCourseIdRoute
+  '/app/learn/$courseId': typeof AppLearnCourseIdRouteWithChildren
+  '/app/learn/create': typeof AppLearnCreateRoute
   '/app/mentorship/$serviceId': typeof AppMentorshipServiceIdRoute
   '/app/mentorship/bookings': typeof AppMentorshipBookingsRoute
   '/app/mentorship/manage': typeof AppMentorshipManageRoute
@@ -254,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/app/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/app/tasks/create': typeof AppTasksCreateRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
+  '/app/learn/$courseId/manage': typeof AppLearnCourseIdManageRoute
   '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
   '/app/tasks/$taskId/applicants': typeof AppTasksTaskIdApplicantsRoute
   '/app/tasks/$taskId/deliver': typeof AppTasksTaskIdDeliverRoute
@@ -280,7 +294,8 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app': typeof AppIndexRoute
-  '/app/learn/$courseId': typeof AppLearnCourseIdRoute
+  '/app/learn/$courseId': typeof AppLearnCourseIdRouteWithChildren
+  '/app/learn/create': typeof AppLearnCreateRoute
   '/app/mentorship/$serviceId': typeof AppMentorshipServiceIdRoute
   '/app/mentorship/bookings': typeof AppMentorshipBookingsRoute
   '/app/mentorship/manage': typeof AppMentorshipManageRoute
@@ -290,6 +305,7 @@ export interface FileRoutesByTo {
   '/app/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/app/tasks/create': typeof AppTasksCreateRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
+  '/app/learn/$courseId/manage': typeof AppLearnCourseIdManageRoute
   '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
   '/app/tasks/$taskId/applicants': typeof AppTasksTaskIdApplicantsRoute
   '/app/tasks/$taskId/deliver': typeof AppTasksTaskIdDeliverRoute
@@ -318,7 +334,8 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/app/': typeof AppIndexRoute
-  '/app/learn/$courseId': typeof AppLearnCourseIdRoute
+  '/app/learn/$courseId': typeof AppLearnCourseIdRouteWithChildren
+  '/app/learn/create': typeof AppLearnCreateRoute
   '/app/mentorship/$serviceId': typeof AppMentorshipServiceIdRoute
   '/app/mentorship/bookings': typeof AppMentorshipBookingsRoute
   '/app/mentorship/manage': typeof AppMentorshipManageRoute
@@ -328,6 +345,7 @@ export interface FileRoutesById {
   '/app/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/app/tasks/create': typeof AppTasksCreateRoute
   '/api/public/webhooks/paystack': typeof ApiPublicWebhooksPaystackRoute
+  '/app/learn/$courseId/manage': typeof AppLearnCourseIdManageRoute
   '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
   '/app/tasks/$taskId/applicants': typeof AppTasksTaskIdApplicantsRoute
   '/app/tasks/$taskId/deliver': typeof AppTasksTaskIdDeliverRoute
@@ -358,6 +376,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/app/'
     | '/app/learn/$courseId'
+    | '/app/learn/create'
     | '/app/mentorship/$serviceId'
     | '/app/mentorship/bookings'
     | '/app/mentorship/manage'
@@ -367,6 +386,7 @@ export interface FileRouteTypes {
     | '/app/rooms/$roomId'
     | '/app/tasks/create'
     | '/api/public/webhooks/paystack'
+    | '/app/learn/$courseId/manage'
     | '/app/tasks/$taskId/analytics'
     | '/app/tasks/$taskId/applicants'
     | '/app/tasks/$taskId/deliver'
@@ -394,6 +414,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/app'
     | '/app/learn/$courseId'
+    | '/app/learn/create'
     | '/app/mentorship/$serviceId'
     | '/app/mentorship/bookings'
     | '/app/mentorship/manage'
@@ -403,6 +424,7 @@ export interface FileRouteTypes {
     | '/app/rooms/$roomId'
     | '/app/tasks/create'
     | '/api/public/webhooks/paystack'
+    | '/app/learn/$courseId/manage'
     | '/app/tasks/$taskId/analytics'
     | '/app/tasks/$taskId/applicants'
     | '/app/tasks/$taskId/deliver'
@@ -431,6 +453,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/app/'
     | '/app/learn/$courseId'
+    | '/app/learn/create'
     | '/app/mentorship/$serviceId'
     | '/app/mentorship/bookings'
     | '/app/mentorship/manage'
@@ -440,6 +463,7 @@ export interface FileRouteTypes {
     | '/app/rooms/$roomId'
     | '/app/tasks/create'
     | '/api/public/webhooks/paystack'
+    | '/app/learn/$courseId/manage'
     | '/app/tasks/$taskId/analytics'
     | '/app/tasks/$taskId/applicants'
     | '/app/tasks/$taskId/deliver'
@@ -649,6 +673,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMentorshipServiceIdRouteImport
       parentRoute: typeof AppMentorshipRoute
     }
+    '/app/learn/create': {
+      id: '/app/learn/create'
+      path: '/create'
+      fullPath: '/app/learn/create'
+      preLoaderRoute: typeof AppLearnCreateRouteImport
+      parentRoute: typeof AppLearnRoute
+    }
     '/app/learn/$courseId': {
       id: '/app/learn/$courseId'
       path: '/$courseId'
@@ -698,6 +729,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTasksTaskIdAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/learn/$courseId/manage': {
+      id: '/app/learn/$courseId/manage'
+      path: '/manage'
+      fullPath: '/app/learn/$courseId/manage'
+      preLoaderRoute: typeof AppLearnCourseIdManageRouteImport
+      parentRoute: typeof AppLearnCourseIdRoute
+    }
     '/api/public/webhooks/paystack': {
       id: '/api/public/webhooks/paystack'
       path: '/api/public/webhooks/paystack'
@@ -708,12 +746,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppLearnCourseIdRouteChildren {
+  AppLearnCourseIdManageRoute: typeof AppLearnCourseIdManageRoute
+}
+
+const AppLearnCourseIdRouteChildren: AppLearnCourseIdRouteChildren = {
+  AppLearnCourseIdManageRoute: AppLearnCourseIdManageRoute,
+}
+
+const AppLearnCourseIdRouteWithChildren =
+  AppLearnCourseIdRoute._addFileChildren(AppLearnCourseIdRouteChildren)
+
 interface AppLearnRouteChildren {
-  AppLearnCourseIdRoute: typeof AppLearnCourseIdRoute
+  AppLearnCourseIdRoute: typeof AppLearnCourseIdRouteWithChildren
+  AppLearnCreateRoute: typeof AppLearnCreateRoute
 }
 
 const AppLearnRouteChildren: AppLearnRouteChildren = {
-  AppLearnCourseIdRoute: AppLearnCourseIdRoute,
+  AppLearnCourseIdRoute: AppLearnCourseIdRouteWithChildren,
+  AppLearnCreateRoute: AppLearnCreateRoute,
 }
 
 const AppLearnRouteWithChildren = AppLearnRoute._addFileChildren(

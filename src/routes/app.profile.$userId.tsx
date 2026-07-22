@@ -186,7 +186,8 @@ function ProfilePage() {
       </header>
 
       <section className="px-4 pt-5">
-        <div className="flex items-center gap-3">
+        <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
           <InitialsAvatar name={profile.full_name} size={64} />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-semibold tracking-tight">{profile.full_name}</h1>
@@ -200,6 +201,7 @@ function ProfilePage() {
               {isOwn && profile.role === "student" && student?.verification_method === "id_upload" && !student?.verified && (
                 <ReuploadIDSection userId={profile.id} />
               )}
+          </div>
           </div>
         </div>
         {isStudentOrAlumni && (
@@ -217,7 +219,7 @@ function ProfilePage() {
 
         {/* Details for individual / company */}
         {!editing && (isIndividual || isCompany) && (
-          <div className="mt-4 space-y-2 rounded-xl border border-border bg-card p-3 text-sm shadow-card">
+          <div className="mt-4 space-y-2 rounded-2xl border border-border/80 bg-card/90 p-3 text-sm shadow-sm">
             {isCompany && company?.company_name && (
               <Row icon={<Building2 className="size-4" />} label="Business" value={company.company_name} />
             )}

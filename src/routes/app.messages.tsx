@@ -39,7 +39,10 @@ function MessagesPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 pt-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
+      <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Inbox</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
+      </div>
       {isLoading ? (
         <div className="mt-6 space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />)}</div>
       ) : !data || data.length === 0 ? (
@@ -48,7 +51,7 @@ function MessagesPage() {
         <ul className="mt-5 space-y-2">
           {data.map((c) => (
             <li key={c.id}>
-              <Link to="/app/messages/$conversationId" params={{ conversationId: c.id }} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-card">
+              <Link to="/app/messages/$conversationId" params={{ conversationId: c.id }} className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
                 <InitialsAvatar name={c.other?.full_name} size={44} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{c.other?.full_name}</p>

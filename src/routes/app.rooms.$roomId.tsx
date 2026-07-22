@@ -123,9 +123,9 @@ function ProjectRoomPage() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <header className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border bg-card shrink-0">
+      <header className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border bg-card/95 shrink-0 shadow-sm">
         <div className="flex items-center gap-2">
-          <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card">
+          <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
             <ArrowLeft className="size-4" />
           </button>
           <div>
@@ -159,7 +159,7 @@ function ProjectRoomPage() {
               return (
                 <div key={m.id} className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : ""}`}>
                   {!isMe && <InitialsAvatar name={m.sender?.full_name} size={28} />}
-                  <div className={`max-w-[75%] rounded-2xl px-3 py-2 ${isMe ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-card border border-border rounded-bl-sm"}`}>
+                  <div className={`max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-card border border-border rounded-bl-sm"}`}>
                     {!isMe && <p className="text-[10px] font-medium mb-1 opacity-70">{m.sender?.full_name}</p>}
                     <p className="text-sm">{m.content}</p>
                     <p className={`text-[10px] mt-1 ${isMe ? "opacity-70 text-right" : "text-muted-foreground"}`}>
@@ -205,7 +205,7 @@ function ProjectRoomPage() {
       {activeTab === "members" && (
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
           {members?.map((m: any) => (
-            <div key={m.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+            <div key={m.id} className="flex items-center justify-between rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
               <div className="flex items-center gap-3">
                 <InitialsAvatar name={m.user?.full_name} size={36} />
                 <div>
@@ -231,7 +231,7 @@ function ProjectRoomPage() {
             </div>
           )}
           {files?.map((f: any) => (
-            <a key={f.id} href={f.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 hover:border-primary/50 transition-colors">
+            <a key={f.id} href={f.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
               <div className="grid size-10 place-items-center rounded-lg bg-primary/10 shrink-0">
                 <FileText className="size-5 text-primary" />
               </div>

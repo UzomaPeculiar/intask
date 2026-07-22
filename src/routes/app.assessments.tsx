@@ -223,10 +223,12 @@ function AssessmentsPage() {
   return (
     <div className="mx-auto max-w-md pb-10">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card">
+        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
-        <h1 className="text-lg font-semibold">Skill Assessments</h1>
+        <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4 py-3 shadow-sm">
+          <h1 className="text-lg font-semibold">Skill Assessments</h1>
+        </div>
       </header>
 
       <div className="px-4 pt-4">
@@ -251,7 +253,7 @@ function AssessmentsPage() {
             const hasAttempted = !!badge;
 
             return (
-              <div key={a.id} className="rounded-xl border border-border bg-card p-4">
+              <div key={a.id} className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">

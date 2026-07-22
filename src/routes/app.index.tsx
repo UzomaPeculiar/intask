@@ -101,7 +101,7 @@ function Dashboard() {
 
       {(companyPending || alumniPending) && (
         <div className="px-4 pb-3">
-          <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs text-warning">
+          <div className="flex items-start gap-2 rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs text-warning shadow-sm">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <p>
               {alumniPending
@@ -114,7 +114,7 @@ function Dashboard() {
 
       {canFindWork && (
         <div className="px-4">
-          <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1 text-sm font-medium">
+          <div className="grid grid-cols-2 gap-1 rounded-2xl border border-border/80 bg-muted p-1 text-sm font-medium shadow-sm">
             <button onClick={() => setMode("find")}
               className={`rounded-md py-2 transition-colors ${mode === "find" ? "bg-card text-foreground shadow-card" : "text-muted-foreground"}`}>
               Find work
@@ -223,7 +223,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
       <div className="space-y-2">
         <Link
           to="/app/mentorship"
-          className="block rounded-xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-card"
+          className="block rounded-2xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-sm"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
 
         <Link
           to="/app/internships"
-          className="block rounded-xl border border-border bg-card p-4 shadow-card transition-colors active:bg-accent/50"
+          className="block rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -259,7 +259,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
 
         <div
           onClick={() => nav({ to: "/app/learn" as any })}
-          className="cursor-pointer rounded-xl border border-border bg-card p-4 shadow-card transition-colors active:bg-accent/50"
+          className="cursor-pointer rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -330,7 +330,7 @@ function ActiveTasksSection({ userId }: { userId?: string }) {
       <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active tasks</h2>
       <div className="space-y-3">
         {active.map((t: any) => (
-          <div key={t.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <div key={t.id} className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <h3 className="line-clamp-2 font-medium text-foreground">{t.title}</h3>
               <span className="shrink-0 text-sm font-semibold text-success">{naira(t.budget)}</span>

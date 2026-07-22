@@ -80,7 +80,6 @@ function MentorshipPage() {
       }));
 
       console.log("services data:", data);
-      return data;
 
       if (error) throw error;
       let results = data ?? [];
@@ -98,13 +97,15 @@ function MentorshipPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-4 px-4 pt-5 pb-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Mentorship</h1>
-        {isAlumni && (
-          <Button size="sm" onClick={() => nav({ to: "/app/mentorship/manage" as any})}>
-            My services
-          </Button>
-        )}
+      <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">Mentorship</h1>
+          {isAlumni && (
+            <Button size="sm" onClick={() => nav({ to: "/app/mentorship/manage" as any })}>
+              My services
+            </Button>
+          )}
+        </div>
       </div>
       <p className="text-sm text-muted-foreground">
         Book 1-on-1 sessions with verified alumni for career advice, CV reviews, mock interviews and more.
@@ -147,7 +148,7 @@ function MentorshipPage() {
       <div className="space-y-4">
         {services?.map((s: any) => (
           <Link key={s.id} to="/app/mentorship/$serviceId" params={{ serviceId: s.id }} className="block">
-            <div className="rounded-xl border border-border bg-card p-4 shadow-card transition-colors active:bg-accent/50">
+            <div className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50">
               <div className="flex items-start gap-3">
                 <InitialsAvatar name={s.mentor?.full_name} size={44} />
                 <div className="min-w-0 flex-1">

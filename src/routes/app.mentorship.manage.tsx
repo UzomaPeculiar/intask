@@ -150,10 +150,12 @@ function ManageMentorshipPage() {
     <div className="mx-auto max-w-md pb-10">
       <header className="flex items-center justify-between px-4 pt-4">
         <div className="flex items-center gap-2">
-          <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card">
+          <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
             <ArrowLeft className="size-4" />
           </button>
-          <h1 className="text-lg font-semibold">My services</h1>
+          <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4 py-3 shadow-sm">
+            <h1 className="text-lg font-semibold">My services</h1>
+          </div>
         </div>
         {!adding && (
           <Button size="sm" className="gap-1" onClick={() => setAdding(true)}>
@@ -164,7 +166,7 @@ function ManageMentorshipPage() {
 
       <div className="px-4 pt-4 space-y-4">
         {adding && (
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="rounded-2xl border border-border/80 bg-card/90 p-4 space-y-3 shadow-sm">
             <h2 className="text-sm font-semibold">{editing ? "Edit service" : "New service"}</h2>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Title</label>
@@ -209,7 +211,7 @@ function ManageMentorshipPage() {
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pending requests</h2>
             <div className="space-y-3">
               {pendingBookings.map((b: any) => (
-                <div key={b.id} className="rounded-xl border border-warning/30 bg-card p-3">
+                <div key={b.id} className="rounded-2xl border border-warning/30 bg-card/90 p-3 shadow-sm">
                   <p className="text-sm font-medium">{b.mentee?.full_name}</p>
                   <p className="text-xs text-muted-foreground">{b.service?.title}</p>
                   {b.notes && <p className="text-xs text-muted-foreground mt-1 italic">"{b.notes}"</p>}
@@ -226,7 +228,7 @@ function ManageMentorshipPage() {
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Confirmed sessions</h2>
             <div className="space-y-3">
               {confirmedBookings.map((b: any) => (
-                <div key={b.id} className="rounded-xl border border-success/30 bg-card p-3">
+                <div key={b.id} className="rounded-2xl border border-success/30 bg-card/90 p-3 shadow-sm">
                   <p className="text-sm font-medium">{b.mentee?.full_name}</p>
                   <p className="text-xs text-muted-foreground">{b.service?.title}</p>
                   {b.scheduled_at && <p className="text-xs text-muted-foreground mt-1">{new Date(b.scheduled_at).toLocaleString("en-NG")}</p>}
@@ -248,7 +250,7 @@ function ManageMentorshipPage() {
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Your services</h2>
             <div className="space-y-3">
               {services.map((s: any) => (
-                <div key={s.id} className="rounded-xl border border-border bg-card p-3">
+                <div key={s.id} className="rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground">{s.title}</p>
@@ -275,7 +277,7 @@ function ManageMentorshipPage() {
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Completed sessions</h2>
             <div className="space-y-2">
               {completedBookings.map((b: any) => (
-                <div key={b.id} className="rounded-xl border border-border bg-card p-3 opacity-70">
+                <div key={b.id} className="rounded-2xl border border-border/80 bg-card/90 p-3 opacity-70 shadow-sm">
                   <p className="text-sm font-medium">{b.mentee?.full_name}</p>
                   <p className="text-xs text-muted-foreground">{b.service?.title}</p>
                 </div>

@@ -56,7 +56,7 @@ function NotifBell() {
     refetchInterval: 60_000,
   });
   return (
-    <Link to="/app/notifications" aria-label="Notifications" className="fixed right-3 top-3 z-30 grid size-10 place-items-center rounded-full border border-border bg-card shadow-card">
+    <Link to="/app/notifications" aria-label="Notifications" className="fixed right-3 top-3 z-30 grid size-10 place-items-center rounded-full border border-border/80 bg-card/90 shadow-sm backdrop-blur">
       <Bell className="size-4" />
       {unread ? <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">{unread}</span> : null}
     </Link>
@@ -106,7 +106,7 @@ function BottomNav({ path }: { path: string }) {
     { to: "/app/profile/$userId" as any, label: "Profile", icon: UserIcon, match: (p: string) => p.startsWith("/app/profile"), badge: 0 },
   ] as const;
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/95 backdrop-blur shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.25)]">
       <ul className="mx-auto grid max-w-md grid-cols-4">
         <NavItem to="/app" label="Home" icon={Home} active={path === "/app" || path === "/app/"} badge={0} />
         <NavItem to="/app/browse" label="Browse" icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks") || path.startsWith("/app/mentorship")} badge={0} />

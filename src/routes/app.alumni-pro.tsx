@@ -163,10 +163,12 @@ function AlumniProPage() {
   return (
     <div className="mx-auto max-w-md pb-10">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card">
+        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
-        <h1 className="text-lg font-semibold">Alumni Pro</h1>
+        <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4 py-3 shadow-sm">
+          <h1 className="text-lg font-semibold">Alumni Pro</h1>
+        </div>
       </header>
 
       <div className="px-4 pt-4 space-y-5">
@@ -233,7 +235,7 @@ function AlumniProPage() {
           <h2 className="text-sm font-semibold text-foreground mb-3">What you get with Alumni Pro</h2>
           <div className="space-y-3">
             {PRO_FEATURES.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="flex items-start gap-3 rounded-xl border border-border bg-card p-3">
+              <div key={title} className="flex items-start gap-3 rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
                 <div className="grid size-8 place-items-center rounded-lg bg-warning/15 shrink-0">
                   <Icon className="size-4 text-warning" />
                 </div>
@@ -247,7 +249,7 @@ function AlumniProPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-foreground mb-3">Free vs Pro</h2>
           <div className="space-y-2">
             {[

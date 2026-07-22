@@ -143,14 +143,14 @@ function WalletPage() {
   return (
     <div className="mx-auto max-w-md pb-10">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card">
+        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
         <h1 className="text-lg font-semibold">My Wallet</h1>
       </header>
 
       <div className="px-4 pt-4 space-y-4">
-        <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
+        <div className="rounded-3xl bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground shadow-[0_18px_50px_-24px_rgba(37,99,235,0.48)]">
           <div className="flex items-center gap-2 mb-1">
             <Wallet className="size-5 opacity-80" />
             <p className="text-sm opacity-80">Available balance</p>
@@ -243,7 +243,7 @@ function WalletPage() {
         </Sheet>
 
         {pendingWithdrawals.length > 0 && (
-          <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
+          <div className="rounded-2xl border border-warning/30 bg-warning/10 p-3 shadow-sm">
             <p className="text-sm font-medium text-warning flex items-center gap-1">
               <Clock className="size-4" /> {pendingWithdrawals.length} pending withdrawal{pendingWithdrawals.length === 1 ? "" : "s"}
             </p>
@@ -264,7 +264,7 @@ function WalletPage() {
           )}
           <div className="space-y-2">
             {transactions?.map((t: any) => (
-              <div key={t.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+              <div key={t.id} className="flex items-center justify-between rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className={`grid size-9 place-items-center rounded-full ${t.type === "credit" ? "bg-success/15" : "bg-muted"}`}>
                     {t.type === "credit" ? (
