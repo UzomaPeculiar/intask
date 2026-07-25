@@ -96,7 +96,9 @@ function Dashboard() {
             {(role === "company" || role === "individual") && <VerifiedBadge role={role} />}
           </div>
         </div>
-        <Link to="/app/profile/$userId" params={{ userId: "me" }}><InitialsAvatar name={profile?.full_name ?? undefined} size={40} /></Link>
+        <Link to="/app/profile/$userId" params={{ userId: "me" }}>
+          <InitialsAvatar name={profile?.full_name ?? undefined} size={40} avatarUrl={(profile as any)?.avatar_url} />
+        </Link>
       </header>
 
       {(companyPending || alumniPending) && (

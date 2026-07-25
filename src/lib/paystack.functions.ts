@@ -18,56 +18,149 @@ export const initEscrow = createServerFn({ method: "POST" })
       .select("id, title, budget, poster_id, matched_student_id, status")
       .eq("id", data.taskId)
       .single();
+
     if (tErr || !task) throw new Error("Task not found");
-    if (task.poster_id !== userId) throw new Error("Only the poster can pay for this task");
-    if (!task.matched_student_id) throw new Error("Accept a student first");
+    if (task.poster_id !== userId) {
+      throw new Error("Only the poster can pay for this task");
+    }
+    if (!task.matched_student_id) {throw new Error("Accept a student first");
+    }
     if (!["matched", "open"].includes(task.status)) {
       throw new Error("This task is already paid for or in progress");
     }
-    if (!task.budget || Number(task.budget) <= 0) throw new Error("Task budget is not set");
+    if (!task.budget || Number(task.budget) <= 0) {
+      throw new Error("Task budget is not set");
+    }
 
     const { data: userRes } = await supabase.auth.getUser();
     const email = userRes.user?.email;
-    if (!email) throw new Error("Add an email to your profile first");
+
+    if (!email) {
+      throw new Error("Add an email to your profile first");
+    }
 
     // Reuse pending transaction if one exists
-    const { data: existing } = await supabase
+    const { data: existingTransaction, error: existingTxError } = await supabase
       .from("transactions")
-      .select("id, paystack_reference, status")
+      .select("id, status, paystack_reference")
       .eq("task_id", task.id)
       .maybeSingle();
 
-    let txId = existing?.id;
-    let reference = existing?.paystack_reference;
-
-    if (existing && existing.status !== "pending") {
-      throw new Error("Payment already completed for this task");
+    if (existingTxError) {
+      throw existingTxError;
     }
 
-    if (!txId) {
-      reference = `intask_${task.id.slice(0, 8)}_${Date.now()}`;
-      const { data: tx, error: txErr } = await supabase
+    // A transaction is already in escrow.
+    if (existingTransaction?.status === "in_escrow") {
+      throw new Error("Payment already confirmed for this task.");
+    }
+
+    // A transaction has already been released.
+    if (existingTransaction?.status === "released") {
+      throw new Error("Payment has already been completed for this task.");
+    }
+
+    // If there is a pending transaction with a Paystack reference,
+    // verify it server-side before creating another payment.
+    if (
+      existingTransaction?.status === "pending" &&
+      existingTransaction?.paystack_reference
+    ) {
+      const verifyRes = await fetch(
+        `https://api.paystack.co/transaction/verify/${encodeURIComponent(
+          existingTransaction.paystack_reference
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
+        }
+      );
+
+      const verifyData = (await verifyRes.json()) as any;
+
+      // The previous payment was actually successful.
+      if (
+        verifyRes.ok &&
+        verifyData?.status &&
+        verifyData?.data?.status === "success"
+      ) {
+        await supabase
+          .from("transactions")
+          .update({ status: "in_escrow" } as any)
+          .eq("id", existingTransaction.id);
+
+        await supabase
+          .from("tasks")
+          .update({ status: "in_progress" } as any)
+          .eq("id", task.id);
+
+        await supabase
+          .from("applications")
+          .update({ status: "accepted" } as any)
+          .eq("task_id", task.id)
+          .eq("student_id", task.matched_student_id);
+
+        // Make sure a conversation exists for the task.
+        const { data: existingConv } = await supabase
+          .from("conversations")
+          .select("id")
+          .eq("task_id", task.id)
+          .eq("student_id", task.matched_student_id)
+          .maybeSingle();
+
+        if (!existingConv) {
+          await supabase.from("conversations").insert({
+            task_id: task.id,
+            student_id: task.matched_student_id,
+            poster_id: task.poster_id,
+          });
+        }
+
+        throw new Error(
+          "Payment already confirmed. Your task is now in progress."
+        );
+      }
+    }
+
+    // The existing transaction is still pending but Paystack did not
+    // confirm a successful payment. Remove it before creating a new one.
+    if (existingTransaction) {
+      const { error: deleteError } = await supabase
         .from("transactions")
-        .insert({
-          task_id: task.id,
-          poster_id: task.poster_id,
-          student_id: task.matched_student_id,
-          amount: task.budget,
-          platform_fee: Number(task.budget) * FEE_RATE,
-          status: "pending",
-          paystack_reference: reference,
-        })
-        .select("id")
-        .single();
-      if (txErr) throw txErr;
-      txId = tx.id;
-    } else if (!reference) {
-      reference = `intask_${task.id.slice(0, 8)}_${Date.now()}`;
-      await supabase.from("transactions").update({ paystack_reference: reference }).eq("id", txId);
+        .delete()
+        .eq("id", existingTransaction.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
     }
 
+    // Create a new transaction and Paystack reference.
+    const reference = `intask_${task.id.slice(0, 8)}_${Date.now()}`;
+
+    const { data: tx, error: txErr } = await supabase
+      .from("transactions")
+      .insert({
+        task_id: task.id,
+        poster_id: task.poster_id,
+        student_id: task.matched_student_id,
+        amount: task.budget,
+        platform_fee: Number(task.budget) * FEE_RATE,
+        status: "pending",
+        paystack_reference: reference,
+      })
+      .select("id")
+      .single();
+  
+    if (txErr || !tx) {
+      throw txErr ?? new Error("Could not create transaction");
+    }
+    
     const amountKobo = Math.round(Number(task.budget) * 100);
-    const res = await fetch("https://api.paystack.co/transaction/initialize", {
+    const res = await fetch(
+      "https://api.paystack.co/transaction/initialize", 
+      {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
@@ -77,7 +170,9 @@ export const initEscrow = createServerFn({ method: "POST" })
         email,
         amount: amountKobo,
         reference,
-        metadata: { task_id: task.id, transaction_id: txId },
+        metadata: { 
+          task_id: task.id, 
+          transaction_id: tx.id },
       }),
     });
     const json = (await res.json()) as any;

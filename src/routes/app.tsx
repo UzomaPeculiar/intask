@@ -38,7 +38,6 @@ function AppLayout() {
   return (
     <AuthProvider>
       <div className={`min-h-screen bg-background ${path.startsWith("/app/messages/") ? "" : "pb-20"}`}>
-        {!path.startsWith("/app/messages/") && <NotifBell />}
         <Outlet />
         {!path.startsWith("/app/messages/") && <BottomNav path={path} />}
       </div>
@@ -56,7 +55,7 @@ function NotifBell() {
     refetchInterval: 60_000,
   });
   return (
-    <Link to="/app/notifications" aria-label="Notifications" className="fixed right-3 top-3 z-30 grid size-10 place-items-center rounded-full border border-border/80 bg-card/90 shadow-sm backdrop-blur">
+    <Link to="/app/notifications" aria-label="Notifications" className="fixed left-3 top-3 z-30 grid size-10 place-items-center rounded-full border border-border/80 bg-card/90 shadow-sm backdrop-blur">
       <Bell className="size-4" />
       {unread ? <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">{unread}</span> : null}
     </Link>
@@ -79,6 +78,16 @@ function BottomNav({ path }: { path: string }) {
     },
     refetchInterval: 60_000,
   });
+
+  const { data: unreadNotifs = 0 } = useQuery({
+    queryKey: ["unread-count"],
+    queryFn: async () => {
+      const { count } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("read", false);
+      return count ?? 0;
+    },
+    refetchInterval: 60_000,
+  });
+
 
   useEffect(() => {
     const ch = supabase
@@ -107,10 +116,11 @@ function BottomNav({ path }: { path: string }) {
   ] as const;
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/95 backdrop-blur shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.25)]">
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-md grid-cols-5">
         <NavItem to="/app" label="Home" icon={Home} active={path === "/app" || path === "/app/"} badge={0} />
         <NavItem to="/app/browse" label="Browse" icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks") || path.startsWith("/app/mentorship")} badge={0} />
         <NavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} />
+        <NavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} />
         <li>
           <Link to="/app/profile/$userId" params={{ userId: "me" }} className="relative flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium">
             <span className="relative">

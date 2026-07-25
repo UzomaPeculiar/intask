@@ -1,3 +1,4 @@
+import { AvatarUpload } from "@/components/intask/AvatarUpload";
 import { Wallet } from "lucide-react";
 import { Award } from "lucide-react";
 import { Share2 } from "lucide-react";
@@ -188,7 +189,18 @@ function ProfilePage() {
       <section className="px-4 pt-5">
         <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
           <div className="flex items-center gap-3">
-          <InitialsAvatar name={profile.full_name} size={64} />
+          {isOwn ? (
+            <AvatarUpload
+              userId={profile.id}
+              currentUrl={profile.avatar_url}
+              name={profile.full_name}
+              size={72}
+              editable={true}
+              onUpload={(url) => qc.invalidateQueries({ queryKey: ["profile", targetId] })}
+            />
+          ) : (
+            <InitialsAvatar name={profile.full_name} size={72} avatarUrl={profile.avatar_url} />
+          )}
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-semibold tracking-tight">{profile.full_name}</h1>
             {isStudentOrAlumni && student?.university && (
@@ -278,7 +290,7 @@ function ProfilePage() {
               <Award className="size-3.5" /> Take skill assessments
             </Button>
             
-            {(profile.role === "student" || profile.role === "alumni") && (
+            {(profile.role === "student" || profile.role === "alumni" || profile.role === "individual" || profile.role === "company") && (
               <Button
                 variant="outline"
                 size="sm"
