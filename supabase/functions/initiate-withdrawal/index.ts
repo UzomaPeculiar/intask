@@ -100,7 +100,7 @@ serve(async (req) => {
     }
 
     // Create withdrawal record
-    const { data: withdrawal, error: withdrawalError } = await supabase
+    const { data: withdrawal, error: withdrawalError } = await supabaseUser
       .from("withdrawal_requests")
       .insert({
         user_id: user.id,
@@ -120,18 +120,14 @@ serve(async (req) => {
       .single();
 
     if (withdrawalError) {
-      if (String(withdrawalError.message ?? "").toLowerCase().includes("permission denied for table withdrawal_requests")) {
-        // Continue when audit-table grants are stricter; withdrawal can still proceed.
-      } else {
-        // Reverse the wallet debit if withdrawal record creation fails for non-permission reasons.
-        await supabase.rpc("reverse_wallet_debit", {
-          p_user_id: user.id,
-          p_amount: amount,
-          p_description: "Withdrawal failed - refunded",
-          p_reference: reference,
-        });
-        throw withdrawalError;
-      }
+      // Reverse the wallet debit if withdrawal record creation fails.
+      await supabase.rpc("reverse_wallet_debit", {
+        p_user_id: user.id,
+        p_amount: amount,
+        p_description: "Withdrawal failed - refunded",
+        p_reference: reference,
+      });
+      throw withdrawalError;
     }
 
     // Initiate Paystack transfer

@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ShieldCheck, Users, Briefcase, DollarSign, CheckCircle2, XCircle, Clock, Building2, Eye } from "lucide-react";
-import { adminProcessWithdrawal, adminResolveDispute, assertAdminAccess } from "@/lib/admin.functions";
+import { adminResolveDispute } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — InTask" }] }),
@@ -15,7 +15,6 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const nav = useNavigate();
-  const checkAdmin = useServerFn(assertAdminAccess);
   const [tab, setTab] = useState<"overview" | "students" | "companies" | "reports" | "disputes" | "partnerships" | "withdrawals">("overview");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
@@ -23,7 +22,23 @@ function AdminPage() {
     let mounted = true;
     (async () => {
       try {
-        await checkAdmin();
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData.user) {
+          nav({ to: "/auth/login", search: { redirect: "/admin" } });
+          return;
+        }
+
+        const { data: profile, error } = await (supabase as any)
+          .from("profiles")
+          .select("id, is_admin")
+          .eq("id", authData.user.id)
+          .maybeSingle();
+
+        if (error || !profile?.is_admin) {
+          nav({ to: "/app" });
+          return;
+        }
+
         if (mounted) setIsAdmin(true);
       } catch {
         if (!mounted) return;
@@ -36,7 +51,7 @@ function AdminPage() {
     return () => {
       mounted = false;
     };
-  }, [checkAdmin, nav]);
+  }, [nav]);
 
   if (isAdmin === null) {
     return (
@@ -850,29 +865,43 @@ function PartnershipsTab() {
 }
 
 function WithdrawalsTab() {
-  const qc = useQueryClient();
-  const processWithdrawalServer = useServerFn(adminProcessWithdrawal);
-
   const { data: withdrawals, isLoading, refetch } = useQuery({
     queryKey: ["admin-withdrawals"],
+    refetchInterval: 15000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("withdrawal_requests")
         .select("*, user:profiles!withdrawal_requests_user_id_fkey(full_name, email)")
         .order("created_at", { ascending: false });
-      return data ?? [];
-    },
-  });
 
-  const process = useMutation({
-    mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
-      await processWithdrawalServer({ data: { id, status: status as "completed" | "rejected", notes } });
+      if (!error) return data ?? [];
+
+      const { data: baseRows, error: baseError } = await (supabase as any)
+        .from("withdrawal_requests")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (baseError) throw baseError;
+
+      const userIds = Array.from(new Set((baseRows ?? []).map((row: any) => row.user_id).filter(Boolean)));
+      let profilesById: Record<string, any> = {};
+
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await (supabase as any)
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", userIds);
+        if (profilesError) throw profilesError;
+        profilesById = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, p]));
+      }
+
+      return (baseRows ?? []).map((row: any) => ({
+        ...row,
+        user: profilesById[row.user_id] ?? null,
+      }));
     },
-    onSuccess: () => {
-      toast.success("Withdrawal updated");
-      refetch();
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not process"),
   });
 
   if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
@@ -892,6 +921,10 @@ function WithdrawalsTab() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
+        Withdrawals are processed automatically via Paystack. This tab is for monitoring only.
+      </div>
+
       {pending.length > 0 && (
         <div className="space-y-3">
           <p className="text-sm font-medium">{pending.length} pending withdrawal{pending.length === 1 ? "" : "s"}</p>
@@ -908,33 +941,7 @@ function WithdrawalsTab() {
                 </div>
                 <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning shrink-0">Pending</span>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="flex-1 bg-success text-success-foreground hover:bg-success/90"
-                  disabled={process.isPending}
-                  onClick={() => process.mutate({ id: w.id, status: "completed" })}
-                >
-                  <CheckCircle2 className="size-3.5 mr-1" /> Mark as paid
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 text-destructive border-destructive/30"
-                  disabled={process.isPending}
-                  onClick={() => {
-                    const note = window.prompt("Provide a reason for rejecting this withdrawal:", "");
-                    if (note === null) return;
-                    if (!note.trim()) {
-                      toast.error("Rejection reason is required");
-                      return;
-                    }
-                    process.mutate({ id: w.id, status: "rejected", notes: note.trim() });
-                  }}
-                >
-                  <XCircle className="size-3.5 mr-1" /> Reject
-                </Button>
-              </div>
+              <p className="text-xs text-muted-foreground">Awaiting Paystack transfer webhook update.</p>
             </div>
           ))}
         </div>
