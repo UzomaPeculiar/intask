@@ -26,56 +26,65 @@ function BrowsePage() {
   const [showFilters, setShowFilters] = useState(false);
 
   return (
-    <div className="mx-auto max-w-md space-y-4 px-4 pt-5">
+    <div className="mx-auto max-w-2xl space-y-5 px-4 pt-5">
       <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Discover</p>
         <h1 className="text-2xl font-semibold tracking-tight">Browse</h1>
       </div>
 
-      {/* Tab toggle */}
-      <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border/80 bg-muted p-1 text-sm font-medium shadow-sm">
-        <button
-          onClick={() => setTab("tasks")}
-          className={`rounded-md py-2 transition-colors ${tab === "tasks" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
-        >
-          Tasks
-        </button>
-        <button
-          onClick={() => setTab("people")}
-          className={`rounded-md py-2 transition-colors ${tab === "people" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
-        >
-          People
-        </button>
-        <button
-          onClick={() => setTab("saved")}
-          className={`rounded-md py-2 transition-colors ${tab === "saved" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
-        >
-          Saved
-        </button>
-      </div>
-
-      {/* Search bar */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={tab === "tasks" ? "Search tasks…" : "Search by name or skill…"}
-            className="pl-9"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-        {tab === "tasks" && (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setShowFilters(!showFilters)}
-            className={showFilters ? "border-primary text-primary" : ""}
+      <section className="space-y-3 rounded-2xl border border-border/80 bg-card/70 p-3 shadow-sm">
+        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border/80 bg-muted p-1 text-sm font-medium shadow-sm">
+          <button
+            onClick={() => setTab("tasks")}
+            className={`rounded-md py-2 transition-colors ${tab === "tasks" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
           >
-            <SlidersHorizontal className="size-4" />
-          </Button>
+            Tasks
+          </button>
+          <button
+            onClick={() => setTab("people")}
+            className={`rounded-md py-2 transition-colors ${tab === "people" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
+          >
+            People
+          </button>
+          <button
+            onClick={() => setTab("saved")}
+            className={`rounded-md py-2 transition-colors ${tab === "saved" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
+          >
+            Saved
+          </button>
+        </div>
+
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={tab === "tasks" ? "Search tasks…" : "Search by name or skill…"}
+              className="pl-9"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          {tab === "tasks" && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowFilters(!showFilters)}
+              className={showFilters ? "border-primary text-primary" : ""}
+            >
+              <SlidersHorizontal className="size-4" />
+            </Button>
+          )}
+        </div>
+
+        {tab === "tasks" && (
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Category filters</span>
+            <button onClick={() => setShowFilters((prev) => !prev)} className="font-medium text-primary hover:underline">
+              {showFilters ? "Hide advanced" : "Show advanced"}
+            </button>
+          </div>
         )}
-      </div>
+      </section>
 
       {/* Advanced filters for tasks */}
       {tab === "tasks" && showFilters && (
@@ -132,10 +141,11 @@ function BrowsePage() {
         </div>
       )}
 
-      {/* Results */}
-      {tab === "tasks" && <TasksResults q={q} filter={filter} minBudget={minBudget} maxBudget={maxBudget} />}
-      {tab === "people" && <PeopleResults q={q} />}
-      {tab === "saved" && <SavedTasksResults />}
+      <section className="space-y-3">
+        {tab === "tasks" && <TasksResults q={q} filter={filter} minBudget={minBudget} maxBudget={maxBudget} />}
+        {tab === "people" && <PeopleResults q={q} />}
+        {tab === "saved" && <SavedTasksResults />}
+      </section>
 
       <div className="h-4" />
       {tab === "tasks" && (

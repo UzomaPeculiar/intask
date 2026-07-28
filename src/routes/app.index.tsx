@@ -14,9 +14,10 @@ import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge, StatusPill } from "@/components/intask/Badges";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { naira, timeAgo } from "@/lib/format";
 import { FEED_FILTERS } from "@/lib/constants";
-import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle, Users, Wallet } from "lucide-react";
+import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle, Users, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import { useApplicantCount, applicantLabel } from "@/hooks/useApplicantCount";
 import { MessagePartyLink } from "@/components/intask/MessagePartyLink";
 
@@ -80,7 +81,7 @@ function Dashboard() {
   const alumniPending = role === "alumni" && !verified;
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-2xl">
       <header className="flex items-start justify-between gap-3 px-4 pb-3 pt-5">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-foreground">{greetingText}</p>
@@ -187,6 +188,8 @@ function greeting() {
 
 function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: string; filter: string; onFilter: (f: string) => void; onSwitchToPost: () => void }) {
   const nav = useNavigate();
+  const [showQuickLinks, setShowQuickLinks] = useState(false);
+  const [showAllFilters, setShowAllFilters] = useState(false);
   const { data: stats } = useQuery({
     queryKey: ["student-stats", userId],
     enabled: !!userId,
@@ -214,84 +217,122 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
     },
   });
 
+  const visibleFilters = showAllFilters ? FEED_FILTERS : FEED_FILTERS.slice(0, 7);
+
   return (
-    <div className="space-y-5 px-4 pt-4">
-      <div className="grid grid-cols-3 gap-2">
-        <StatCard label="Tasks applied" value={stats?.applied ?? 0} />
-        <StatCard label="Active" value={stats?.active ?? 0} />
-        <StatCard label="Rating" value={stats?.rating ? Number(stats.rating).toFixed(1) : "—"} icon={<Star className="size-3.5 fill-warning text-warning" />} />
-      </div>
-
-      <div className="space-y-2">
-        <Link
-          to="/app/mentorship"
-          className="block rounded-2xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-sm"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-lg bg-warning/20 text-warning">
-                <GraduationCap className="size-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Mentorship</p>
-                <p className="text-xs text-muted-foreground">Book 1-on-1 sessions with alumni</p>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-warning">Browse →</span>
-          </div>
-        </Link>
-
-        <Link
-          to="/app/internships"
-          className="block rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
-                <Briefcase className="size-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-foreground">Internships</p>
-                <p className="text-xs text-muted-foreground">Longer-term opportunities from companies</p>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-primary">Browse →</span>
-          </div>
-        </Link>
-
-        <div
-          onClick={() => nav({ to: "/app/learn" as any })}
-          className="cursor-pointer rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-lg bg-warning/10 text-warning">
-                <BookOpen className="size-4" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-foreground">InTask Learn</p>
-                <p className="text-xs text-muted-foreground">Short courses to boost your skills and earnings</p>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-warning">Browse →</span>
-          </div>
+    <div className="space-y-6 px-4 pt-4">
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Overview</h2>
+          <span className="text-xs text-muted-foreground">What needs your attention</span>
         </div>
-      </div>
-
-      <div className="relative -mx-4">
-        <div className="flex gap-2 overflow-x-auto px-4 pb-1 pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {FEED_FILTERS.map((f) => {
-            const active = f === filter;
-            return (
-              <button key={f} onClick={() => onFilter(f)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                  active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"
-                }`}>{f}</button>
-            );
-          })}
+        <div className="grid grid-cols-3 gap-2">
+          <StatCard label="Tasks applied" value={stats?.applied ?? 0} />
+          <StatCard label="Active" value={stats?.active ?? 0} />
+          <StatCard label="Rating" value={stats?.rating ? Number(stats.rating).toFixed(1) : "—"} icon={<Star className="size-3.5 fill-warning text-warning" />} />
         </div>
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent" />
-      </div>
+        <WalletBalanceCard userId={userId} />
+      </section>
+
+      <section className="space-y-2">
+        <Collapsible open={showQuickLinks} onOpenChange={setShowQuickLinks}>
+          <div className="flex items-center justify-between rounded-2xl border border-border/80 bg-card/90 px-4 py-3 shadow-sm">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Explore more opportunities</p>
+              <p className="text-xs text-muted-foreground">Mentorship, internships, and learning tracks</p>
+            </div>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1">
+                {showQuickLinks ? "Hide" : "View"}
+                {showQuickLinks ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="pt-2">
+            <div className="space-y-2">
+              <Link
+                to="/app/mentorship"
+                className="block rounded-2xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-8 place-items-center rounded-lg bg-warning/20 text-warning">
+                      <GraduationCap className="size-4" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Mentorship</p>
+                      <p className="text-xs text-muted-foreground">Book 1-on-1 sessions with alumni</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-medium text-warning">Browse →</span>
+                </div>
+              </Link>
+
+              <Link
+                to="/app/internships"
+                className="block rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <Briefcase className="size-4" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Internships</p>
+                      <p className="text-xs text-muted-foreground">Longer-term opportunities from companies</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-medium text-primary">Browse →</span>
+                </div>
+              </Link>
+
+              <div
+                onClick={() => nav({ to: "/app/learn" as any })}
+                className="cursor-pointer rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-8 place-items-center rounded-lg bg-warning/10 text-warning">
+                      <BookOpen className="size-4" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">InTask Learn</p>
+                      <p className="text-xs text-muted-foreground">Short courses to boost your skills and earnings</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-medium text-warning">Browse →</span>
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Task feed</h2>
+          <button
+            onClick={() => setShowAllFilters((prev) => !prev)}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            {showAllFilters ? "Fewer filters" : "More filters"}
+          </button>
+        </div>
+        <div className="relative -mx-4">
+          <div className="flex gap-2 overflow-x-auto px-4 pb-1 pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {visibleFilters.map((f) => {
+              const active = f === filter;
+              return (
+                <button key={f} onClick={() => onFilter(f)}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                    active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"
+                  }`}>{f}</button>
+              );
+            })}
+          </div>
+          <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent" />
+        </div>
+      </section>
 
       <section className="space-y-3">
         <ActiveTasksSection userId={userId} />

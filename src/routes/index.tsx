@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle2, ShieldCheck, Star, Briefcase, Sparkles, GraduationCap, User, Building2 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { naira } from "@/lib/format";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
@@ -60,6 +62,10 @@ const WHO_IS_IT_FOR = [
 ];
 
 function Landing() {
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showTrustExample, setShowTrustExample] = useState(false);
+  const visibleCategories = showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 8);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
@@ -79,7 +85,7 @@ function Landing() {
       </header>
 
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-4 pb-12 pt-10 sm:pt-16">
+      <section className="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:pt-16">
         <div className="grid items-center gap-10 md:grid-cols-2">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
@@ -138,7 +144,7 @@ function Landing() {
 
       {/* Who is it for */}
       <section className="border-t border-border bg-card">
-        <div className="mx-auto max-w-6xl px-4 py-14">
+        <div className="mx-auto max-w-6xl px-4 py-16">
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Who is InTask for?</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {WHO_IS_IT_FOR.map((w) => (
@@ -159,7 +165,7 @@ function Landing() {
 
       {/* How it works */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-14">
+        <div className="mx-auto max-w-6xl px-4 py-16">
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">How it works</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {HOW_IT_WORKS.map((s) => (
@@ -175,13 +181,15 @@ function Landing() {
 
       {/* Categories strip */}
       <section className="border-t border-border bg-card">
-        <div className="mx-auto max-w-6xl px-4 py-12">
+        <div className="mx-auto max-w-6xl px-4 py-14">
           <div className="flex items-end justify-between gap-4">
             <h2 className="text-2xl font-semibold tracking-tight">Popular categories</h2>
-            <Link to="/auth/signup" className="text-sm font-medium text-primary hover:underline">Browse all →</Link>
+            <button onClick={() => setShowAllCategories((prev) => !prev)} className="text-sm font-medium text-primary hover:underline">
+              {showAllCategories ? "Show less" : "Browse all"} →
+            </button>
           </div>
           <div className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-2">
-            {CATEGORIES.map((c) => (
+            {visibleCategories.map((c) => (
               <span key={c} className="shrink-0 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground">
                 {c}
               </span>
@@ -192,7 +200,7 @@ function Landing() {
 
       {/* Trust */}
       <section className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-14">
+        <div className="mx-auto max-w-6xl px-4 py-16">
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Why InTask?</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {TRUST.map(({ icon: Icon, title, body }) => (
@@ -206,29 +214,39 @@ function Landing() {
             ))}
           </div>
 
-          {/* Sample student card */}
-          <div className="mt-10 rounded-2xl border border-border bg-card p-5">
-            <p className="mb-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">Example student profile</p>
-            <div className="flex items-start gap-3">
-              <InitialsAvatar name="Chiamaka Okafor" size={44} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate font-medium text-foreground">Chiamaka Okafor</p>
-                  <VerifiedBadge role="student" />
-                </div>
-                <p className="text-xs text-muted-foreground">UNILAG · 300L · Computer Science</p>
-                <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                  <Star className="size-3 fill-warning text-warning" /> 4.9 · 12 tasks completed
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {["Web Design", "UI/UX", "Figma"].map((s) => (
-                    <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">{s}</span>
-                  ))}
-                </div>
+          <Collapsible open={showTrustExample} onOpenChange={setShowTrustExample}>
+            <div className="mt-8 rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Verification example</p>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-xs">
+                    {showTrustExample ? "Hide" : "View"} details
+                  </Button>
+                </CollapsibleTrigger>
               </div>
-              <Briefcase className="hidden size-5 shrink-0 text-muted-foreground sm:block" />
+              <CollapsibleContent>
+                <div className="mt-3 flex items-start gap-3">
+                  <InitialsAvatar name="Chiamaka Okafor" size={44} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-medium text-foreground">Chiamaka Okafor</p>
+                      <VerifiedBadge role="student" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">UNILAG · 300L · Computer Science</p>
+                    <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Star className="size-3 fill-warning text-warning" /> 4.9 · 12 tasks completed
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {["Web Design", "UI/UX", "Figma"].map((s) => (
+                        <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <Briefcase className="hidden size-5 shrink-0 text-muted-foreground sm:block" />
+                </div>
+              </CollapsibleContent>
             </div>
-          </div>
+          </Collapsible>
         </div>
       </section>
       

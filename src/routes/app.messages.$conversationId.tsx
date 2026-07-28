@@ -31,8 +31,6 @@ function ChatPage() {
         .from("conversations")
         .select("*, task:tasks(id,title), student:profiles!conversations_student_id_fkey(id,full_name,role), poster:profiles!conversations_poster_id_fkey(id,full_name,role)")
         .eq("id", conversationId).single();
-      console.log("Convo data:", convo);
-      console.log("User:", u.user?.id);
       if (convo && u.user) {
         setOther(convo.student_id === u.user.id ? convo.poster : convo.student);
         setTask(convo.task);
@@ -77,7 +75,7 @@ function ChatPage() {
   if (loading) return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col">
+    <div className="mx-auto flex min-h-screen max-w-2xl flex-col">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
         <button onClick={() => nav({ to: "/app/messages" })} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card">
           <ArrowLeft className="size-4" />
@@ -107,7 +105,7 @@ function ChatPage() {
       </div>
 
       <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-3 py-2 backdrop-blur">
-        <div className="mx-auto flex max-w-md items-center gap-2">
+        <div className="mx-auto flex max-w-2xl items-center gap-2">
           <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Type a message…" />
           <Button size="icon" onClick={send} disabled={!draft.trim()}><Send className="size-4" /></Button>
         </div>

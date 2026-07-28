@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TASK_CATEGORIES, SKILLS } from "@/lib/constants";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/tasks/create")({
@@ -50,6 +51,7 @@ function CreateTaskPage() {
   const [deadline, setDeadline] = useState("");
   const [workType, setWorkType] = useState<"remote" | "on_campus" | "either">("either");
   const [skills, setSkills] = useState<string[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function submit() {
@@ -109,15 +111,22 @@ function CreateTaskPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md pb-28">
+    <div className="mx-auto max-w-2xl pb-28">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card">
+        <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
-        <h1 className="text-lg font-semibold">Post a task</h1>
+        <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4 py-3 shadow-sm">
+          <h1 className="text-lg font-semibold">Post a task</h1>
+        </div>
       </header>
 
-      <div className="space-y-5 px-4 pt-6">
+      <div className="rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm mx-4 mt-4">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Secure match</p>
+        <p className="mt-1 text-sm text-muted-foreground">Describe the work, set a fair budget, and let verified students apply with confidence.</p>
+      </div>
+
+      <div className="space-y-3 px-4 pt-4">
         <Field label="Task title">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Design a logo for my clothing brand" />
         </Field>
@@ -160,63 +169,82 @@ function CreateTaskPage() {
           </p>
         </Field>
 
-        <Field label="Deadline">
-          <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-        </Field>
-
-        <Field label="Work type">
-          <div className="grid grid-cols-3 gap-2 text-sm">
-            {(["remote", "on_campus", "either"] as const).map((w) => (
-              <button key={w} type="button" onClick={() => setWorkType(w)}
-                className={`rounded-md border px-2 py-2 ${workType === w ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>
-                {w === "remote" ? "Remote" : w === "on_campus" ? "On-campus" : "Either"}
-              </button>
-            ))}
-          </div>
-        </Field>
-        
-        <Field label="Team task">
-          <label className="flex items-center justify-between rounded-lg border border-border bg-card p-3 cursor-pointer">
-            <div>
-              <p className="text-sm font-medium text-foreground">This is a team task</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Hire multiple students to work together</p>
+        <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <div className="rounded-2xl border border-border/80 bg-card/70 p-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Additional details</p>
+                <p className="text-xs text-muted-foreground">Deadline, format, team setup, and skills</p>
+              </div>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1">
+                  {showAdvanced ? "Hide" : "Show"}
+                  {showAdvanced ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                </Button>
+              </CollapsibleTrigger>
             </div>
-            <Switch checked={isTeamTask} onCheckedChange={setIsTeamTask} />
-          </label>
-          {isTeamTask && (
-            <div className="mt-3 space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Number of students needed</label>
-              <select
-                value={teamSize}
-                onChange={(e) => setTeamSize(Number(e.target.value))}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {[2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>{n} students</option>
+          </div>
+
+          <CollapsibleContent className="space-y-3 pt-3">
+            <Field label="Deadline">
+              <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            </Field>
+
+            <Field label="Work type">
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                {(["remote", "on_campus", "either"] as const).map((w) => (
+                  <button key={w} type="button" onClick={() => setWorkType(w)}
+                    className={`rounded-md border px-2 py-2 ${workType === w ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>
+                    {w === "remote" ? "Remote" : w === "on_campus" ? "On-campus" : "Either"}
+                  </button>
                 ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Budget of ₦{budget ? Number(budget).toLocaleString("en-NG") : "0"} will be split equally — 
-                ₦{budget && teamSize ? Math.floor(Number(budget) / teamSize).toLocaleString("en-NG") : "0"} per student
-              </p>
-            </div>
-          )}
-        </Field>
+              </div>
+            </Field>
+            
+            <Field label="Team task">
+              <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-card p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">This is a team task</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Hire multiple students to work together</p>
+                </div>
+                <Switch checked={isTeamTask} onCheckedChange={setIsTeamTask} />
+              </label>
+              {isTeamTask && (
+                <div className="mt-3 space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Number of students needed</label>
+                  <select
+                    value={teamSize}
+                    onChange={(e) => setTeamSize(Number(e.target.value))}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {[2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>{n} students</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Budget of ₦{budget ? Number(budget).toLocaleString("en-NG") : "0"} will be split equally - 
+                    ₦{budget && teamSize ? Math.floor(Number(budget) / teamSize).toLocaleString("en-NG") : "0"} per student
+                  </p>
+                </div>
+              )}
+            </Field>
 
-        <Field label="Skills needed">
-          <div className="flex flex-wrap gap-1.5">
-            {SKILLS.map((sk) => {
-              const sel = skills.includes(sk);
-              return (
-                <button key={sk} type="button"
-                  onClick={() => setSkills(sel ? skills.filter((x) => x !== sk) : [...skills, sk])}
-                  className={`rounded-full border px-2.5 py-1 text-xs ${sel ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>
-                  {sk}
-                </button>
-              );
-            })}
-          </div>
-        </Field>
+            <Field label="Skills needed">
+              <div className="flex flex-wrap gap-1.5">
+                {SKILLS.map((sk) => {
+                  const sel = skills.includes(sk);
+                  return (
+                    <button key={sk} type="button"
+                      onClick={() => setSkills(sel ? skills.filter((x) => x !== sk) : [...skills, sk])}
+                      className={`rounded-full border px-2.5 py-1 text-xs ${sel ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>
+                      {sk}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
@@ -232,7 +260,7 @@ function CreateTaskPage() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
+    <div className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm space-y-2">
       <Label>{label}</Label>
       {children}
     </div>

@@ -264,8 +264,10 @@ function SignupPage() {
         {/* STEP 1 — Role selection (4 roles) */}
         {step === 1 && (
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">How will you use InTask?</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Pick the option that fits you best.</p>
+            <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
+              <h1 className="text-2xl font-semibold tracking-tight">How will you use InTask?</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Pick the option that fits you best.</p>
+            </div>
             <div className="mt-6 space-y-3">
               <RoleCard icon={GraduationCap} title="I'm a student" desc="I want to find work and get paid for my skills." selected={s.role === "student"} onClick={() => set("role", "student")} />
               <RoleCard icon={User} title="I want to post a task" desc="I need help from a student with a project." selected={s.role === "individual"} onClick={() => set("role", "individual")} />
@@ -284,10 +286,12 @@ function SignupPage() {
         {/* STEP 2 — Account creation */}
         {step === 2 && (
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{isCompany ? "Create your business account" : "Create your account"}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Start in less than a minute.</p>
+            <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
+              <h1 className="text-2xl font-semibold tracking-tight">{isCompany ? "Create your business account" : "Create your account"}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Start in less than a minute.</p>
+            </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-4 rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm">
               <div className="space-y-1.5">
                 <Label htmlFor="name">{isCompany ? "Business name" : "Full name"}</Label>
                 <Input id="name" value={isCompany ? s.company_name : s.full_name} onChange={(e) => {
@@ -317,9 +321,11 @@ function SignupPage() {
         {/* STUDENT — university details */}
         {step === 3 && isStudent && (
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">University details</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Helps posters find you nearby.</p>
-            <div className="mt-6 space-y-4">
+            <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
+              <h1 className="text-2xl font-semibold tracking-tight">University details</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Helps posters find you nearby.</p>
+            </div>
+            <div className="mt-6 space-y-4 rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm">
               <UniSelect value={s.university} onChange={(v) => set("university", v)} />
               <div className="space-y-1.5">
                 <Label htmlFor="dept">Department / Faculty</Label>
@@ -345,8 +351,10 @@ function SignupPage() {
         {/* STUDENT — verification */}
         {step === 4 && isStudent && (
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Verify your student status</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Pick how you'd like to verify.</p>
+            <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
+              <h1 className="text-2xl font-semibold tracking-tight">Verify your student status</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Pick how you'd like to verify.</p>
+            </div>
             <div className="mt-6 space-y-3">
               <RoleCard icon={CheckCircle2} title="University email" desc="We'll send a 4-digit code to your .edu.ng address — faster." selected={s.verification_method === "email"} onClick={() => set("verification_method", "email")} />
               <RoleCard icon={Upload} title="Upload student ID" desc="Photo of your valid student ID card — reviewed in 24 hours." selected={s.verification_method === "id_upload"} onClick={() => set("verification_method", "id_upload")} />
@@ -397,9 +405,11 @@ function SignupPage() {
         {/* ALUMNI — graduation details */}
         {step === 3 && isAlumni && (
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Where did you graduate from?</h1>
-            <p className="mt-1 text-sm text-muted-foreground">We'll display this on your profile.</p>
-            <div className="mt-6 space-y-4">
+            <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
+              <h1 className="text-2xl font-semibold tracking-tight">Where did you graduate from?</h1>
+              <p className="mt-1 text-sm text-muted-foreground">We'll display this on your profile.</p>
+            </div>
+            <div className="mt-6 space-y-4 rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm">
               <UniSelect value={s.university} onChange={(v) => set("university", v)} label="University" />
               <div className="space-y-1.5">
                 <Label htmlFor="gy">Year of graduation</Label>
@@ -425,9 +435,11 @@ function SignupPage() {
         {/* COMPANY — step 3 business details */}
         {step === 3 && isCompany && (
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Business details</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Tell us about your organization.</p>
-            <div className="mt-6 space-y-4">
+            <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
+              <h1 className="text-2xl font-semibold tracking-tight">Business details</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Tell us about your organization.</p>
+            </div>
+            <div className="mt-6 space-y-4 rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm">
               <div className="space-y-1.5">
                 <Label htmlFor="ind">Industry</Label>
                 <Input id="ind" value={s.industry} onChange={(e) => set("industry", e.target.value)} placeholder="e.g. Fintech, Education, Media" />
@@ -454,7 +466,7 @@ function SignupPage() {
             <h1 className="text-2xl font-semibold tracking-tight">You're all set 🎉</h1>
             <p className="mt-1 text-sm text-muted-foreground">Welcome to InTask, {s.full_name.split(" ")[0]}.</p>
 
-            <div className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card">
+            <div className="mt-6 rounded-3xl border border-border/80 bg-card/90 p-5 shadow-sm">
               <div className="flex items-center gap-3">
                 <InitialsAvatar name={s.full_name} size={48} />
                 <div className="min-w-0">
@@ -555,8 +567,8 @@ function RoleCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
-        selected ? "border-primary bg-accent" : "border-border bg-card hover:bg-accent/50"
+      className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
+        selected ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-card/90 hover:-translate-y-0.5 hover:shadow-sm hover:bg-accent/50"
       }`}
     >
       <div className={`grid size-9 place-items-center rounded-lg ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>

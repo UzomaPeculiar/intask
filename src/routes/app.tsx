@@ -49,7 +49,13 @@ function NotifBell() {
   const { data: unread } = useQuery({
     queryKey: ["unread-count"],
     queryFn: async () => {
-      const { count } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("read", false);
+      const { data: me } = await supabase.auth.getUser();
+      if (!me.user) return 0;
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", me.user.id)
+        .eq("read", false);
       return count ?? 0;
     },
     refetchInterval: 60_000,
@@ -82,7 +88,13 @@ function BottomNav({ path }: { path: string }) {
   const { data: unreadNotifs = 0 } = useQuery({
     queryKey: ["unread-count"],
     queryFn: async () => {
-      const { count } = await supabase.from("notifications").select("*", { count: "exact", head: true }).eq("read", false);
+      const { data: me } = await supabase.auth.getUser();
+      if (!me.user) return 0;
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", me.user.id)
+        .eq("read", false);
       return count ?? 0;
     },
     refetchInterval: 60_000,

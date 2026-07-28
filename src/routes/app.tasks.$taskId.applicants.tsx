@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { EmptyState } from "@/components/intask/EmptyState";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { naira } from "@/lib/format";
 import { ArrowLeft, Inbox, Star, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ function ApplicantsPage() {
   const { taskId } = Route.useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const [tab, setTab] = useState<"pending" | "accepted" | "rejected" | "all">("pending");
 
   const { data: me } = useQuery({
     queryKey: ["me-id"],
@@ -161,10 +163,21 @@ function ApplicantsPage() {
     },
     onError: (e: any) => toast.error(e.message ?? "Couldn't dismiss"),
   });
+  const pendingApps = (apps ?? []).filter((a: any) => a.status === "pending");
+  const acceptedApps = (apps ?? []).filter((a: any) => a.status === "accepted");
+  const rejectedApps = (apps ?? []).filter((a: any) => a.status === "rejected");
+  const visibleApps = tab === "all"
+    ? apps ?? []
+    : tab === "pending"
+      ? pendingApps
+      : tab === "accepted"
+        ? acceptedApps
+        : rejectedApps;
+
   return (
-    <div className="mx-auto max-w-md pb-10">
+    <div className="mx-auto max-w-2xl pb-10">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card">
+        <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
       </header>
@@ -179,22 +192,38 @@ function ApplicantsPage() {
 
 
       {task && (
-        <div className="px-4 pt-4">
+        <div className="mx-4 mt-2 rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
           <h1 className="text-xl font-semibold tracking-tight">{task.title}</h1>
           <p className="mt-1 text-lg font-semibold text-success">{task.budget_negotiable ? "Negotiable" : naira(task.budget)}</p>
         </div>
       )}
 
       <div className="px-4 pt-6">
-        <h2 className="text-sm font-semibold text-foreground">{apps?.length ?? 0} applicant{apps?.length === 1 ? "" : "s"}</h2>
+        <div className="rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">{apps?.length ?? 0} applicant{apps?.length === 1 ? "" : "s"}</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">Review pending applicants first, then check accepted and dismissed history.</p>
+        </div>
         {isLoading && <div className="mt-4 h-32 animate-pulse rounded-xl border border-border bg-card" />}
         {!isLoading && (apps?.length ?? 0) === 0 && (
           <div className="mt-4"><EmptyState icon={Inbox} title="No applicants yet" description="Students are being notified. Check back soon." /></div>
         )}
 
-        <ul className="mt-4 space-y-3">
-          {apps?.map((a) => (
-            <li key={a.id} className="rounded-xl border border-border bg-card p-4 shadow-card cursor-pointer hover:border-primary/50 transition-colors" onClick={() => nav({ to: "/app/profile/$userId", params: { userId: a.student_id } })}>
+        {!isLoading && (apps?.length ?? 0) > 0 && (
+          <Tabs value={tab} onValueChange={(value) => setTab(value as "pending" | "accepted" | "rejected" | "all")}>
+            <TabsList className="mt-4 grid h-auto w-full grid-cols-4">
+              <TabsTrigger value="pending" className="py-2">Pending ({pendingApps.length})</TabsTrigger>
+              <TabsTrigger value="accepted" className="py-2">Accepted ({acceptedApps.length})</TabsTrigger>
+              <TabsTrigger value="rejected" className="py-2">Dismissed ({rejectedApps.length})</TabsTrigger>
+              <TabsTrigger value="all" className="py-2">All</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={tab} className="mt-4">
+              {visibleApps.length === 0 ? (
+                <EmptyState icon={Inbox} title="No applicants in this group" description="Switch tabs to review other applicants." />
+              ) : (
+                <ul className="space-y-3">
+                  {visibleApps.map((a) => (
+            <li key={a.id} className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md" onClick={() => nav({ to: "/app/profile/$userId", params: { userId: a.student_id } })}>
               <div className="flex items-start gap-3">
                 <InitialsAvatar name={a.student?.full_name} size={44} />
                 <div className="min-w-0 flex-1">
@@ -273,8 +302,12 @@ function ApplicantsPage() {
                 )}
               </div>
             </li>
-          ))}
-        </ul>
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
       </>)}
     </div>

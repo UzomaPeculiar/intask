@@ -9,7 +9,7 @@ export const getPaystackPublicKey = createServerFn({ method: "GET" }).handler(as
 
 export const initEscrow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { taskId: string }) => input)
+  .validator((input: { taskId: string }) => input)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
@@ -23,10 +23,11 @@ export const initEscrow = createServerFn({ method: "POST" })
     if (task.poster_id !== userId) {
       throw new Error("Only the poster can pay for this task");
     }
-    if (!task.matched_student_id) {throw new Error("Accept a student first");
+    if (!task.matched_student_id) {
+      throw new Error("Accept a student first");
     }
-    if (!["matched", "open"].includes(task.status)) {
-      throw new Error("This task is already paid for or in progress");
+    if (task.status !== "matched") {
+      throw new Error("Only matched tasks can be funded");
     }
     if (!task.budget || Number(task.budget) <= 0) {
       throw new Error("Task budget is not set");
@@ -188,7 +189,7 @@ export const initEscrow = createServerFn({ method: "POST" })
 
 export const verifyEscrow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { reference: string }) => input)
+  .validator((input: { reference: string }) => input)
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const res = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(data.reference)}`, {
@@ -238,7 +239,7 @@ export const verifyEscrow = createServerFn({ method: "POST" })
 
 export const releaseEscrow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { taskId: string }) => input)
+  .validator((input: { taskId: string }) => input)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: task, error } = await supabase
@@ -259,6 +260,18 @@ export const releaseEscrow = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!tx || tx.status !== "in_escrow") throw new Error("No escrow to release");
 
+    const payout = Number(tx.amount) - Number(tx.platform_fee);
+    const creditRes = await supabaseAdmin.rpc("credit_wallet", {
+      p_user_id: tx.student_id,
+      p_amount: payout,
+      p_description: `Payment for task ${task.id}`,
+      p_reference: `ESCROW_RELEASE_${task.id}`,
+    });
+
+    if (creditRes.error || !creditRes.data?.success) {
+      throw new Error(creditRes.error?.message ?? creditRes.data?.error ?? "Could not credit student wallet");
+    }
+
     await supabaseAdmin.from("transactions").update({ status: "released" }).eq("id", tx.id);
     await supabaseAdmin
       .from("tasks")
@@ -278,7 +291,6 @@ export const releaseEscrow = createServerFn({ method: "POST" })
         .eq("user_id", tx.student_id);
     }
 
-    const payout = Number(tx.amount) - Number(tx.platform_fee);
     await supabaseAdmin.from("notifications").insert([
       {
         user_id: tx.student_id,
@@ -293,7 +305,7 @@ export const releaseEscrow = createServerFn({ method: "POST" })
 
 export const requestRevision = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { taskId: string; notes: string }) => input)
+  .validator((input: { taskId: string; notes: string }) => input)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: task } = await supabase
@@ -317,4 +329,184 @@ export const requestRevision = createServerFn({ method: "POST" })
     });
 
     return { ok: true };
+  });
+
+export const verifyWalletFunding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { reference: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const reference = data.reference?.trim();
+    if (!reference) throw new Error("Funding reference is required");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let verifiedPayload: any | null = null;
+
+    const { data: existingFunding, error: fErr } = await supabaseAdmin
+      .from("wallet_funding")
+      .select("id, user_id, amount, status, webhook_processed")
+      .eq("paystack_reference", reference)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (fErr) throw new Error(fErr.message);
+
+    let funding = existingFunding;
+
+    if (!funding) {
+      if (!process.env.PAYSTACK_SECRET_KEY) {
+        return {
+          ok: false,
+          pending: false,
+          message: "Wallet verification is not configured on the app server (missing PAYSTACK_SECRET_KEY).",
+        };
+      }
+
+      const verifyRes = await fetch(
+        `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
+        },
+      );
+
+      const verifyData = (await verifyRes.json()) as any;
+      verifiedPayload = verifyData;
+
+      if (!verifyRes.ok || !verifyData?.status) {
+        return { ok: false, pending: true, message: verifyData?.message ?? "Verification is still pending" };
+      }
+
+      if (verifyData?.data?.status !== "success") {
+        return { ok: false, pending: true, message: `Payment status: ${verifyData?.data?.status ?? "pending"}` };
+      }
+
+      const metadataUserId = verifyData?.data?.metadata?.user_id;
+      if (metadataUserId !== userId) {
+        return { ok: false, pending: false, message: "This funding reference does not belong to your account." };
+      }
+
+      const amount = Number(verifyData?.data?.amount ?? 0) / 100;
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error("Invalid verified amount returned from Paystack");
+      }
+
+      const { data: walletRow, error: walletErr } = await supabaseAdmin
+        .from("wallets")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (walletErr) throw new Error(walletErr.message);
+
+      let walletId = walletRow?.id;
+      if (!walletId) {
+        const { data: createdWallet, error: createWalletErr } = await supabaseAdmin
+          .from("wallets")
+          .insert({ user_id: userId, balance: 0, total_earned: 0, total_withdrawn: 0 })
+          .select("id")
+          .single();
+        if (createWalletErr || !createdWallet?.id) {
+          throw new Error(createWalletErr?.message ?? "Could not create wallet record");
+        }
+        walletId = createdWallet.id;
+      }
+
+      const { data: insertedFunding, error: insertFundingErr } = await supabaseAdmin
+        .from("wallet_funding")
+        .insert({
+          user_id: userId,
+          wallet_id: walletId,
+          amount,
+          paystack_reference: reference,
+          status: "pending",
+          webhook_processed: false,
+        })
+        .select("id, user_id, amount, status, webhook_processed")
+        .single();
+
+      if (insertFundingErr) {
+        const { data: retryFunding, error: retryErr } = await supabaseAdmin
+          .from("wallet_funding")
+          .select("id, user_id, amount, status, webhook_processed")
+          .eq("paystack_reference", reference)
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (retryErr || !retryFunding) {
+          throw new Error(insertFundingErr.message);
+        }
+        funding = retryFunding;
+      } else {
+        funding = insertedFunding;
+      }
+    }
+
+    if (funding.status === "completed" || funding.webhook_processed) {
+      return { ok: true, alreadyProcessed: true, credited: true, amount: Number(funding.amount) };
+    }
+
+    if (!process.env.PAYSTACK_SECRET_KEY) {
+      return {
+        ok: false,
+        pending: false,
+        message: "Wallet verification is not configured on the app server (missing PAYSTACK_SECRET_KEY).",
+      };
+    }
+
+    const verifyData =
+      verifiedPayload ??
+      ((await (
+        await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
+        })
+      ).json()) as any);
+
+    if (!verifyData?.status) {
+      return { ok: false, pending: true, message: verifyData?.message ?? "Verification is still pending" };
+    }
+
+    if (verifyData?.data?.status !== "success") {
+      return { ok: false, pending: true, message: `Payment status: ${verifyData?.data?.status ?? "pending"}` };
+    }
+
+    const amount = Number(verifyData?.data?.amount ?? 0) / 100;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Invalid verified amount returned from Paystack");
+    }
+
+    const expectedAmount = Number(funding.amount);
+    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+      throw new Error("Invalid funding amount in record");
+    }
+    if (Math.abs(amount - expectedAmount) > 0.01) {
+      throw new Error("Verified amount does not match funding request");
+    }
+
+    const creditRes = await supabaseAdmin.rpc("credit_wallet", {
+      p_user_id: funding.user_id,
+      p_amount: expectedAmount,
+      p_description: "Wallet top-up via Paystack",
+      p_reference: reference,
+    });
+
+    const rpcSaysFailure = creditRes.data && creditRes.data.success === false;
+    if (creditRes.error || rpcSaysFailure) {
+      throw new Error(creditRes.error?.message ?? creditRes.data?.error ?? "Could not credit wallet");
+    }
+
+    await supabaseAdmin
+      .from("wallet_funding")
+      .update({ status: "completed", webhook_processed: true, updated_at: new Date().toISOString() })
+      .eq("id", funding.id);
+
+    await supabaseAdmin.from("notifications").insert({
+      user_id: funding.user_id,
+      type: "wallet_funded",
+      message: `₦${amount.toLocaleString("en-NG")} has been added to your InTask wallet.`,
+      link: "/app/wallet",
+    });
+
+    return { ok: true, credited: true, amount: expectedAmount };
   });

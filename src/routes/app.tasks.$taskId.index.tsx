@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { naira, shortDate } from "@/lib/format";
@@ -74,19 +75,21 @@ function TaskDetail() {
   const isOwn = me?.id === task.poster_id;
 
   return (
-    <div className="mx-auto max-w-md pb-32">
+    <div className="mx-auto max-w-2xl pb-32">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card">
+        <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
       </header>
 
-      <div className="px-4 pt-4">
-        <h1 className="text-2xl font-semibold leading-tight tracking-tight">{task.title}</h1>
-        <p className="mt-2 text-3xl font-semibold text-success">{task.budget_negotiable ? "Open" : naira(task.budget)}</p>
-        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-          <ShieldCheck className="size-3 text-success" /> Held safely until work is approved
-        </p>
+      <div className="space-y-5 px-4 pt-4">
+        <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+          <h1 className="text-2xl font-semibold leading-tight tracking-tight">{task.title}</h1>
+          <p className="mt-2 text-3xl font-semibold text-success">{task.budget_negotiable ? "Open" : naira(task.budget)}</p>
+          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            <ShieldCheck className="size-3 text-success" /> Held safely until work is approved
+          </p>
+        </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">{task.category}</span>
@@ -100,38 +103,46 @@ function TaskDetail() {
           </span>
         </div>
 
-        <section className="mt-6">
+        <section className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-foreground">About this task</h2>
           <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{task.description}</p>
         </section>
 
-        {task.skills_needed?.length > 0 && (
-          <section className="mt-6">
-            <h2 className="text-sm font-semibold text-foreground">Skills needed</h2>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {task.skills_needed.map((s: string) => (
-                <span key={s} className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">{s}</span>
-              ))}
-            </div>
-          </section>
-        )}
+        <section className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">Task details</h2>
+          <Accordion type="multiple" className="mt-1 w-full">
+            {task.skills_needed?.length > 0 && (
+              <AccordionItem value="skills" className="border-border/70">
+                <AccordionTrigger className="py-3">Skills needed</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-wrap gap-1.5">
+                    {task.skills_needed.map((s: string) => (
+                      <span key={s} className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">{s}</span>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
 
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-foreground">Posted by</h2>
-          <Link to="/app/profile/$userId" params={{ userId: task.poster_id }} className="mt-2 flex items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-card">
-            <InitialsAvatar name={task.poster?.full_name} size={40} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-foreground">{task.poster?.full_name}</p>
-              <div className="mt-0.5"><VerifiedBadge role={task.poster?.role} verified={true} /></div>
-            </div>
-          </Link>
+            <AccordionItem value="poster" className="border-border/70">
+              <AccordionTrigger className="py-3">Posted by</AccordionTrigger>
+              <AccordionContent>
+                <Link to="/app/profile/$userId" params={{ userId: task.poster_id }} className="flex items-center gap-3 rounded-2xl border border-border/80 bg-background/70 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                  <InitialsAvatar name={task.poster?.full_name} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-foreground">{task.poster?.full_name}</p>
+                    <div className="mt-0.5"><VerifiedBadge role={task.poster?.role} verified={true} /></div>
+                  </div>
+                </Link>
+                {task.poster_id !== me?.id && (
+                  <div className="mt-3">
+                    <ReportButton reportedId={task.poster_id} reportedName={task.poster?.full_name ?? "this poster"} />
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </section>
-
-        {task.poster_id !== me?.id && (
-          <div className="mt-2">
-            <ReportButton reportedId={task.poster_id} reportedName={task.poster?.full_name ?? "this poster"} />
-          </div>
-        )}
       </div>
 
       {(task as any)?.is_team_task && (
@@ -139,7 +150,7 @@ function TaskDetail() {
       )}
 
       {(task as any).is_team_task && (
-        <div className="mb-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+        <div className="mx-4 mb-3 rounded-2xl border border-primary/30 bg-primary/10 px-3 py-3 shadow-sm">
           <p className="text-sm font-medium text-primary">
             👥 Team task — {(task as any).team_size} students needed
           </p>

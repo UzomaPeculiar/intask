@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ArrowLeft, Clock, Star, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -100,50 +101,44 @@ function MentorshipDetailPage() {
   const isOwnService = me?.id === service.mentor_id;
 
   return (
-    <div className="mx-auto max-w-md pb-10">
+    <div className="mx-auto max-w-2xl pb-10">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card">
+        <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
       </header>
 
-      <div className="px-4 pt-4">
-        <div className="flex items-start gap-3">
-          <InitialsAvatar name={service.mentor?.full_name} size={56} />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-foreground text-lg">{service.mentor?.full_name}</p>
-            <VerifiedBadge role="alumni" />
-            {service.mentor_profile?.university && (
-              <p className="text-xs text-muted-foreground mt-0.5">{service.mentor_profile.university}</p>
-            )}
-            {(service.mentor_profile?.rating_count ?? 0) > 0 && (
-              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                <Star className="size-3 fill-warning text-warning" />
-                {Number(service.mentor_profile.rating_average).toFixed(1)} · {service.mentor_profile.rating_count} reviews
-              </p>
-            )}
+      <div className="space-y-5 px-4 pt-4">
+        <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <InitialsAvatar name={service.mentor?.full_name} size={56} />
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-semibold text-foreground">{service.mentor?.full_name}</p>
+              <VerifiedBadge role="alumni" />
+              {service.mentor_profile?.university && (
+                <p className="mt-0.5 text-xs text-muted-foreground">{service.mentor_profile.university}</p>
+              )}
+              {(service.mentor_profile?.rating_count ?? 0) > 0 && (
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Star className="size-3 fill-warning text-warning" />
+                  {Number(service.mentor_profile.rating_average).toFixed(1)} · {service.mentor_profile.rating_count} reviews
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <h1 className="text-xl font-semibold text-foreground">{service.title}</h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{service.description}</p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Clock className="size-4" /> {service.duration_minutes} min session
+            </span>
+            <span className="rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">{service.category}</span>
           </div>
         </div>
-
-        <div className="mt-5">
-          <h1 className="text-xl font-semibold text-foreground">{service.title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{service.description}</p>
-        </div>
-
-        <div className="mt-4 flex items-center gap-3 flex-wrap">
-          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Clock className="size-4" /> {service.duration_minutes} min session
-          </span>
-          <span className="rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground">{service.category}</span>
-        </div>
-
-        {service.mentor_profile?.skills?.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1">
-            {service.mentor_profile.skills.slice(0, 5).map((s: string) => (
-              <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">{s}</span>
-            ))}
-          </div>
-        )}
 
         <div className="mt-6 rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between">
@@ -206,22 +201,42 @@ function MentorshipDetailPage() {
           </p>
         </div>
 
-        {reviews && reviews.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-sm font-semibold mb-3">Reviews</h2>
-            <div className="space-y-3">
-              {reviews.map((r: any, i) => (
-                <div key={i} className="rounded-xl border border-border bg-card p-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">{r.reviewer?.full_name ?? "Anonymous"}</p>
-                    <span className="text-sm text-warning">{"★".repeat(r.rating)}</span>
+        <section className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">More details</h2>
+          <Accordion type="multiple" className="mt-1 w-full">
+            {service.mentor_profile?.skills?.length > 0 && (
+              <AccordionItem value="skills" className="border-border/70">
+                <AccordionTrigger className="py-3">Mentor skills</AccordionTrigger>
+                <AccordionContent>
+                  <div className="flex flex-wrap gap-1">
+                    {service.mentor_profile.skills.slice(0, 8).map((s: string) => (
+                      <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">{s}</span>
+                    ))}
                   </div>
-                  {r.comment && <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {reviews && reviews.length > 0 && (
+              <AccordionItem value="reviews" className="border-border/70">
+                <AccordionTrigger className="py-3">Recent reviews</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-3">
+                    {reviews.map((r: any, i) => (
+                      <div key={i} className="rounded-xl border border-border bg-card p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{r.reviewer?.full_name ?? "Anonymous"}</p>
+                          <span className="text-sm text-warning">{"★".repeat(r.rating)}</span>
+                        </div>
+                        {r.comment && <p className="mt-1 text-sm text-muted-foreground">{r.comment}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+          </Accordion>
+        </section>
       </div>
     </div>
   );

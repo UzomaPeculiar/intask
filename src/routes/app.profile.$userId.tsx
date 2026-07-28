@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
@@ -33,7 +34,6 @@ function ProfilePage() {
   const [timedOut, setTimedOut] = useState(false);
   const targetId = userId === "me" ? user?.id : userId;
   const isOwn = !!(user?.id && targetId && user.id === targetId);
-  console.log("isOwn:", isOwn, "user:", user?.id, "targetId:", targetId);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setTimedOut(true), 3000);
@@ -170,7 +170,7 @@ function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-md pb-10">
+    <div className="mx-auto max-w-2xl pb-10">
       <header className="flex items-center justify-between gap-2 px-4 pt-4">
         {fromBottomNav ? (
           <div />
@@ -323,50 +323,76 @@ function ProfilePage() {
         <EditPanel profile={profile} student={student} company={company} onDone={() => { setEditing(false); qc.invalidateQueries({ queryKey: ["profile", targetId] }); }} />
       )}
 
-      {isStudentOrAlumni && student && (student.skills?.length ?? 0) > 0 && (
+      {!editing && (
         <section className="px-4 pt-6">
-          <h2 className="text-sm font-semibold">Skills</h2>
-          {skillBadges && skillBadges.length > 0 && (
-            <div className="mt-2 mb-3">
-              <p className="text-xs text-muted-foreground mb-2">Verified badges</p>
-              <div className="flex flex-wrap gap-2">
-                {skillBadges.map((b: any) => (
-                  <span key={b.skill} className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success">
-                    <Award className="size-3" /> {b.skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          <Tabs defaultValue="overview">
+            <TabsList className="grid h-auto w-full grid-cols-3">
+              <TabsTrigger value="overview" className="py-2.5">Overview</TabsTrigger>
+              <TabsTrigger value="reviews" className="py-2.5">Reviews</TabsTrigger>
+              <TabsTrigger value="activity" className="py-2.5">Activity</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6 pt-3">
+              {isStudentOrAlumni && student && (student.skills?.length ?? 0) > 0 && (
+                <section>
+                  <h2 className="text-sm font-semibold">Skills</h2>
+                  {skillBadges && skillBadges.length > 0 && (
+                    <div className="mb-3 mt-2">
+                      <p className="mb-2 text-xs text-muted-foreground">Verified badges</p>
+                      <div className="flex flex-wrap gap-2">
+                        {skillBadges.map((b: any) => (
+                          <span key={b.skill} className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success">
+                            <Award className="size-3" /> {b.skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {student.skills?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {student.skills.map((s: string) => (
+                        <span key={s} className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">{s}</span>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {isStudentOrAlumni && targetId && (
+                <ProjectsSection userId={targetId} isOwn={!!isOwn} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="reviews" className="pt-3">
+              <section>
+                <h2 className="text-sm font-semibold">Reviews</h2>
+                {reviews.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">No reviews yet.</p>
+                ) : (
+                  <ul className="mt-3 space-y-3">
+                    {reviews.map((r) => (
+                      <li key={r.id} className="rounded-xl border border-border bg-card p-3 shadow-card">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{r.reviewer?.full_name ?? "Anonymous"}</p>
+                          <span className="inline-flex items-center gap-0.5 text-sm">
+                            {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-warning text-warning" />)}
+                          </span>
+                        </div>
+                        {r.task?.title && <p className="mt-0.5 text-xs text-muted-foreground">{r.task.title}</p>}
+                        {r.comment && <p className="mt-2 text-sm text-foreground/90">{r.comment}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </TabsContent>
+
+            <TabsContent value="activity" className="pt-3">
+              <PostedTasksSection tasks={postedTasks ?? []} />
+            </TabsContent>
+          </Tabs>
         </section>
       )}
-
-      {isStudentOrAlumni && targetId && (
-        <ProjectsSection userId={targetId} isOwn={!!isOwn} />
-      )}
-
-      <section className="px-4 pt-6">
-        <h2 className="text-sm font-semibold">Reviews</h2>
-        {reviews.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">No reviews yet.</p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {reviews.map((r) => (
-              <li key={r.id} className="rounded-xl border border-border bg-card p-3 shadow-card">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">{r.reviewer?.full_name ?? "Anonymous"}</p>
-                  <span className="inline-flex items-center gap-0.5 text-sm">
-                    {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-warning text-warning" />)}
-                  </span>
-                </div>
-                {r.task?.title && <p className="mt-0.5 text-xs text-muted-foreground">{r.task.title}</p>}
-                {r.comment && <p className="mt-2 text-sm text-foreground/90">{r.comment}</p>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      <PostedTasksSection tasks={postedTasks ?? []} />
 
       <Sheet open={upgradeOpen} onOpenChange={setUpgradeOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl">
@@ -628,7 +654,7 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
   }
 
   return (
-    <section className="px-4 pt-6">
+    <section className="pt-2">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Projects</h2>
         {isOwn && !adding && (
@@ -728,9 +754,11 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
 }
 
 function PostedTasksSection({ tasks }: { tasks: any[] }) {
-  if (!tasks || tasks.length === 0) return null;
+  if (!tasks || tasks.length === 0) {
+    return <p className="text-sm text-muted-foreground">No posted tasks yet.</p>;
+  }
   return (
-    <section className="px-4 pt-6">
+    <section className="pt-2">
       <h2 className="text-sm font-semibold">Posted tasks</h2>
       <ul className="mt-3 space-y-2">
         {tasks.map((t) => (

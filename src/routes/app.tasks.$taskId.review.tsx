@@ -37,18 +37,7 @@ function ReviewPage() {
     if (!task || !meId) return;
     setBusy(true);
     try {
-      const revieweeId = meId === task.poster_id ? task.matched_student_id : task.poster_id;
-      if (!revieweeId) {
-        throw new Error("Nothing to release to yet");
-      }
-
       const r = await release({ data: { taskId } });
-      await (supabase as any).rpc("credit_wallet", {
-        p_user_id: revieweeId,
-        p_amount: Number(task.budget) * 0.92,
-        p_description: `Payment for "${task.title}"`,
-        p_reference: taskId,
-      });
       toast.success(`Released — student gets ${naira(r.payout)}`);
       nav({ to: "/app/tasks/$taskId/rate", params: { taskId } });
     } catch (e: any) {

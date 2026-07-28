@@ -55,30 +55,52 @@ serve(async (req) => {
     }
 
     // Get or create wallet
-    const { data: wallet } = await supabase
+    const { data: wallet, error: walletLookupError } = await supabase
       .from("wallets")
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle() as any;
 
+    if (walletLookupError) {
+      return new Response(
+        JSON.stringify({ error: `Could not access wallet: ${walletLookupError.message}` }),
+        { status: 500, headers: corsHeaders },
+      );
+    }
+
     let walletId = wallet?.id;
     if (!walletId) {
-      const { data: newWallet } = await supabase
+      const { data: newWallet, error: createWalletError } = await supabase
         .from("wallets")
         .insert({ user_id: user.id, balance: 0, total_earned: 0, total_withdrawn: 0 })
         .select("id")
         .single() as any;
+
+      if (createWalletError || !newWallet?.id) {
+        return new Response(
+          JSON.stringify({ error: createWalletError?.message ?? "Could not create wallet" }),
+          { status: 500, headers: corsHeaders },
+        );
+      }
+
       walletId = newWallet?.id;
     }
 
     // Record funding attempt
-    await supabase.from("wallet_funding").insert({
+    const { error: fundingInsertError } = await supabase.from("wallet_funding").insert({
       user_id: user.id,
       wallet_id: walletId,
       amount,
       paystack_reference: reference,
       status: "pending",
     });
+
+    if (fundingInsertError) {
+      return new Response(
+        JSON.stringify({ error: `Could not track funding request: ${fundingInsertError.message}` }),
+        { status: 500, headers: corsHeaders },
+      );
+    }
 
     return new Response(JSON.stringify({
       success: true,

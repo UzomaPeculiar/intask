@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -17,7 +18,12 @@ export const Route = createFileRoute("/app/wallet")({
   component: WalletPage,
 });
 
-const SUPABASE_FUNCTIONS_URL = `https://tjepeveyluwxohhbsqod.supabase.co/functions/v1`;
+const SUPABASE_BASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ??
+  ((import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined)
+    ? `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`
+    : "");
+const SUPABASE_FUNCTIONS_URL = `${SUPABASE_BASE_URL.replace(/\/$/, "")}/functions/v1`;
 const WITHDRAWAL_FEE = 50;
 
 function WalletPage() {
@@ -34,6 +40,8 @@ function WalletPage() {
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
   const [verifyingAccount, setVerifyingAccount] = useState(false);
+  const [pendingFundingRef, setPendingFundingRef] = useState<string | null>(null);
+  const [walletTab, setWalletTab] = useState<"overview" | "activity">("overview");
 
   const { data: me } = useQuery({
     queryKey: ["me-id"],
@@ -221,6 +229,7 @@ function WalletPage() {
       if (!me) throw new Error("Not signed in");
       const amount = Number(fundAmount);
       if (amount < 100) throw new Error("Minimum funding amount is ₦100");
+      if (!SUPABASE_BASE_URL) throw new Error("Supabase URL is not configured");
 
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
@@ -241,11 +250,109 @@ function WalletPage() {
     onSuccess: (data) => {
       setFundOpen(false);
       window.open(data.authorization_url, "_blank");
-      toast.success("Complete your payment in the new tab. Your wallet will be credited automatically.");
-      setTimeout(() => { refetchWallet(); qc.invalidateQueries({ queryKey: ["wallet-transactions"] }); }, 5000);
+      localStorage.setItem("pendingWalletFundingRef", data.reference);
+      setPendingFundingRef(data.reference);
+      toast.success("Complete your payment in the new tab. We'll verify and credit your wallet automatically.");
+      setTimeout(() => { refetchWallet(); qc.invalidateQueries({ queryKey: ["wallet-transactions"] }); }, 3000);
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  useEffect(() => {
+    if (pendingFundingRef) return;
+    const storedRef = localStorage.getItem("pendingWalletFundingRef");
+    if (storedRef) setPendingFundingRef(storedRef);
+  }, [pendingFundingRef]);
+
+  useEffect(() => {
+    if (!pendingFundingRef || !me?.id) return;
+
+    let attempts = 0;
+    let stopped = false;
+    let hadVerifyError = false;
+    let notifiedLongWait = false;
+
+    const timer = window.setInterval(async () => {
+      if (stopped) return;
+      attempts += 1;
+      try {
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        if (!token) throw new Error("Session expired. Please sign in again.");
+
+        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/verify-wallet-funding`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reference: pendingFundingRef }),
+        });
+
+        const result = await res.json();
+
+        if (!res.ok || result?.success === false) {
+          if (result?.pending) {
+            if (!notifiedLongWait && attempts >= 25) {
+              notifiedLongWait = true;
+              toast.message(result?.message ?? "Payment received. Verification is still in progress and can take a few minutes.");
+            }
+          } else {
+            hadVerifyError = true;
+            stopped = true;
+            window.clearInterval(timer);
+            toast.error(result?.error ?? result?.message ?? "Wallet funding verification failed");
+            return;
+          }
+        }
+
+        if (result?.credited || result?.alreadyProcessed) {
+          stopped = true;
+          window.clearInterval(timer);
+          localStorage.removeItem("pendingWalletFundingRef");
+          setPendingFundingRef(null);
+          refetchWallet();
+          qc.invalidateQueries({ queryKey: ["wallet-transactions"] });
+          toast.success(`Wallet funded successfully: ₦${Number(result.amount ?? 0).toLocaleString("en-NG")}`);
+          return;
+        }
+
+        if (result && result.pending === false && result.message) {
+          hadVerifyError = true;
+          stopped = true;
+          window.clearInterval(timer);
+          toast.error(result.message);
+          return;
+        }
+
+        // Keep waiting for pending verifications; some settlements are delayed.
+        if (!notifiedLongWait && attempts >= 25) {
+          notifiedLongWait = true;
+          toast.message("Payment received. Verification is still in progress and can take a few minutes.");
+        }
+      } catch (error: any) {
+        hadVerifyError = true;
+        if (attempts >= 3) {
+          stopped = true;
+          window.clearInterval(timer);
+          toast.error(error?.message ?? "Could not verify wallet funding yet. Please refresh in a moment.");
+        }
+      }
+
+      if (attempts >= 75) {
+        stopped = true;
+        window.clearInterval(timer);
+        if (!hadVerifyError) {
+          toast.message("Still verifying your wallet top-up. You can keep using the app and this page will retry when reopened.");
+        }
+      }
+    }, 4000);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [pendingFundingRef, me?.id, qc, refetchWallet]);
 
   const withdraw = useMutation({
     mutationFn: async () => {
@@ -289,7 +396,7 @@ function WalletPage() {
   const defaultBank = bankAccounts?.find((b: any) => b.is_default) ?? bankAccounts?.[0];
 
   return (
-    <div className="mx-auto max-w-md pb-10">
+    <div className="mx-auto max-w-2xl pb-10">
       <header className="flex items-center justify-between px-4 pt-4">
         <div className="flex items-center gap-2">
           <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card">
@@ -302,28 +409,33 @@ function WalletPage() {
         </button>
       </header>
 
-      <div className="px-4 pt-4 space-y-4">
-        {/* Balance card */}
-        <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
-          <div className="flex items-center gap-2 mb-1">
-            <Wallet className="size-5 opacity-80" />
-            <p className="text-sm opacity-80">Available balance</p>
-          </div>
-          <p className="text-4xl font-bold">₦{Number(wallet?.balance ?? 0).toLocaleString("en-NG")}</p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-white/15 p-3">
-              <p className="text-xs opacity-70">Total earned</p>
-              <p className="text-sm font-semibold mt-0.5">₦{Number(wallet?.total_earned ?? 0).toLocaleString("en-NG")}</p>
-            </div>
-            <div className="rounded-xl bg-white/15 p-3">
-              <p className="text-xs opacity-70">Total withdrawn</p>
-              <p className="text-sm font-semibold mt-0.5">₦{Number(wallet?.total_withdrawn ?? 0).toLocaleString("en-NG")}</p>
-            </div>
-          </div>
-        </div>
+      <div className="px-4 pt-4">
+        <Tabs value={walletTab} onValueChange={(value) => setWalletTab(value as "overview" | "activity")}>
+          <TabsList className="grid h-auto w-full grid-cols-2">
+            <TabsTrigger value="overview" className="py-2.5">Overview</TabsTrigger>
+            <TabsTrigger value="activity" className="py-2.5">Activity</TabsTrigger>
+          </TabsList>
 
-        {/* Action buttons */}
-        <div className="grid grid-cols-2 gap-3">
+          <TabsContent value="overview" className="space-y-4 pt-3">
+            <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
+              <div className="mb-1 flex items-center gap-2">
+                <Wallet className="size-5 opacity-80" />
+                <p className="text-sm opacity-80">Available balance</p>
+              </div>
+              <p className="text-4xl font-bold">₦{Number(wallet?.balance ?? 0).toLocaleString("en-NG")}</p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-white/15 p-3">
+                  <p className="text-xs opacity-70">Total earned</p>
+                  <p className="mt-0.5 text-sm font-semibold">₦{Number(wallet?.total_earned ?? 0).toLocaleString("en-NG")}</p>
+                </div>
+                <div className="rounded-xl bg-white/15 p-3">
+                  <p className="text-xs opacity-70">Total withdrawn</p>
+                  <p className="mt-0.5 text-sm font-semibold">₦{Number(wallet?.total_withdrawn ?? 0).toLocaleString("en-NG")}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
           <Sheet open={fundOpen} onOpenChange={setFundOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -447,116 +559,116 @@ function WalletPage() {
               </div>
             </SheetContent>
           </Sheet>
-        </div>
-
-        {/* Pending withdrawals */}
-        {pendingWithdrawals.length > 0 && (
-          <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
-            <p className="text-sm font-medium text-warning flex items-center gap-1">
-              <Clock className="size-4" /> {pendingWithdrawals.length} pending withdrawal{pendingWithdrawals.length === 1 ? "" : "s"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              ₦{pendingWithdrawals.reduce((s: number, w: any) => s + Number(w.net_amount ?? w.amount), 0).toLocaleString("en-NG")} being processed
-            </p>
-          </div>
-        )}
-
-        {/* Bank accounts */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-foreground">Bank accounts</h2>
-            <button onClick={() => setAddBankOpen(true)} className="text-xs text-primary hover:underline flex items-center gap-1">
-              <Plus className="size-3" /> Add
-            </button>
-          </div>
-
-          {(!bankAccounts || bankAccounts.length === 0) && (
-            <div className="rounded-xl border border-dashed border-border p-4 text-center">
-              <Building2 className="size-6 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No bank accounts yet</p>
-              <Button size="sm" variant="outline" className="mt-2" onClick={() => setAddBankOpen(true)}>Add bank account</Button>
             </div>
-          )}
 
-          <div className="space-y-2">
-            {bankAccounts?.map((b: any) => (
-              <div key={b.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                <div className="grid size-9 place-items-center rounded-lg bg-muted shrink-0">
-                  <Building2 className="size-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">{b.account_name}</p>
-                  <p className="text-xs text-muted-foreground">{b.bank_name} · {b.account_number}</p>
-                  {b.is_default && <span className="text-[10px] font-medium text-primary">Default</span>}
-                </div>
-                <div className="flex gap-1">
-                  {!b.is_default && (
-                    <button onClick={() => setDefaultBank.mutate(b.id)} className="text-xs text-muted-foreground hover:text-primary px-2 py-1">Set default</button>
-                  )}
-                  <button onClick={() => removeBank.mutate(b.id)} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-destructive">
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </div>
+            {pendingWithdrawals.length > 0 && (
+              <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
+                <p className="flex items-center gap-1 text-sm font-medium text-warning">
+                  <Clock className="size-4" /> {pendingWithdrawals.length} pending withdrawal{pendingWithdrawals.length === 1 ? "" : "s"}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  ₦{pendingWithdrawals.reduce((s: number, w: any) => s + Number(w.net_amount ?? w.amount), 0).toLocaleString("en-NG")} being processed
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
+            )}
 
-        {/* Withdrawal history */}
-        {withdrawals && withdrawals.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold text-foreground mb-3">Withdrawal history</h2>
-            <div className="space-y-2">
-              {withdrawals.map((w: any) => (
-                <div key={w.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`grid size-9 place-items-center rounded-full shrink-0 ${w.status === "completed" ? "bg-success/15" : w.status === "pending" ? "bg-warning/15" : "bg-destructive/15"}`}>
-                      {w.status === "completed" ? <CheckCircle2 className="size-4 text-success" /> : w.status === "pending" ? <Clock className="size-4 text-warning" /> : <AlertTriangle className="size-4 text-destructive" />}
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-foreground">Bank accounts</h2>
+                <button onClick={() => setAddBankOpen(true)} className="flex items-center gap-1 text-xs text-primary hover:underline">
+                  <Plus className="size-3" /> Add
+                </button>
+              </div>
+
+              {(!bankAccounts || bankAccounts.length === 0) && (
+                <div className="rounded-xl border border-dashed border-border p-4 text-center">
+                  <Building2 className="mx-auto mb-2 size-6 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">No bank accounts yet</p>
+                  <Button size="sm" variant="outline" className="mt-2" onClick={() => setAddBankOpen(true)}>Add bank account</Button>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {bankAccounts?.map((b: any) => (
+                  <div key={b.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                    <div className="grid size-9 place-items-center rounded-lg bg-muted shrink-0">
+                      <Building2 className="size-4 text-muted-foreground" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{w.bank_name}</p>
-                      <p className="text-xs text-muted-foreground">{w.account_number} · {new Date(w.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</p>
-                      {w.failure_reason && <p className="text-xs text-destructive">{w.failure_reason}</p>}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground">{b.account_name}</p>
+                      <p className="text-xs text-muted-foreground">{b.bank_name} · {b.account_number}</p>
+                      {b.is_default && <span className="text-[10px] font-medium text-primary">Default</span>}
+                    </div>
+                    <div className="flex gap-1">
+                      {!b.is_default && (
+                        <button onClick={() => setDefaultBank.mutate(b.id)} className="px-2 py-1 text-xs text-muted-foreground hover:text-primary">Set default</button>
+                      )}
+                      <button onClick={() => removeBank.mutate(b.id)} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-destructive">
+                        <Trash2 className="size-3.5" />
+                      </button>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-foreground">₦{Number(w.net_amount ?? w.amount).toLocaleString("en-NG")}</p>
-                    <p className={`text-xs capitalize font-medium ${w.status === "completed" ? "text-success" : w.status === "pending" ? "text-warning" : "text-destructive"}`}>{w.status}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          </TabsContent>
 
-        {/* Transaction history */}
-        <div>
-          <h2 className="text-sm font-semibold text-foreground mb-3">Transaction history</h2>
-          {(!transactions || transactions.length === 0) && (
-            <EmptyState icon={Wallet} title="No transactions yet" description="Complete tasks or add money to get started." />
-          )}
-          <div className="space-y-2">
-            {transactions?.map((t: any) => (
-              <div key={t.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-                <div className="flex items-center gap-3">
-                  <div className={`grid size-9 place-items-center rounded-full ${t.type === "credit" || t.type === "reversal" ? "bg-success/15" : "bg-muted"}`}>
-                    {t.type === "credit" || t.type === "reversal" ? <ArrowDownLeft className="size-4 text-success" /> : <ArrowUpRight className="size-4 text-muted-foreground" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground line-clamp-1">{t.description}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className={`text-sm font-semibold ${t.amount > 0 ? "text-success" : "text-foreground"}`}>
-                    {t.amount > 0 ? "+" : ""}₦{Math.abs(Number(t.amount)).toLocaleString("en-NG")}
-                  </p>
-                  <p className="text-xs text-muted-foreground capitalize">{t.status}</p>
+          <TabsContent value="activity" className="space-y-4 pt-3">
+            {withdrawals && withdrawals.length > 0 && (
+              <div>
+                <h2 className="mb-3 text-sm font-semibold text-foreground">Withdrawal history</h2>
+                <div className="space-y-2">
+                  {withdrawals.map((w: any) => (
+                    <div key={w.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`grid size-9 place-items-center rounded-full shrink-0 ${w.status === "completed" ? "bg-success/15" : w.status === "pending" ? "bg-warning/15" : "bg-destructive/15"}`}>
+                          {w.status === "completed" ? <CheckCircle2 className="size-4 text-success" /> : w.status === "pending" ? <Clock className="size-4 text-warning" /> : <AlertTriangle className="size-4 text-destructive" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{w.bank_name}</p>
+                          <p className="text-xs text-muted-foreground">{w.account_number} · {new Date(w.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</p>
+                          {w.failure_reason && <p className="text-xs text-destructive">{w.failure_reason}</p>}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-foreground">₦{Number(w.net_amount ?? w.amount).toLocaleString("en-NG")}</p>
+                        <p className={`text-xs capitalize font-medium ${w.status === "completed" ? "text-success" : w.status === "pending" ? "text-warning" : "text-destructive"}`}>{w.status}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+            )}
+
+            <div>
+              <h2 className="mb-3 text-sm font-semibold text-foreground">Transaction history</h2>
+              {(!transactions || transactions.length === 0) && (
+                <EmptyState icon={Wallet} title="No transactions yet" description="Complete tasks or add money to get started." />
+              )}
+              <div className="space-y-2">
+                {transactions?.map((t: any) => (
+                  <div key={t.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`grid size-9 place-items-center rounded-full ${t.type === "credit" || t.type === "reversal" ? "bg-success/15" : "bg-muted"}`}>
+                        {t.type === "credit" || t.type === "reversal" ? <ArrowDownLeft className="size-4 text-success" /> : <ArrowUpRight className="size-4 text-muted-foreground" />}
+                      </div>
+                      <div>
+                        <p className="line-clamp-1 text-sm font-medium text-foreground">{t.description}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(t.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className={`text-sm font-semibold ${t.amount > 0 ? "text-success" : "text-foreground"}`}>
+                        {t.amount > 0 ? "+" : ""}₦{Math.abs(Number(t.amount)).toLocaleString("en-NG")}
+                      </p>
+                      <p className="text-xs capitalize text-muted-foreground">{t.status}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Add bank account sheet */}

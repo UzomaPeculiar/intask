@@ -30,6 +30,7 @@ const MENTORSHIP_CATEGORIES = [
 function MentorshipPage() {
   const [category, setCategory] = useState("All");
   const [q, setQ] = useState("");
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const nav = useNavigate();
 
   const { data: me } = useQuery({
@@ -79,8 +80,6 @@ function MentorshipPage() {
         mentor_profile: profileMap[s.mentor_id] ?? null,
       }));
 
-      console.log("services data:", data);
-
       if (error) throw error;
       let results = data ?? [];
       if (category !== "All") results = results.filter((s: any) => s.category === category);
@@ -94,9 +93,10 @@ function MentorshipPage() {
   });
 
   const isAlumni = myProfile?.role === "alumni";
+  const visibleCategories = showAllCategories ? MENTORSHIP_CATEGORIES : MENTORSHIP_CATEGORIES.slice(0, 6);
 
   return (
-    <div className="mx-auto max-w-md space-y-4 px-4 pt-5 pb-10">
+    <div className="mx-auto max-w-2xl space-y-5 px-4 pb-10 pt-5">
       <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">Mentorship</h1>
@@ -107,83 +107,95 @@ function MentorshipPage() {
           )}
         </div>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Book 1-on-1 sessions with verified alumni for career advice, CV reviews, mock interviews and more.
-      </p>
 
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search mentors or topics…" className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
+      <section className="space-y-3 rounded-2xl border border-border/80 bg-card/70 p-3 shadow-sm">
+        <p className="text-sm text-muted-foreground">
+          Book 1-on-1 sessions with verified alumni for career advice, CV reviews, mock interviews and more.
+        </p>
 
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        {MENTORSHIP_CATEGORIES.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${
-              category === c ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"
-            }`}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {isLoading && (
-        <div className="space-y-3">
-          {[0, 1, 2].map((i) => <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-card" />)}
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search mentors or topics…" className="pl-9" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-      )}
 
-      {!isLoading && (services?.length ?? 0) === 0 && (
-        <EmptyState
-          icon={GraduationCap}
-          title="No mentorship services yet"
-          description={isAlumni ? "Be the first to offer mentorship to students." : "Check back soon — alumni are adding services."}
-          action={isAlumni ? <Button onClick={() => nav({ to: "/app/mentorship/manage" })}>Offer mentorship</Button> : undefined}
-        />
-      )}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Categories</span>
+          <button onClick={() => setShowAllCategories((prev) => !prev)} className="font-medium text-primary hover:underline">
+            {showAllCategories ? "Show fewer" : "Show all"}
+          </button>
+        </div>
 
-      <div className="space-y-4">
-        {services?.map((s: any) => (
-          <Link key={s.id} to="/app/mentorship/$serviceId" params={{ serviceId: s.id }} className="block">
-            <div className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50">
-              <div className="flex items-start gap-3">
-                <InitialsAvatar name={s.mentor?.full_name} size={44} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium text-foreground line-clamp-1">{s.mentor?.full_name}</p>
-                    <span className="shrink-0 rounded-md bg-success/15 px-2 py-0.5 text-sm font-semibold text-success">
-                      ₦{Number(s.price).toLocaleString("en-NG")}
-                    </span>
+        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1">
+          {visibleCategories.map((c) => (
+            <button
+              key={c}
+              onClick={() => setCategory(c)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                category === c ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        {isLoading && (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-card" />)}
+          </div>
+        )}
+
+        {!isLoading && (services?.length ?? 0) === 0 && (
+          <EmptyState
+            icon={GraduationCap}
+            title="No mentorship services yet"
+            description={isAlumni ? "Be the first to offer mentorship to students." : "Check back soon - alumni are adding services."}
+            action={isAlumni ? <Button onClick={() => nav({ to: "/app/mentorship/manage" })}>Offer mentorship</Button> : undefined}
+          />
+        )}
+
+        <div className="space-y-4">
+          {services?.map((s: any) => (
+            <Link key={s.id} to="/app/mentorship/$serviceId" params={{ serviceId: s.id }} className="block">
+              <div className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50">
+                <div className="flex items-start gap-3">
+                  <InitialsAvatar name={s.mentor?.full_name} size={44} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="line-clamp-1 font-medium text-foreground">{s.mentor?.full_name}</p>
+                      <span className="shrink-0 rounded-md bg-success/15 px-2 py-0.5 text-sm font-semibold text-success">
+                        ₦{Number(s.price).toLocaleString("en-NG")}
+                      </span>
+                    </div>
+                    <VerifiedBadge role="alumni" />
+                    {s.mentor_profile?.university && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{s.mentor_profile.university}</p>
+                    )}
                   </div>
-                  <VerifiedBadge role="alumni" />
-                  {s.mentor_profile?.university && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.mentor_profile.university}</p>
+                </div>
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-foreground">{s.title}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{s.description}</p>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="size-3" /> {s.duration_minutes} min
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-0.5">{s.category}</span>
+                  {(s.mentor_profile?.rating_count ?? 0) > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Star className="size-3 fill-warning text-warning" />
+                      {Number(s.mentor_profile.rating_average).toFixed(1)}
+                    </span>
                   )}
                 </div>
               </div>
-              <div className="mt-3">
-                <p className="text-sm font-medium text-foreground">{s.title}</p>
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{s.description}</p>
-              </div>
-              <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Clock className="size-3" /> {s.duration_minutes} min
-                </span>
-                <span className="rounded-full bg-muted px-2 py-0.5">{s.category}</span>
-                {(s.mentor_profile?.rating_count ?? 0) > 0 && (
-                  <span className="flex items-center gap-1">
-                    <Star className="size-3 fill-warning text-warning" />
-                    {Number(s.mentor_profile.rating_average).toFixed(1)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

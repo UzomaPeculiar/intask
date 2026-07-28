@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ShieldCheck, Users, Briefcase, DollarSign, CheckCircle2, XCircle, Clock, Building2, Eye } from "lucide-react";
+import { adminProcessWithdrawal, adminResolveDispute, assertAdminAccess } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — InTask" }] }),
@@ -13,24 +15,28 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const nav = useNavigate();
+  const checkAdmin = useServerFn(assertAdminAccess);
   const [tab, setTab] = useState<"overview" | "students" | "companies" | "reports" | "disputes" | "partnerships" | "withdrawals">("overview");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) { nav({ to: "/auth/login", search: { redirect: "/admin" } }); return; }
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_admin, id")
-        .eq("id", data.user.id)
-        .maybeSingle() as any;
-      if (!(profile as any)?.is_admin) {
-        nav({ to: "/app" });
-        return;
+    let mounted = true;
+    (async () => {
+      try {
+        await checkAdmin();
+        if (mounted) setIsAdmin(true);
+      } catch {
+        if (!mounted) return;
+        const { data } = await supabase.auth.getUser();
+        if (!data.user) nav({ to: "/auth/login", search: { redirect: "/admin" } });
+        else nav({ to: "/app" });
       }
-      setIsAdmin(true);
-    });
-  }, []);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [checkAdmin, nav]);
 
   if (isAdmin === null) {
     return (
@@ -605,6 +611,7 @@ function FeaturedTaskRow({ task }: { task: any }) {
 
 function DisputesTab() {
   const qc = useQueryClient();
+  const resolveDisputeServer = useServerFn(adminResolveDispute);
 
   const { data: disputes, isLoading, refetch } = useQuery({
     queryKey: ["admin-disputes"],
@@ -620,31 +627,7 @@ function DisputesTab() {
 
   const resolve = useMutation({
     mutationFn: async ({ disputeId, resolution, releaseToStudent }: { disputeId: string; resolution: string; releaseToStudent: boolean }) => {
-      await (supabase as any)
-        .from("disputes")
-        .update({ status: "resolved", resolution, updated_at: new Date().toISOString() })
-        .eq("id", disputeId);
-      if (releaseToStudent) {
-        const dispute = disputes?.find((d: any) => d.id === disputeId);
-        if (dispute?.task_id) {
-          await supabase.from("transactions")
-            .update({ status: "released" } as any)
-            .eq("task_id", dispute.task_id);
-          await supabase.from("tasks")
-            .update({ status: "completed" } as any)
-            .eq("id", dispute.task_id);
-        }
-      } else {
-        const dispute = disputes?.find((d: any) => d.id === disputeId);
-        if (dispute?.task_id) {
-          await supabase.from("transactions")
-            .update({ status: "refunded" } as any)
-            .eq("task_id", dispute.task_id);
-          await supabase.from("tasks")
-            .update({ status: "cancelled" } as any)
-            .eq("id", dispute.task_id);
-        }
-      }
+      await resolveDisputeServer({ data: { disputeId, resolution, releaseToStudent } });
     },
     onSuccess: () => {
       toast.success("Dispute resolved");
@@ -868,6 +851,7 @@ function PartnershipsTab() {
 
 function WithdrawalsTab() {
   const qc = useQueryClient();
+  const processWithdrawalServer = useServerFn(adminProcessWithdrawal);
 
   const { data: withdrawals, isLoading, refetch } = useQuery({
     queryKey: ["admin-withdrawals"],
@@ -882,35 +866,7 @@ function WithdrawalsTab() {
 
   const process = useMutation({
     mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string }) => {
-      await (supabase as any)
-        .from("withdrawal_requests")
-        .update({ status, notes: notes ?? null, processed_at: new Date().toISOString() })
-        .eq("id", id);
-
-      if (status === "rejected") {
-        const withdrawal = withdrawals?.find((w: any) => w.id === id);
-        if (withdrawal) {
-          await (supabase as any).from("wallets").update({
-            balance: (withdrawal.amount),
-          }).eq("user_id", withdrawal.user_id);
-          await supabase.from("notifications").insert({
-            user_id: withdrawal.user_id,
-            type: "withdrawal_rejected",
-            message: `Your withdrawal of ₦${Number(withdrawal.amount).toLocaleString("en-NG")} was rejected. Funds have been returned to your wallet.`,
-            link: "/app/wallet",
-          });
-        }
-      } else if (status === "completed") {
-        const withdrawal = withdrawals?.find((w: any) => w.id === id);
-        if (withdrawal) {
-          await supabase.from("notifications").insert({
-            user_id: withdrawal.user_id,
-            type: "withdrawal_completed",
-            message: `Your withdrawal of ₦${Number(withdrawal.amount).toLocaleString("en-NG")} has been processed successfully.`,
-            link: "/app/wallet",
-          });
-        }
-      }
+      await processWithdrawalServer({ data: { id, status: status as "completed" | "rejected", notes } });
     },
     onSuccess: () => {
       toast.success("Withdrawal updated");
@@ -966,7 +922,15 @@ function WithdrawalsTab() {
                   variant="outline"
                   className="flex-1 text-destructive border-destructive/30"
                   disabled={process.isPending}
-                  onClick={() => process.mutate({ id: w.id, status: "rejected", notes: "Rejected by admin" })}
+                  onClick={() => {
+                    const note = window.prompt("Provide a reason for rejecting this withdrawal:", "");
+                    if (note === null) return;
+                    if (!note.trim()) {
+                      toast.error("Rejection reason is required");
+                      return;
+                    }
+                    process.mutate({ id: w.id, status: "rejected", notes: note.trim() });
+                  }}
                 >
                   <XCircle className="size-3.5 mr-1" /> Reject
                 </Button>

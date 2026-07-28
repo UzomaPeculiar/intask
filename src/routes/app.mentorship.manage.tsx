@@ -4,6 +4,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { ArrowLeft, Plus, GraduationCap, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -147,7 +148,7 @@ function ManageMentorshipPage() {
   const completedBookings = bookings?.filter((b: any) => b.status === "completed") ?? [];
 
   return (
-    <div className="mx-auto max-w-md pb-10">
+    <div className="mx-auto max-w-2xl pb-10">
       <header className="flex items-center justify-between px-4 pt-4">
         <div className="flex items-center gap-2">
           <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
@@ -164,127 +165,142 @@ function ManageMentorshipPage() {
         )}
       </header>
 
-      <div className="px-4 pt-4 space-y-4">
-        {adding && (
-          <div className="rounded-2xl border border-border/80 bg-card/90 p-4 space-y-3 shadow-sm">
-            <h2 className="text-sm font-semibold">{editing ? "Edit service" : "New service"}</h2>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Title</label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. CV Review for Tech Roles" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe what students will get from this session..." className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                <option value="">Select category</option>
-                {MENTORSHIP_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Price (₦)</label>
-                <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 5000" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Duration (minutes)</label>
-                <select value={duration} onChange={(e) => setDuration(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                  <option value="30">30 min</option>
-                  <option value="45">45 min</option>
-                  <option value="60">60 min</option>
-                  <option value="90">90 min</option>
-                  <option value="120">120 min</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={save} disabled={saving}>{saving ? "Saving..." : editing ? "Update" : "Create service"}</Button>
-              <Button variant="outline" onClick={resetForm}>Cancel</Button>
-            </div>
-          </div>
-        )}
+      <div className="px-4 pt-4">
+        <Tabs defaultValue="services">
+          <TabsList className="grid h-auto w-full grid-cols-2">
+            <TabsTrigger value="services" className="py-2.5">Services</TabsTrigger>
+            <TabsTrigger value="bookings" className="py-2.5">Bookings</TabsTrigger>
+          </TabsList>
 
-        {pendingBookings.length > 0 && (
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pending requests</h2>
-            <div className="space-y-3">
-              {pendingBookings.map((b: any) => (
-                <div key={b.id} className="rounded-2xl border border-warning/30 bg-card/90 p-3 shadow-sm">
-                  <p className="text-sm font-medium">{b.mentee?.full_name}</p>
-                  <p className="text-xs text-muted-foreground">{b.service?.title}</p>
-                  {b.notes && <p className="text-xs text-muted-foreground mt-1 italic">"{b.notes}"</p>}
-                  {b.scheduled_at && <p className="text-xs text-muted-foreground mt-1">Requested: {new Date(b.scheduled_at).toLocaleString("en-NG")}</p>}
-                  <Button size="sm" className="mt-2 w-full" onClick={() => confirmBooking.mutate(b.id)}>Confirm booking</Button>
+          <TabsContent value="services" className="space-y-4 pt-3">
+            {adding && (
+              <div className="space-y-3 rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
+                <h2 className="text-sm font-semibold">{editing ? "Edit service" : "New service"}</h2>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Title</label>
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. CV Review for Tech Roles" />
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {confirmedBookings.length > 0 && (
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Confirmed sessions</h2>
-            <div className="space-y-3">
-              {confirmedBookings.map((b: any) => (
-                <div key={b.id} className="rounded-2xl border border-success/30 bg-card/90 p-3 shadow-sm">
-                  <p className="text-sm font-medium">{b.mentee?.full_name}</p>
-                  <p className="text-xs text-muted-foreground">{b.service?.title}</p>
-                  {b.scheduled_at && <p className="text-xs text-muted-foreground mt-1">{new Date(b.scheduled_at).toLocaleString("en-NG")}</p>}
-                  <Button size="sm" variant="outline" className="mt-2 w-full" onClick={() => completeBooking.mutate(b.id)}>Mark as completed</Button>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Description</label>
+                  <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe what students will get from this session..." className="flex w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {isLoading && <div className="h-32 animate-pulse rounded-xl border border-border bg-card" />}
-
-        {!isLoading && (services?.length ?? 0) === 0 && !adding && (
-          <EmptyState icon={GraduationCap} title="No services yet" description="Share your knowledge and earn by offering mentorship sessions." action={<Button onClick={() => setAdding(true)} className="gap-1"><Plus className="size-3.5" /> Add your first service</Button>} />
-        )}
-
-        {services && services.length > 0 && (
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Your services</h2>
-            <div className="space-y-3">
-              {services.map((s: any) => (
-                <div key={s.id} className="rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{s.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{s.category} · {s.duration_minutes} min · ₦{Number(s.price).toLocaleString("en-NG")}</p>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button onClick={() => startEdit(s)} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground">
-                        <Pencil className="size-3.5" />
-                      </button>
-                      <button onClick={() => remove(s.id)} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-destructive">
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Category</label>
+                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="">Select category</option>
+                    {MENTORSHIP_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Price (₦)</label>
+                    <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 5000" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{s.description}</p>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Duration (minutes)</label>
+                    <select value={duration} onChange={(e) => setDuration(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      <option value="30">30 min</option>
+                      <option value="45">45 min</option>
+                      <option value="60">60 min</option>
+                      <option value="90">90 min</option>
+                      <option value="120">120 min</option>
+                    </select>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+                <div className="flex gap-2">
+                  <Button className="flex-1" onClick={save} disabled={saving}>{saving ? "Saving..." : editing ? "Update" : "Create service"}</Button>
+                  <Button variant="outline" onClick={resetForm}>Cancel</Button>
+                </div>
+              </div>
+            )}
 
-        {completedBookings.length > 0 && (
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Completed sessions</h2>
-            <div className="space-y-2">
-              {completedBookings.map((b: any) => (
-                <div key={b.id} className="rounded-2xl border border-border/80 bg-card/90 p-3 opacity-70 shadow-sm">
-                  <p className="text-sm font-medium">{b.mentee?.full_name}</p>
-                  <p className="text-xs text-muted-foreground">{b.service?.title}</p>
+            {isLoading && <div className="h-32 animate-pulse rounded-xl border border-border bg-card" />}
+
+            {!isLoading && (services?.length ?? 0) === 0 && !adding && (
+              <EmptyState icon={GraduationCap} title="No services yet" description="Share your knowledge and earn by offering mentorship sessions." action={<Button onClick={() => setAdding(true)} className="gap-1"><Plus className="size-3.5" /> Add your first service</Button>} />
+            )}
+
+            {services && services.length > 0 && (
+              <div>
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your services</h2>
+                <div className="space-y-3">
+                  {services.map((s: any) => (
+                    <div key={s.id} className="rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground">{s.title}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{s.category} · {s.duration_minutes} min · ₦{Number(s.price).toLocaleString("en-NG")}</p>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <button onClick={() => startEdit(s)} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-foreground">
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button onClick={() => remove(s.id)} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-destructive">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{s.description}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="bookings" className="space-y-4 pt-3">
+            {pendingBookings.length > 0 && (
+              <div>
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending requests</h2>
+                <div className="space-y-3">
+                  {pendingBookings.map((b: any) => (
+                    <div key={b.id} className="rounded-2xl border border-warning/30 bg-card/90 p-3 shadow-sm">
+                      <p className="text-sm font-medium">{b.mentee?.full_name}</p>
+                      <p className="text-xs text-muted-foreground">{b.service?.title}</p>
+                      {b.notes && <p className="mt-1 text-xs italic text-muted-foreground">"{b.notes}"</p>}
+                      {b.scheduled_at && <p className="mt-1 text-xs text-muted-foreground">Requested: {new Date(b.scheduled_at).toLocaleString("en-NG")}</p>}
+                      <Button size="sm" className="mt-2 w-full" onClick={() => confirmBooking.mutate(b.id)}>Confirm booking</Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {confirmedBookings.length > 0 && (
+              <div>
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Confirmed sessions</h2>
+                <div className="space-y-3">
+                  {confirmedBookings.map((b: any) => (
+                    <div key={b.id} className="rounded-2xl border border-success/30 bg-card/90 p-3 shadow-sm">
+                      <p className="text-sm font-medium">{b.mentee?.full_name}</p>
+                      <p className="text-xs text-muted-foreground">{b.service?.title}</p>
+                      {b.scheduled_at && <p className="mt-1 text-xs text-muted-foreground">{new Date(b.scheduled_at).toLocaleString("en-NG")}</p>}
+                      <Button size="sm" variant="outline" className="mt-2 w-full" onClick={() => completeBooking.mutate(b.id)}>Mark as completed</Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {completedBookings.length > 0 && (
+              <div>
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Completed sessions</h2>
+                <div className="space-y-2">
+                  {completedBookings.map((b: any) => (
+                    <div key={b.id} className="rounded-2xl border border-border/80 bg-card/90 p-3 opacity-70 shadow-sm">
+                      <p className="text-sm font-medium">{b.mentee?.full_name}</p>
+                      <p className="text-xs text-muted-foreground">{b.service?.title}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {pendingBookings.length === 0 && confirmedBookings.length === 0 && completedBookings.length === 0 && (
+              <EmptyState icon={GraduationCap} title="No bookings yet" description="When students request sessions, they will appear here." />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
