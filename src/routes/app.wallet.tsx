@@ -97,14 +97,20 @@ function WalletPage() {
   });
 
   const { data: banks } = useQuery({
-    queryKey: ["nigerian-banks"],
+    queryKey: ["paystack-banks"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("nigerian_banks")
-        .select("*")
-        .eq("active", true)
-        .order("name", { ascending: true });
-      return data ?? [];
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/list-banks`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error ?? "Could not load banks");
+      return data.banks ?? [];
     },
   });
 
@@ -143,11 +149,11 @@ function WalletPage() {
 
       const data = await res.json();
 
-      if (data.status && data.account_name) {
+      if ((data.success || data.status) && data.account_name) {
         setAccountName(data.account_name);
         toast.success(`Account verified: ${data.account_name}`);
       } else {
-        toast.error("Could not verify account. Please check the details.");
+        toast.error(data.error ?? data.message ?? "Could not verify account. Please check the details.");
         setAccountName("");
       }
     } catch {
@@ -199,6 +205,14 @@ function WalletPage() {
 
       const recipientData = await recipientRes.json();
       if (!recipientData.success) throw new Error(recipientData.error ?? "Could not register bank with Paystack");
+
+      const { error: updateError } = await (supabase as any)
+        .from("bank_accounts")
+        .update({ paystack_recipient_code: recipientData.recipient_code, verified: true })
+        .eq("id", bankAccount.id)
+        .eq("user_id", me.id);
+
+      if (updateError) throw updateError;
     },
     onSuccess: () => {
       toast.success("Bank account added successfully");
@@ -394,6 +408,12 @@ function WalletPage() {
   const netAmount = withdrawAmountNum > 0 ? withdrawAmountNum - WITHDRAWAL_FEE : 0;
   const pendingWithdrawals = withdrawals?.filter((w: any) => w.status === "pending") ?? [];
   const defaultBank = bankAccounts?.find((b: any) => b.is_default) ?? bankAccounts?.[0];
+
+  useEffect(() => {
+    if (!selectedBankAccountId && defaultBank?.id) {
+      setSelectedBankAccountId(defaultBank.id);
+    }
+  }, [defaultBank?.id, selectedBankAccountId]);
 
   return (
     <div className="mx-auto max-w-2xl pb-10">

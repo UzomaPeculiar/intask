@@ -42,18 +42,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: paystackData.message ?? "Could not create recipient" }), { status: 400, headers: corsHeaders });
     }
 
-    const recipient_code = paystackData.data.recipient_code;
-
-    // Save recipient code to bank account
-    const { error: updateError } = await supabase
-      .from("bank_accounts")
-      .update({ paystack_recipient_code: recipient_code, verified: true })
-      .eq("id", bank_account_id)
-      .eq("user_id", user.id);
-
-    if (updateError) throw updateError;
-
-    return new Response(JSON.stringify({ success: true, recipient_code }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: true, recipient_code: paystackData.data.recipient_code }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }

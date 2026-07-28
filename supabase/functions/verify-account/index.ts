@@ -23,39 +23,45 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
+    const paystackSecret = Deno.env.get("PAYSTACK_SECRET_KEY");
+    if (!paystackSecret) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Verification is not configured (missing PAYSTACK_SECRET_KEY)." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { account_number, bank_code } = await req.json();
 
     if (!account_number || !bank_code) {
-      return new Response(JSON.stringify({ error: "Account number and bank code are required" }), { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({ success: false, error: "Account number and bank code are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const res = await fetch(
-      `https://api.paystack.co/bank/resolve?account_number=${account_number}&bank_code=${bank_code}`,
-      {
-        headers: {
-          Authorization: `Bearer ${Deno.env.get("PAYSTACK_SECRET_KEY")}`,
-        },
-      }
-    );
+    const query = new URLSearchParams({ account_number: String(account_number).trim(), bank_code: String(bank_code).trim() });
+    const res = await fetch(`https://api.paystack.co/bank/resolve?${query.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${paystackSecret}`,
+      },
+    });
 
     const data = await res.json();
 
     if (data.status && data.data?.account_name) {
       return new Response(
-        JSON.stringify({ success: true, account_name: data.data.account_name }),
+        JSON.stringify({ success: true, status: true, account_name: data.data.account_name }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
-      JSON.stringify({ success: false, error: data.message ?? "Could not verify account" }),
+      JSON.stringify({ success: false, status: false, error: data.message ?? "Could not verify account" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (err) {
     return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 500, headers: corsHeaders }
+      JSON.stringify({ success: false, error: err.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
