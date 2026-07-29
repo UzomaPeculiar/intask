@@ -81,8 +81,8 @@ function Dashboard() {
   const alumniPending = role === "alumni" && !verified;
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <header className="flex items-start justify-between gap-3 px-4 pb-3 pt-5">
+    <div className="mx-auto w-full max-w-7xl px-4 pb-8 pt-5 lg:px-8 lg:pt-6">
+      <header className="flex items-start justify-between gap-3 pb-4">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-foreground">{greetingText}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-2">
@@ -103,8 +103,8 @@ function Dashboard() {
       </header>
 
       {(companyPending || alumniPending) && (
-        <div className="px-4 pb-3">
-          <div className="flex items-start gap-2 rounded-2xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs text-warning shadow-sm">
+        <div className="pb-4">
+          <div className="it-note-warning flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs shadow-sm">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             <p>
               {alumniPending
@@ -116,7 +116,7 @@ function Dashboard() {
       )}
 
       {canFindWork && (
-        <div className="px-4">
+        <div>
           <div className="grid grid-cols-2 gap-1 rounded-2xl border border-border/80 bg-muted p-1 text-sm font-medium shadow-sm">
             <button onClick={() => setMode("find")}
               className={`rounded-md py-2 transition-colors ${mode === "find" ? "bg-card text-foreground shadow-card" : "text-muted-foreground"}`}>
@@ -144,7 +144,7 @@ function Dashboard() {
 function MentorshipSection() {
   const nav = useNavigate();
   return (
-    <div className="px-4 pt-4">
+    <div className="pt-4">
       <div className="rounded-xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-card">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -217,10 +217,13 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
     },
   });
 
+  const taskCategories = Array.from(new Set((tasks ?? []).map((t: any) => t.category).filter(Boolean)));
+  const { data: categoryBudgetStats = {} } = useCategoryBudgetStats(taskCategories);
+
   const visibleFilters = showAllFilters ? FEED_FILTERS : FEED_FILTERS.slice(0, 7);
 
   return (
-    <div className="space-y-6 px-4 pt-4">
+    <div className="space-y-6 pt-5">
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Overview</h2>
@@ -274,7 +277,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <span className="grid size-8 place-items-center rounded-lg bg-accent text-accent-foreground">
                       <Briefcase className="size-4" />
                     </span>
                     <div>
@@ -282,7 +285,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
                       <p className="text-xs text-muted-foreground">Longer-term opportunities from companies</p>
                     </div>
                   </div>
-                  <span className="text-xs font-medium text-primary">Browse →</span>
+                  <span className="text-xs font-medium text-accent-foreground">Browse →</span>
                 </div>
               </Link>
 
@@ -313,19 +316,19 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
           <h2 className="text-sm font-semibold text-foreground">Task feed</h2>
           <button
             onClick={() => setShowAllFilters((prev) => !prev)}
-            className="text-xs font-medium text-primary hover:underline"
+            className="it-link-accent text-xs font-medium hover:underline"
           >
             {showAllFilters ? "Fewer filters" : "More filters"}
           </button>
         </div>
-        <div className="relative -mx-4">
-          <div className="flex gap-2 overflow-x-auto px-4 pb-1 pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="relative">
+          <div className="flex gap-2 overflow-x-auto pb-1 pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:overflow-visible lg:pr-0">
             {visibleFilters.map((f) => {
               const active = f === filter;
               return (
                 <button key={f} onClick={() => onFilter(f)}
                   className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                    active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"
+                    active ? "it-chip-active" : "border-border bg-card text-foreground"
                   }`}>{f}</button>
               );
             })}
@@ -345,7 +348,9 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
             action={<Button onClick={onSwitchToPost} className="gap-1"><Plus className="size-4" /> Post a task</Button>}
           />
         )}
-        {tasks?.map((t) => <TaskCard key={t.id} task={t} currentUserId={userId} />)}
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+          {tasks?.map((t) => <TaskCard key={t.id} task={t} currentUserId={userId} categoryBudgetStats={categoryBudgetStats} />)}
+        </div>
       </section>
     </div>
   );
@@ -464,7 +469,7 @@ function PostWorkView({ userId }: { userId?: string }) {
   };
 
   return (
-    <div className="space-y-5 px-4 pt-4">
+    <div className="space-y-5 pt-5">
       <Button size="lg" className="w-full gap-2" onClick={() => nav({ to: "/app/tasks/create" })}>
         <Plus className="size-4" /> Post a new task
       </Button>
@@ -483,7 +488,7 @@ function PostWorkView({ userId }: { userId?: string }) {
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {k === "open" ? "Open" : k === "in_progress" ? "In progress" : k === "in_review" ? "Review needed" : k === "expired" ? "Expired" : "Completed"}
           </h2>
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             {groups[k].map((t) => (
               <PosterTaskRow key={t.id} task={t} />
             ))}
@@ -523,7 +528,7 @@ function PosterTaskRow({ task }: { task: any }) {
         )}
       </div>
       {isReview && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs font-medium text-warning">
+        <div className="it-note-warning mt-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium">
           <AlertTriangle className="size-4" /> Work submitted — review needed
         </div>
       )}
@@ -559,36 +564,51 @@ function PosterTaskRow({ task }: { task: any }) {
   );
 }
 
-const CATEGORY_AVERAGES: Record<string, number> = {
-  "Web Design": 25000,
-  "Mobile App Dev": 60000,
-  "UI/UX Design": 25000,
-  "Graphic Design": 15000,
-  "Content Writing": 8000,
-  "Copywriting": 8000,
-  "Video Editing": 20000,
-  "Photography": 15000,
-  "Data Analysis": 20000,
-  "Research": 12000,
-  "Python": 25000,
-  "JavaScript": 25000,
-  "Social Media": 12000,
-  "Math Tutoring": 8000,
-  "Science Tutoring": 8000,
-  "English Tutoring": 8000,
-  "Business Analysis": 20000,
-  "Product Management": 25000,
-  "Virtual Assistant": 12000,
-  "Excel/Spreadsheets": 12000,
-};
+function useCategoryBudgetStats(categories: string[]) {
+  const key = [...categories].sort().join("|");
+  return useQuery({
+    queryKey: ["category-budget-stats", key],
+    enabled: categories.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, category, budget, budget_negotiable")
+        .in("category", categories)
+        .eq("budget_negotiable", false)
+        .gt("budget", 0);
 
-function getAboveAverageThreshold(category: string): number {
-  return CATEGORY_AVERAGES[category] ?? 15000;
+      if (error) throw error;
+
+      const sums: Record<string, number> = {};
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        if (!row.category || !row.budget) continue;
+        sums[row.category] = (sums[row.category] ?? 0) + Number(row.budget);
+        counts[row.category] = (counts[row.category] ?? 0) + 1;
+      }
+
+      const stats: Record<string, { sum: number; count: number }> = {};
+      for (const category of Object.keys(sums)) {
+        stats[category] = { sum: sums[category], count: counts[category] ?? 0 };
+      }
+      return stats;
+    },
+    staleTime: 60_000,
+  });
 }
 
-export function TaskCard({ task, currentUserId }: { task: any; currentUserId?: string }) {
+export function TaskCard({ task, currentUserId, categoryBudgetStats = {} }: { task: any; currentUserId?: string; categoryBudgetStats?: Record<string, { sum: number; count: number }> }) {
   const nav = useNavigate();
   const count = useApplicantCount(task.id, task.applicants_count ?? 0);
+  const stats = categoryBudgetStats[task.category];
+  const budgetValue = Number(task.budget ?? 0);
+  const hasBenchmark = !task.budget_negotiable && budgetValue > 0 && !!stats && stats.count > 0;
+  const benchmark = hasBenchmark
+    ? stats!.count > 1
+      ? (stats!.sum - budgetValue) / Math.max(1, stats!.count - 1)
+      : stats!.sum / stats!.count
+    : null;
+  const isAboveAveragePay = hasBenchmark && typeof benchmark === "number" && budgetValue > benchmark;
   return (
     <Link to="/app/tasks/$taskId" params={{ taskId: task.id }} className="block">
       <article className="rounded-xl border border-border bg-card p-4 shadow-card transition-colors active:bg-accent/50">
@@ -598,7 +618,7 @@ export function TaskCard({ task, currentUserId }: { task: any; currentUserId?: s
             <span className="rounded-md bg-success/15 px-2 py-0.5 text-sm font-semibold text-success">
               {task.budget_negotiable ? "Open" : naira(task.budget)}
             </span>
-            {!task.budget_negotiable && task.budget >= getAboveAverageThreshold(task.category) && (
+            {isAboveAveragePay && (
               <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning">
                 Above average pay
               </span>
@@ -608,7 +628,7 @@ export function TaskCard({ task, currentUserId }: { task: any; currentUserId?: s
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="rounded-full bg-muted px-2 py-0.5">{task.category}</span>
           {(task as any).is_team_task && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+            <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
               👥 Team · {(task as any).team_size} students · ₦{task.budget ? Math.floor((task.budget * 0.92) / (task as any).team_size).toLocaleString("en-NG") : "0"} each
             </span>
           )}
@@ -684,7 +704,7 @@ function SubscriptionBanner({ userId }: { userId?: string }) {
   if (sub) {
     return (
       <div className="space-y-2">
-      <div className="rounded-xl border border-success/30 bg-success/10 p-3 flex items-center justify-between">
+      <div className="it-note-success rounded-xl border p-3 flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-success">{sub.plan?.name} plan</p>
           <p className="text-xs text-muted-foreground">
@@ -710,14 +730,14 @@ function SubscriptionBanner({ userId }: { userId?: string }) {
 
   return (
     <div
-      className="cursor-pointer rounded-xl border border-primary/30 bg-primary/5 p-3 flex items-center justify-between"
+      className="it-note-accent cursor-pointer rounded-xl border p-3 flex items-center justify-between"
       onClick={() => nav({ to: "/app/subscription" as any })}
     >
       <div>
         <p className="text-sm font-medium text-foreground">Upgrade your plan</p>
         <p className="text-xs text-muted-foreground">Post more tasks and search talent directly</p>
       </div>
-      <span className="text-xs font-medium text-primary">View plans →</span>
+      <span className="it-link-accent text-xs font-medium">View plans →</span>
     </div>
   );
 }
@@ -741,7 +761,7 @@ function WalletBalanceCard({ userId }: { userId?: string }) {
 
   return (
     <div
-      className="cursor-pointer rounded-xl border border-success/30 bg-success/10 p-3 flex items-center justify-between"
+      className="it-note-success cursor-pointer rounded-xl border p-3 flex items-center justify-between"
       onClick={() => nav({ to: "/app/wallet" as any })}
     >
       <div className="flex items-center gap-2">

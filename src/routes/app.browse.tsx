@@ -26,14 +26,15 @@ function BrowsePage() {
   const [showFilters, setShowFilters] = useState(false);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 px-4 pt-5">
-      <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 lg:px-8">
+      <div className="it-hero-surface rounded-2xl border p-4 shadow-sm lg:p-6">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Discover</p>
         <h1 className="text-2xl font-semibold tracking-tight">Browse</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Find open tasks, compare freelancers, and shortlist fast with a desktop-friendly layout.</p>
       </div>
 
-      <section className="space-y-3 rounded-2xl border border-border/80 bg-card/70 p-3 shadow-sm">
-        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border/80 bg-muted p-1 text-sm font-medium shadow-sm">
+      <section className="space-y-3 rounded-2xl border border-border/80 bg-card/70 p-3 shadow-sm lg:p-4">
+        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border/80 bg-muted p-1 text-sm font-medium shadow-sm lg:max-w-md">
           <button
             onClick={() => setTab("tasks")}
             className={`rounded-md py-2 transition-colors ${tab === "tasks" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"}`}
@@ -54,7 +55,7 @@ function BrowsePage() {
           </button>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 lg:max-w-2xl">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -69,7 +70,7 @@ function BrowsePage() {
               variant="outline"
               size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              className={showFilters ? "border-primary text-primary" : ""}
+              className={showFilters ? "it-link-accent border-primary" : ""}
             >
               <SlidersHorizontal className="size-4" />
             </Button>
@@ -79,7 +80,7 @@ function BrowsePage() {
         {tab === "tasks" && (
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Category filters</span>
-            <button onClick={() => setShowFilters((prev) => !prev)} className="font-medium text-primary hover:underline">
+            <button onClick={() => setShowFilters((prev) => !prev)} className="it-link-accent font-medium hover:underline">
               {showFilters ? "Hide advanced" : "Show advanced"}
             </button>
           </div>
@@ -123,7 +124,7 @@ function BrowsePage() {
 
       {/* Category chips — tasks only */}
       {tab === "tasks" && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">
           {FEED_FILTERS.map((f) => {
             const active = f === filter;
             return (
@@ -131,7 +132,7 @@ function BrowsePage() {
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-sm ${
-                  active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"
+                  active ? "it-chip-active" : "border-border bg-card text-foreground"
                 }`}
               >
                 {f}
@@ -151,9 +152,9 @@ function BrowsePage() {
       {tab === "tasks" && (
         <p className="text-center text-xs text-muted-foreground">
           Looking to hire?{" "}
-          <Link to="/app/tasks/create" className="font-medium text-primary hover:underline">Post a task</Link>
+          <Link to="/app/tasks/create" className="it-link-accent font-medium hover:underline">Post a task</Link>
           {" . "}
-          <Link to="/app/internships" className="font-medium text-primary hover:underline">Browse internships</Link>
+          <Link to="/app/internships" className="it-link-accent font-medium hover:underline">Browse internships</Link>
         </p>
       )}
     </div>
@@ -187,11 +188,14 @@ function TasksResults({ q, filter, minBudget, maxBudget }: { q: string; filter: 
     return <EmptyState icon={Inbox} title="Nothing matches" description="Try clearing filters or searching for something else." />;
   }
 
+  const categories = Array.from(new Set((tasks ?? []).map((t: any) => t.category).filter(Boolean)));
+  const { data: categoryBudgetStats = {} } = useCategoryBudgetStats(categories);
+
   const { data: me } = useQuery({
   queryKey: ["me-id"],
   queryFn: async () => (await supabase.auth.getUser()).data.user,
   });
-  return <div className="space-y-3">{tasks?.map((t) => <TaskCard key={t.id} task={t} currentUserId={me?.id} />)}</div>;
+  return <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">{tasks?.map((t) => <TaskCard key={t.id} task={t} currentUserId={me?.id} categoryBudgetStats={categoryBudgetStats} />)}</div>;
 }
 
 function PeopleResults({ q }: { q: string }) {
@@ -245,7 +249,7 @@ function PeopleResults({ q }: { q: string }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
       {people?.map((p) => (
         <Link key={p.id} to="/app/profile/$userId" params={{ userId: p.id }} className="block">
           <div className="rounded-xl border border-border bg-card p-4 shadow-card transition-colors active:bg-accent/50">
@@ -334,11 +338,47 @@ function SavedTasksResults() {
     );
   }
 
+  const categories = Array.from(new Set((saved ?? []).map((t: any) => t.category).filter(Boolean)));
+  const { data: categoryBudgetStats = {} } = useCategoryBudgetStats(categories);
+
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
       {saved.map((t: any) => (
-        <TaskCard key={t.id} task={t} currentUserId={me?.id} />
+        <TaskCard key={t.id} task={t} currentUserId={me?.id} categoryBudgetStats={categoryBudgetStats} />
       ))}
     </div>
   );
+}
+
+function useCategoryBudgetStats(categories: string[]) {
+  const key = [...categories].sort().join("|");
+  return useQuery({
+    queryKey: ["browse-category-budget-stats", key],
+    enabled: categories.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, category, budget, budget_negotiable")
+        .in("category", categories)
+        .eq("budget_negotiable", false)
+        .gt("budget", 0);
+
+      if (error) throw error;
+
+      const sums: Record<string, number> = {};
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        if (!row.category || !row.budget) continue;
+        sums[row.category] = (sums[row.category] ?? 0) + Number(row.budget);
+        counts[row.category] = (counts[row.category] ?? 0) + 1;
+      }
+
+      const stats: Record<string, { sum: number; count: number }> = {};
+      for (const category of Object.keys(sums)) {
+        stats[category] = { sum: sums[category], count: counts[category] ?? 0 };
+      }
+      return stats;
+    },
+    staleTime: 60_000,
+  });
 }

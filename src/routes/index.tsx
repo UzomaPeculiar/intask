@@ -1,7 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2, ShieldCheck, Star, Briefcase, Sparkles, GraduationCap, User, Building2 } from "lucide-react";
+import {
+  ArrowRight,
+  Briefcase,
+  Building,
+  Building2,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  GraduationCap,
+  Instagram,
+  Linkedin,
+  Bookmark,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Twitter,
+  User,
+  Users,
+} from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { naira } from "@/lib/format";
 import { InitialsAvatar } from "@/components/intask/Avatar";
@@ -61,14 +80,511 @@ const WHO_IS_IT_FOR = [
   },
 ];
 
+const DESKTOP_CATEGORIES = [
+  { icon: "💻", name: "Web Dev", count: "312 tasks" },
+  { icon: "🎨", name: "Visual Arts", count: "224 tasks" },
+  { icon: "📣", name: "Marketing", count: "189 tasks" },
+  { icon: "🎵", name: "Music", count: "96 tasks" },
+  { icon: "📈", name: "Business", count: "143 tasks" },
+  { icon: "✍️", name: "Writing", count: "278 tasks" },
+];
+
+const DESKTOP_TASKS = [
+  {
+    category: "Video editing",
+    title: "Edit a 10-minute YouTube video with transitions and captions",
+    desc: "I have raw footage from a product launch event. Need clean cuts, text overlays, and background music added.",
+    price: "₦18,000",
+    mode: "fixed",
+    poster: "Amaka M.",
+    initials: "AM",
+  },
+  {
+    category: "Graphic design",
+    title: "Design a logo and brand kit for my new clothing line",
+    desc: "Need a minimal, modern logo with full brand kit including colours, fonts, and social media templates.",
+    price: "₦25,000",
+    mode: "fixed",
+    poster: "Kunle O.",
+    initials: "KO",
+  },
+  {
+    category: "Web development",
+    title: "Build a simple e-commerce site for my handmade jewelry",
+    desc: "Small catalog of about 30 items. Need product pages, cart, and WhatsApp checkout integration.",
+    price: "₦45,000",
+    mode: "negotiable",
+    poster: "Chisom I.",
+    initials: "CI",
+  },
+];
+
+const DESKTOP_TESTIMONIALS = [
+  {
+    stars: "★★★★★",
+    text: "I got my logo done in two days for a fraction of what agencies were quoting. The designer was a 300L student at OAU and she was brilliant.",
+    name: "Fatima D.",
+    subtitle: "Client · Abuja",
+    initials: "FD",
+    avatarClass: "bg-[#C8E4F0] text-[#1A5A8A]",
+  },
+  {
+    stars: "★★★★★",
+    text: "InTask is how I fund my education. I've made over ₦200,000 in three months just from weekend jobs. The escrow system means I always get paid.",
+    name: "Emeka O.",
+    subtitle: "Freelancer · UNILAG · 400L",
+    initials: "EO",
+    avatarClass: "bg-[#C8EED8] text-[#1A7A42]",
+  },
+  {
+    stars: "★★★★☆",
+    text: "We needed a research assistant for six weeks and found someone incredible through InTask. She's now a part-time staff member at our company.",
+    name: "Blessing I.",
+    subtitle: "Company · Lagos",
+    initials: "BI",
+    avatarClass: "bg-[#F0C8E4] text-[#8A1A5A]",
+  },
+];
+
 function Landing() {
+  return (
+    <div>
+      <div className="lg:hidden">
+        <MobileLanding />
+      </div>
+      <div className="hidden lg:block">
+        <DesktopLanding />
+      </div>
+    </div>
+  );
+}
+
+function DesktopLanding() {
+  const [showTrustExample, setShowTrustExample] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-[#EFF8EA] text-[#1A1E16]">
+      <header className="sticky top-0 z-30 h-16 border-b border-[#D4E8CC] bg-white">
+        <div className="mx-auto flex h-full w-full max-w-[1360px] items-center justify-between px-12">
+          <Link to="/" className="text-xl font-bold tracking-tight" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>
+            In<span className="text-[#3DCB6C]">Task</span>
+          </Link>
+
+          <nav className="flex items-center gap-7 text-sm font-medium text-[#4A5244]">
+            <Link to="/app/browse" className="hover:text-[#1A1E16]">Browse tasks</Link>
+            <Link to="/app/talent" className="hover:text-[#1A1E16]">Browse freelancers</Link>
+            <a href="#how-it-works" className="hover:text-[#1A1E16]">How it works</a>
+            <a href="#" className="hover:text-[#1A1E16]">Blog</a>
+            <Link to="/contact" className="hover:text-[#1A1E16]">Contact us</Link>
+          </nav>
+
+          <div className="flex items-center gap-2.5">
+            <Link to="/auth/login">
+              <button className="rounded-lg border border-[#C4DEB8] px-[18px] py-2 text-sm font-medium text-[#1A1E16]">Log in</button>
+            </Link>
+            <Link to="/auth/signup">
+              <button className="rounded-lg bg-[#3DCB6C] px-[18px] py-2 text-sm font-semibold text-white">Sign up →</button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <section className="mx-auto grid w-full max-w-[1200px] grid-cols-[1fr_420px] items-center gap-12 px-12 py-20">
+        <div>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[#D8F5E4] px-3 py-[5px] text-xs font-semibold text-[#1A7A42]">
+            <span className="size-1.5 rounded-full bg-[#3DCB6C]" />
+            Built for Nigerian university students
+          </div>
+
+          <h1 className="mb-5 text-[52px] font-bold leading-[1.1] text-[#111811]" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>
+            A platform where <span className="text-[#3DCB6C]">Clients</span> meet <span className="text-[#3DCB6C]">Freelancers</span>
+          </h1>
+
+          <p className="mb-8 max-w-[480px] text-base leading-[1.7] text-[#4A5A44]">
+            Connect with talented students and alumni across Nigerian universities. Post tasks, hire fast, and pay securely through escrow.
+          </p>
+
+          <div className="mb-6 flex items-center gap-2 rounded-xl border border-[#C4DEB8] bg-white p-1.5 pl-4">
+            <Search className="size-4 text-[#6A8064]" />
+            <input
+              type="text"
+              placeholder="Search for a skill or task (e.g. logo design, essay editing)"
+              className="h-10 flex-1 bg-transparent text-sm text-[#1A1E16] outline-none"
+            />
+            <button className="rounded-lg bg-[#3DCB6C] px-5 py-2.5 text-sm font-semibold text-white">Search tasks</button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-[13px] text-[#6A8064]">Popular:</span>
+            {[
+              "Video editing",
+              "Web development",
+              "Graphic design",
+              "Copywriting",
+            ].map((tag) => (
+              <span key={tag} className="rounded-full border border-[#C4DEB8] bg-white px-3.5 py-[5px] text-[13px] text-[#3A5234]">
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/auth/signup">
+              <button className="rounded-lg bg-[#3DCB6C] px-5 py-2.5 text-sm font-semibold text-white">Find work</button>
+            </Link>
+            <Link to="/auth/signup">
+              <button className="rounded-lg border border-[#C4DEB8] bg-white px-5 py-2.5 text-sm font-medium text-[#1A1E16]">Post a task</button>
+            </Link>
+          </div>
+
+          <p className="mt-3 text-xs text-[#6A8064]">Free to sign up · Payments secured by Paystack escrow · Verified students only</p>
+        </div>
+
+        <div className="relative">
+          <div className="absolute -right-3 -top-5 rounded-xl border border-[#C4DEB8] bg-white px-3.5 py-2.5">
+            <div className="text-lg font-bold leading-none" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>2,400+</div>
+            <div className="mt-1 text-[11px] text-[#6A8064]">Active freelancers</div>
+          </div>
+
+          <div className="rounded-2xl border border-[#C4DEB8] bg-[linear-gradient(145deg,#F4FBF0,#EAF3F8)] p-5">
+            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.5px] text-[#6A8064]">Top freelancer this month</p>
+
+            <div className="mb-3.5 flex items-center gap-2.5">
+              <div className="grid size-[52px] place-items-center rounded-full bg-[#C8EED8] text-lg font-bold text-[#1A7A42]" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>TW</div>
+              <div>
+                <div className="text-[15px] font-semibold text-[#1A1E16]">Thomas White <span className="ml-1 rounded-full bg-[#D8F5E4] px-2 py-0.5 text-[11px] font-semibold text-[#1A7A42]">Verified</span></div>
+                <div className="text-xs text-[#6A8064]">University of Lagos · 4 years experience</div>
+              </div>
+            </div>
+
+            <div className="mb-3 flex items-center gap-1 text-[13px] text-[#1A1E16]">
+              <span className="text-[#F5A623]">★★★★★</span>
+              <span className="font-medium">4.9</span>
+              <span className="text-[#6A8064]">(127 reviews)</span>
+            </div>
+
+            <div className="mb-3.5 flex flex-wrap gap-1.5">
+              {[
+                "Video editing",
+                "Motion graphics",
+                "After Effects",
+              ].map((skill) => (
+                <span key={skill} className="rounded-md bg-[rgba(61,203,108,0.12)] px-2.5 py-1 text-xs text-[#1A6A38]">
+                  {skill}
+                </span>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between border-t border-[#C4DEB8] pt-3">
+              <p className="text-lg font-bold" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>
+                ₦15,000 <span className="text-xs font-normal text-[#6A8064]" style={{ fontFamily: 'Inter, sans-serif' }}>starting price</span>
+              </p>
+              <button className="rounded-lg bg-[#3DCB6C] px-4 py-2 text-[13px] font-semibold text-white">View profile</button>
+            </div>
+          </div>
+
+          <div className="absolute -bottom-5 -left-3 rounded-xl border border-[#C4DEB8] bg-white px-3.5 py-2.5">
+            <div className="text-lg font-bold leading-none" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>₦0</div>
+            <div className="mt-1 text-[11px] text-[#6A8064]">Fee to post a task</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="flex items-center justify-center gap-10 border-y border-[#D4E8CC] bg-white px-12 py-[18px]">
+        <div className="flex items-center gap-2 text-[13px] text-[#4A5A44]"><ShieldCheck className="size-4 text-[#3DCB6C]" /> Escrow-protected payments</div>
+        <div className="h-6 w-px bg-[#D4E8CC]" />
+        <div className="flex items-center gap-2 text-[13px] text-[#4A5A44]"><Users className="size-4 text-[#3DCB6C]" /> Verified students and alumni</div>
+        <div className="h-6 w-px bg-[#D4E8CC]" />
+        <div className="flex items-center gap-2 text-[13px] text-[#4A5A44]"><Building className="size-4 text-[#3DCB6C]" /> 50+ Nigerian universities</div>
+        <div className="h-6 w-px bg-[#D4E8CC]" />
+        <div className="flex items-center gap-2 text-[13px] text-[#4A5A44]"><Clock3 className="size-4 text-[#3DCB6C]" /> Tasks completed in 24-72 hrs</div>
+        <div className="h-6 w-px bg-[#D4E8CC]" />
+        <div className="flex items-center gap-2 text-[13px] text-[#4A5A44]"><CreditCard className="size-4 text-[#3DCB6C]" /> Secure Paystack checkout</div>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1200px] px-12 py-8">
+        <Collapsible open={showTrustExample} onOpenChange={setShowTrustExample}>
+          <div className="rounded-2xl border border-[#D4E8CC] bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[1px] text-[#6A8064]">Verification example</p>
+              <CollapsibleTrigger asChild>
+                <button className="text-xs font-semibold text-[#3DCB6C]">{showTrustExample ? "Hide" : "View"} details</button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent>
+              <div className="mt-3 flex items-start gap-3">
+                <InitialsAvatar name="Chiamaka Okafor" size={44} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-[#1A1E16]">Chiamaka Okafor</p>
+                    <VerifiedBadge role="student" />
+                  </div>
+                  <p className="text-xs text-[#6A8064]">UNILAG · 300L · Computer Science</p>
+                  <div className="mt-2 flex items-center gap-1 text-xs text-[#6A8064]">
+                    <Star className="size-3 fill-[#F5A623] text-[#F5A623]" /> 4.9 · 12 tasks completed
+                  </div>
+                </div>
+                <Briefcase className="size-5 shrink-0 text-[#6A8064]" />
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1200px] px-12 py-[72px]">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-[#3DCB6C]">What we offer</p>
+        <div className="mb-10 flex items-end justify-between">
+          <div>
+            <h2 className="text-[34px] font-bold" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>Browse by category</h2>
+            <p className="mt-2 text-base text-[#4A5A44]">Find exactly the skill you need across all major service areas.</p>
+          </div>
+          <Link to="/app/browse" className="text-sm font-semibold text-[#3DCB6C]">See all categories →</Link>
+        </div>
+
+        <div className="grid grid-cols-6 gap-3.5">
+          {DESKTOP_CATEGORIES.map((item) => (
+            <div key={item.name} className="rounded-[14px] border border-[#D4E8CC] bg-white px-4 py-5 text-center transition-colors hover:border-[#3DCB6C]">
+              <div className="mx-auto mb-3 grid size-12 place-items-center rounded-xl bg-[#D8F5E4] text-[22px]">{item.icon}</div>
+              <p className="text-[13px] font-semibold text-[#1A1E16]">{item.name}</p>
+              <p className="mt-1 text-[11px] text-[#6A8064]">{item.count}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1200px] px-12 pb-[72px] pt-0">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-[#3DCB6C]">Open right now</p>
+        <div className="mb-10 flex items-end justify-between">
+          <div>
+            <h2 className="text-[34px] font-bold" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>Latest tasks posted</h2>
+            <p className="mt-2 text-base text-[#4A5A44]">Browse tasks posted by clients looking for students like you.</p>
+          </div>
+          <Link to="/app/browse" className="text-sm font-semibold text-[#3DCB6C]">Browse all tasks →</Link>
+        </div>
+
+        <div className="grid grid-cols-3 gap-[18px]">
+          {DESKTOP_TASKS.map((task) => (
+            <article key={task.title} className="rounded-[14px] border border-[#D4E8CC] bg-white p-5">
+              <div className="mb-3 flex items-start justify-between">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#3DCB6C]">{task.category}</p>
+                <Bookmark className="size-4 text-[#C4DEB8]" />
+              </div>
+              <h3 className="mb-2 text-[15px] font-semibold leading-[1.4]" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>{task.title}</h3>
+              <p className="mb-3.5 text-[13px] leading-[1.6] text-[#4A5A44]">{task.desc}</p>
+              <div className="flex items-center justify-between border-t border-[#E8F4E4] pt-3">
+                <p className="text-base font-bold" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>{task.price} <small className="text-xs font-normal text-[#6A8064]" style={{ fontFamily: 'Inter, sans-serif' }}>{task.mode}</small></p>
+                <div className="flex items-center gap-1.5 text-xs text-[#4A5A44]">
+                  <span className="grid size-[22px] place-items-center rounded-full bg-[#C8EED8] text-[10px] font-bold text-[#1A7A42]">{task.initials}</span>
+                  {task.poster}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="how-it-works" className="bg-[#2E5C35] px-12 py-[72px]">
+        <div className="mx-auto w-full max-w-[1200px]">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-[#3DCB6C]">Simple process</p>
+          <h2 className="text-[34px] font-bold text-white" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>How InTask works</h2>
+          <p className="mt-2 text-base text-[#8EC49A]">From posting to payment in four easy steps.</p>
+
+          <div className="mt-12 grid grid-cols-4 gap-6">
+            {[
+              {
+                title: "Post your task",
+                body: "Describe what you need, set a budget, and publish your task to thousands of student freelancers.",
+              },
+              {
+                title: "Review applications",
+                body: "Freelancers apply with their rates and portfolios. Browse, chat, and pick the best fit.",
+              },
+              {
+                title: "Pay into escrow",
+                body: "Funds are held securely via Paystack. Your freelancer only gets paid when you approve the work.",
+              },
+              {
+                title: "Approve and release",
+                body: "Review the delivery, request revisions if needed, then release payment and leave a review.",
+              },
+            ].map((step, index) => (
+              <div key={step.title} className="text-center">
+                <div className="mx-auto mb-4 grid size-12 place-items-center rounded-xl bg-[#3DCB6C] text-xl font-bold text-white" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>{index + 1}</div>
+                <h3 className="mb-2 text-base font-semibold text-white" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>{step.title}</h3>
+                <p className="text-[13px] leading-[1.6] text-[#8EC49A]">{step.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1200px] px-12 py-[72px]">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[1px] text-[#3DCB6C]">What people say</p>
+        <h2 className="mb-2 text-[34px] font-bold" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>Trusted by students across Nigeria</h2>
+        <p className="mb-10 text-base text-[#4A5A44]">Real reviews from real students and clients.</p>
+
+        <div className="grid grid-cols-3 gap-[18px]">
+          {DESKTOP_TESTIMONIALS.map((item) => (
+            <article key={item.name} className="rounded-[14px] border border-[#D4E8CC] bg-white p-6">
+              <p className="mb-3 text-sm text-[#F5A623]">{item.stars}</p>
+              <p className="mb-4 text-sm leading-[1.7] text-[#3A4434]">"{item.text}"</p>
+              <div className="flex items-center gap-2.5">
+                <span className={`grid size-11 place-items-center rounded-full text-sm font-bold ${item.avatarClass}`}>{item.initials}</span>
+                <div>
+                  <p className="text-[13px] font-semibold">{item.name}</p>
+                  <p className="text-[11px] text-[#6A8064]">{item.subtitle}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-[1200px] px-12 pb-[72px]">
+        <div className="mb-8 grid grid-cols-2 items-center gap-6 rounded-2xl border border-[#D4E8CC] bg-white p-7">
+          <div>
+            <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-[#F7ECD9] px-3 py-1 text-xs font-medium text-[#8B5F17]">
+              <GraduationCap className="size-3" /> For Universities
+            </span>
+            <h2 className="text-[34px] font-bold" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>Partner with InTask</h2>
+            <p className="mt-3 text-sm leading-[1.7] text-[#4A5A44]">
+              Give your students access to real paid work while they study. InTask partners with Nigerian universities to bridge the gap between education and employment.
+            </p>
+            <ul className="mt-4 space-y-2">
+              {["Free for institutions", "Verified work experience before graduation", "Dashboard showing your students' activity"].map((item) => (
+                <li key={item} className="flex items-center gap-2 text-sm text-[#4A5A44]">
+                  <CheckCircle2 className="size-4 shrink-0 text-[#1A7A42]" /> {item}
+                </li>
+              ))}
+            </ul>
+            <Link to="/app/partnership" className="mt-5 inline-block text-sm font-semibold text-[#3DCB6C]">Request a partnership →</Link>
+          </div>
+
+          <div className="rounded-xl border border-[#D4E8CC] bg-[#F4FBF0] p-5">
+            <p className="text-sm font-semibold text-[#1A1E16]">Partnership benefits at a glance</p>
+            {[
+              { label: "Student employability", value: "Higher" },
+              { label: "Graduate readiness", value: "Verified" },
+              { label: "Cost to university", value: "Free" },
+              { label: "Setup time", value: "3 days" },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex items-center justify-between border-b border-[#D4E8CC] py-3 last:border-0 last:pb-0">
+                <p className="text-sm text-[#6A8064]">{label}</p>
+                <p className="text-sm font-semibold text-[#1A1E16]">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto] items-center gap-10 rounded-[20px] bg-[#3DCB6C] px-16 py-14">
+          <div>
+            <h2 className="mb-2 text-[34px] font-bold text-white" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>Want to work as a freelancer?</h2>
+            <p className="text-base text-white/85">Join thousands of students earning on their own schedule. Sign up free, get verified, and start applying to tasks today.</p>
+          </div>
+          <div className="flex flex-col items-end gap-3">
+            <Link to="/auth/signup">
+              <button className="rounded-[10px] bg-white px-7 py-3.5 text-[15px] font-bold text-[#1A7A42]" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>
+                Become a freelancer →
+              </button>
+            </Link>
+            <p className="text-xs text-white/75">Free to join. No monthly fees.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-[#1A2E1C] px-12 pb-8 pt-14">
+        <div className="mx-auto mb-10 grid w-full max-w-[1200px] grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-10">
+          <div>
+            <p className="mb-3 text-[22px] font-bold text-white" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>
+              In<span className="text-[#3DCB6C]">Task</span>
+            </p>
+            <p className="mb-5 max-w-[240px] text-[13px] leading-[1.7] text-[#5A7A5E]">
+              The marketplace where Nigerian university students exchange skills, complete tasks, and grow their careers.
+            </p>
+            <div className="flex gap-2.5">
+              <span className="grid size-[34px] place-items-center rounded-lg bg-[#243826] text-[#8EC49A]"><Twitter className="size-4" /></span>
+              <span className="grid size-[34px] place-items-center rounded-lg bg-[#243826] text-[#8EC49A]"><Instagram className="size-4" /></span>
+              <span className="grid size-[34px] place-items-center rounded-lg bg-[#243826] text-[#8EC49A]"><Linkedin className="size-4" /></span>
+              <span className="grid size-[34px] place-items-center rounded-lg bg-[#243826] text-[#8EC49A]"><Users className="size-4" /></span>
+            </div>
+          </div>
+
+          {[
+            {
+              title: "Platform",
+              links: [
+                { label: "Browse tasks", to: "/app/browse" },
+                { label: "Browse freelancers", to: "/app/talent" },
+                { label: "Post a task", to: "/auth/signup" },
+                { label: "Pricing", to: "#" },
+              ],
+            },
+            {
+              title: "Categories",
+              links: [
+                { label: "Web development", to: "#" },
+                { label: "Visual arts", to: "#" },
+                { label: "Marketing", to: "#" },
+                { label: "Writing", to: "#" },
+                { label: "Music", to: "#" },
+              ],
+            },
+            {
+              title: "Company",
+              links: [
+                { label: "About us", to: "/about" },
+                { label: "Blog", to: "#" },
+                { label: "Careers", to: "#" },
+                { label: "Press", to: "#" },
+              ],
+            },
+            {
+              title: "Support",
+              links: [
+                { label: "Help centre", to: "#" },
+                { label: "Contact us", to: "/contact" },
+                { label: "FAQs", to: "#" },
+                { label: "Dispute policy", to: "#" },
+              ],
+            },
+          ].map((group) => (
+            <div key={group.title}>
+              <p className="mb-4 text-[13px] font-semibold text-white" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>{group.title}</p>
+              {group.links.map((item) => (
+                item.to.startsWith("/") ? (
+                  <Link key={item.label} to={item.to as any} className="mb-2 block text-[13px] text-[#5A7A5E] hover:text-[#8EC49A]">
+                    {item.label}
+                  </Link>
+                ) : (
+                  <a key={item.label} href={item.to} className="mb-2 block text-[13px] text-[#5A7A5E] hover:text-[#8EC49A]">
+                    {item.label}
+                  </a>
+                )
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="mx-auto flex w-full max-w-[1200px] items-center justify-between border-t border-[#243826] pt-6">
+          <p className="text-xs text-[#3A5A3E]">© 2026 InTask. All rights reserved.</p>
+          <div className="flex gap-5">
+            <Link to="/privacy" className="text-xs text-[#3A5A3E]">Privacy policy</Link>
+            <Link to="/terms" className="text-xs text-[#3A5A3E]">Terms of service</Link>
+            <a href="#" className="text-xs text-[#3A5A3E]">Cookie settings</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function MobileLanding() {
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [showTrustExample, setShowTrustExample] = useState(false);
   const visibleCategories = showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 8);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
@@ -84,7 +600,6 @@ function Landing() {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:pt-16">
         <div className="grid items-center gap-10 md:grid-cols-2">
           <div>
@@ -110,7 +625,6 @@ function Landing() {
             <p className="mt-4 text-xs text-muted-foreground">Free to sign up · Payments secured by Paystack escrow · Verified students only</p>
           </div>
 
-          {/* Floating mock task card */}
           <div className="relative">
             <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-tr from-primary/15 via-accent to-success/10 blur-2xl" />
             <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-[0_18px_48px_-24px_rgba(37,99,235,0.38)]">
@@ -142,7 +656,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* Who is it for */}
       <section className="border-t border-border bg-card">
         <div className="mx-auto max-w-6xl px-4 py-16">
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Who is InTask for?</h2>
@@ -163,7 +676,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* How it works */}
       <section className="border-t border-border">
         <div className="mx-auto max-w-6xl px-4 py-16">
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">How it works</h2>
@@ -179,7 +691,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* Categories strip */}
       <section className="border-t border-border bg-card">
         <div className="mx-auto max-w-6xl px-4 py-14">
           <div className="flex items-end justify-between gap-4">
@@ -198,7 +709,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* Trust */}
       <section className="border-t border-border">
         <div className="mx-auto max-w-6xl px-4 py-16">
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Why InTask?</h2>
@@ -249,12 +759,12 @@ function Landing() {
           </Collapsible>
         </div>
       </section>
-      
+
       <section className="border-t border-border bg-card">
         <div className="mx-auto max-w-6xl px-4 py-14">
-          <div className="grid gap-8 md:grid-cols-2 items-center">
+          <div className="grid items-center gap-8 md:grid-cols-2">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-warning/15 px-3 py-1 text-xs font-medium text-warning mb-4">
+              <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-warning/15 px-3 py-1 text-xs font-medium text-warning">
                 <GraduationCap className="size-3" /> For Universities
               </span>
               <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Partner with InTask</h2>
@@ -264,7 +774,7 @@ function Landing() {
               <ul className="mt-4 space-y-2">
                 {["Free for institutions", "Students earn real income on campus", "Verified work experience before graduation", "Dashboard showing your students' activity"].map((item) => (
                   <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <CheckCircle2 className="size-4 text-success shrink-0" /> {item}
+                    <CheckCircle2 className="size-4 shrink-0 text-success" /> {item}
                   </li>
                 ))}
               </ul>
@@ -272,7 +782,7 @@ function Landing() {
                 <Button className="mt-6 gap-2">Request a partnership <ArrowRight className="size-4" /></Button>
               </Link>
             </div>
-            <div className="rounded-2xl border border-border bg-background p-6 space-y-4">
+            <div className="space-y-4 rounded-2xl border border-border bg-background p-6">
               <p className="text-sm font-medium text-foreground">Partnership benefits at a glance</p>
               {[
                 { label: "Student employability", value: "Higher" },
@@ -290,7 +800,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* CTA banner */}
       <section className="border-t border-border bg-primary">
         <div className="mx-auto max-w-6xl px-4 py-14 text-center">
           <h2 className="text-2xl font-semibold tracking-tight text-primary-foreground sm:text-3xl">
@@ -314,7 +823,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-border bg-background">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center">
           <div>
@@ -327,11 +835,11 @@ function Landing() {
             <p className="mt-1 text-xs">Work, collaborate, and grow — built for students.</p>
           </div>
           <div className="flex flex-wrap gap-4 text-xs">
-            <a className="hover:text-foreground" href="#">About</a>
-            <a className="hover:text-foreground" href="#">Contact</a>
+            <Link to="/about" className="hover:text-foreground">About</Link>
+            <Link to="/contact" className="hover:text-foreground">Contact</Link>
             <Link to="/app/partnership" className="hover:text-foreground">Universities</Link>
-            <a className="hover:text-foreground" href="#">Terms</a>
-            <a className="hover:text-foreground" href="#">Privacy</a>
+            <Link to="/terms" className="hover:text-foreground">Terms</Link>
+            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
           </div>
         </div>
       </footer>

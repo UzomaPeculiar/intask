@@ -194,7 +194,7 @@ function TalentSearchPage() {
           <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
             <ArrowLeft className="size-4" />
           </button>
-          <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4 py-3 shadow-sm">
+          <div className="it-hero-surface rounded-2xl border px-4 py-3 shadow-sm">
             <h1 className="text-lg font-semibold">Talent Search</h1>
           </div>
         </div>
@@ -205,7 +205,7 @@ function TalentSearchPage() {
 
       <div className="px-4 pt-4 space-y-3">
         {!canSearchTalent && (
-          <div className="rounded-2xl border border-warning/30 bg-warning/10 p-3 flex items-start justify-between gap-3 shadow-sm">
+          <div className="it-note-warning rounded-2xl border p-3 flex items-start justify-between gap-3 shadow-sm">
             <div>
               <p className="text-sm font-medium text-warning">Pro feature</p>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -272,7 +272,7 @@ function TalentSearchPage() {
         )}
 
         {!hasSearched && (
-          <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-6 text-center shadow-sm">
+          <div className="it-hero-surface rounded-3xl border p-6 text-center shadow-sm">
             <Search className="size-8 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm font-medium text-foreground">Search for talent</p>
             <p className="text-xs text-muted-foreground mt-1">Filter by skill, university, year level, and rating to find the right student for your needs.</p>
@@ -337,7 +337,7 @@ function TalentSearchPage() {
                       {p.badges && p.badges.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {p.badges.slice(0, 2).map((b: string) => (
-                            <span key={b} className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
+                            <span key={b} className="it-note-success inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium">
                               <Award className="size-2.5" /> {b}
                             </span>
                           ))}

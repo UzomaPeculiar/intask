@@ -122,7 +122,7 @@ function CourseDetailPage() {
 
       {activeLesson ? (
         <div className="px-4 pt-4 space-y-4">
-          <button onClick={() => setActiveLesson(null)} className="text-sm text-primary hover:underline flex items-center gap-1">
+          <button onClick={() => setActiveLesson(null)} className="it-link-accent text-sm hover:underline flex items-center gap-1">
             ← Back to course
           </button>
           <h2 className="text-lg font-semibold">{activeLesson.title}</h2>
@@ -170,7 +170,7 @@ function CourseDetailPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-1">{progress}% complete</p>
               {enrollment?.completed && (
-                <div className="mt-3 flex items-center gap-2 rounded-lg bg-success/10 p-2">
+                <div className="it-note-success mt-3 flex items-center gap-2 rounded-lg border p-2">
                   <Award className="size-5 text-success" />
                   <p className="text-sm font-medium text-success">Course completed! Certificate earned.</p>
                 </div>
@@ -200,7 +200,7 @@ function CourseDetailPage() {
                       {isCompleted ? (
                         <CheckCircle2 className="size-4 text-success" />
                       ) : canAccess ? (
-                        <Play className="size-4 text-primary" />
+                        <Play className="size-4 text-accent-foreground" />
                       ) : (
                         <Lock className="size-4 text-muted-foreground" />
                       )}

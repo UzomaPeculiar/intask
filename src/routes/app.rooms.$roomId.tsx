@@ -214,7 +214,7 @@ function ProjectRoomPage() {
                 </div>
               </div>
               {m.role === "lead" && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Lead</span>
+                <span className="it-note-accent rounded-full border px-2 py-0.5 text-[11px] font-medium">Lead</span>
               )}
             </div>
           ))}
@@ -232,8 +232,8 @@ function ProjectRoomPage() {
           )}
           {files?.map((f: any) => (
             <a key={f.id} href={f.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
-              <div className="grid size-10 place-items-center rounded-lg bg-primary/10 shrink-0">
-                <FileText className="size-5 text-primary" />
+              <div className="it-note-accent grid size-10 place-items-center rounded-lg border shrink-0">
+                <FileText className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground truncate">{f.file_name}</p>

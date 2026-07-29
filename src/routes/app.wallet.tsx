@@ -474,7 +474,7 @@ function WalletPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[1000, 5000, 10000].map((amt) => (
-                    <button key={amt} onClick={() => setFundAmount(String(amt))} className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${fundAmount === String(amt) ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
+                    <button key={amt} onClick={() => setFundAmount(String(amt))} className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${fundAmount === String(amt) ? "it-chip-active" : "border-border text-muted-foreground"}`}>
                       ₦{amt.toLocaleString()}
                     </button>
                   ))}
@@ -520,7 +520,7 @@ function WalletPage() {
                           <button
                             key={b.id}
                             onClick={() => setSelectedBankAccountId(b.id)}
-                            className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selectedBankAccountId === b.id ? "border-primary bg-primary/10" : "border-border bg-card"}`}
+                            className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selectedBankAccountId === b.id ? "it-note-accent" : "border-border bg-card"}`}
                           >
                             <div className="grid size-9 place-items-center rounded-lg bg-muted shrink-0">
                               <Building2 className="size-4 text-muted-foreground" />
@@ -533,7 +533,7 @@ function WalletPage() {
                           </button>
                         ))}
                       </div>
-                      <button onClick={() => { setWithdrawOpen(false); setAddBankOpen(true); }} className="text-xs text-primary hover:underline">
+                      <button onClick={() => { setWithdrawOpen(false); setAddBankOpen(true); }} className="it-link-accent text-xs hover:underline">
                         + Add another bank account
                       </button>
                     </div>
@@ -561,7 +561,7 @@ function WalletPage() {
                       </div>
                     )}
 
-                    <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning flex items-start gap-2">
+                    <div className="it-note-warning rounded-lg border p-3 text-xs flex items-start gap-2">
                       <AlertTriangle className="size-4 shrink-0 mt-0.5" />
                       <p>Double-check your account details. Funds sent to wrong accounts cannot be reversed.</p>
                     </div>
@@ -582,7 +582,7 @@ function WalletPage() {
             </div>
 
             {pendingWithdrawals.length > 0 && (
-              <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
+              <div className="it-note-warning rounded-xl border p-3">
                 <p className="flex items-center gap-1 text-sm font-medium text-warning">
                   <Clock className="size-4" /> {pendingWithdrawals.length} pending withdrawal{pendingWithdrawals.length === 1 ? "" : "s"}
                 </p>
@@ -595,7 +595,7 @@ function WalletPage() {
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-foreground">Bank accounts</h2>
-                <button onClick={() => setAddBankOpen(true)} className="flex items-center gap-1 text-xs text-primary hover:underline">
+                <button onClick={() => setAddBankOpen(true)} className="it-link-accent flex items-center gap-1 text-xs hover:underline">
                   <Plus className="size-3" /> Add
                 </button>
               </div>
@@ -617,11 +617,11 @@ function WalletPage() {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground">{b.account_name}</p>
                       <p className="text-xs text-muted-foreground">{b.bank_name} · {b.account_number}</p>
-                      {b.is_default && <span className="text-[10px] font-medium text-primary">Default</span>}
+                      {b.is_default && <span className="it-link-accent text-[10px] font-medium">Default</span>}
                     </div>
                     <div className="flex gap-1">
                       {!b.is_default && (
-                        <button onClick={() => setDefaultBank.mutate(b.id)} className="px-2 py-1 text-xs text-muted-foreground hover:text-primary">Set default</button>
+                        <button onClick={() => setDefaultBank.mutate(b.id)} className="px-2 py-1 text-xs text-muted-foreground hover:text-success">Set default</button>
                       )}
                       <button onClick={() => removeBank.mutate(b.id)} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:text-destructive">
                         <Trash2 className="size-3.5" />
@@ -738,7 +738,7 @@ function WalletPage() {
             </div>
 
             {accountName && (
-              <div className="rounded-lg border border-success/30 bg-success/10 p-3 flex items-center gap-2">
+              <div className="it-note-success rounded-lg border p-3 flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-success shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-success">Account verified</p>
@@ -747,7 +747,7 @@ function WalletPage() {
               </div>
             )}
 
-            <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning flex items-start gap-2">
+            <div className="it-note-warning rounded-lg border p-3 text-xs flex items-start gap-2">
               <AlertTriangle className="size-4 shrink-0 mt-0.5" />
               <p>Make sure this is your account. InTask is not responsible for transfers to wrong accounts.</p>
             </div>

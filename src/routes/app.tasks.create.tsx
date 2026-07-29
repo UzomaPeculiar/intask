@@ -116,7 +116,7 @@ function CreateTaskPage() {
         <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
-        <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4 py-3 shadow-sm">
+        <div className="it-hero-surface rounded-2xl border px-4 py-3 shadow-sm">
           <h1 className="text-lg font-semibold">Post a task</h1>
         </div>
       </header>
@@ -194,7 +194,7 @@ function CreateTaskPage() {
               <div className="grid grid-cols-3 gap-2 text-sm">
                 {(["remote", "on_campus", "either"] as const).map((w) => (
                   <button key={w} type="button" onClick={() => setWorkType(w)}
-                    className={`rounded-md border px-2 py-2 ${workType === w ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>
+                    className={`rounded-md border px-2 py-2 ${workType === w ? "it-chip-active" : "border-border bg-card text-foreground"}`}>
                     {w === "remote" ? "Remote" : w === "on_campus" ? "On-campus" : "Either"}
                   </button>
                 ))}
@@ -236,7 +236,7 @@ function CreateTaskPage() {
                   return (
                     <button key={sk} type="button"
                       onClick={() => setSkills(sel ? skills.filter((x) => x !== sk) : [...skills, sk])}
-                      className={`rounded-full border px-2.5 py-1 text-xs ${sel ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>
+                      className={`rounded-full border px-2.5 py-1 text-xs ${sel ? "it-chip-active" : "border-border bg-card text-foreground"}`}>
                       {sk}
                     </button>
                   );

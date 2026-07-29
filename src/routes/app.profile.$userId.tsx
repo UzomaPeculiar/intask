@@ -347,7 +347,7 @@ function ProfilePage() {
                       <p className="mb-2 text-xs text-muted-foreground">Verified badges</p>
                       <div className="flex flex-wrap gap-2">
                         {skillBadges.map((b: any) => (
-                          <span key={b.skill} className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-3 py-1 text-xs font-medium text-success">
+                          <span key={b.skill} className="it-note-success inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium">
                             <Award className="size-3" /> {b.skill}
                           </span>
                         ))}
@@ -569,7 +569,7 @@ function EditPanel({ profile, student, company, onDone }: any) {
                 const sel = skills.includes(sk);
                 return (
                   <button key={sk} type="button" onClick={() => setSkills(sel ? skills.filter((x) => x !== sk) : [...skills, sk])}
-                    className={`rounded-full border px-2.5 py-1 text-xs ${sel ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>
+                    className={`rounded-full border px-2.5 py-1 text-xs ${sel ? "it-chip-active" : "border-border bg-card text-foreground"}`}>
                     {sk}
                   </button>
                 );
@@ -746,7 +746,7 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
                     href={/^https?:\/\//.test(p.link) ? p.link : `https://${p.link}`} 
                     target="_blank" 
                     rel="noreferrer" 
-                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary"
+                    className="it-link-accent mt-2 inline-flex items-center gap-1 text-xs font-medium"
                   >
                     <ExternalLink className="size-3" /> View
                   </a>
@@ -780,7 +780,7 @@ function PostedTasksSection({ tasks }: { tasks: any[] }) {
                 <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="rounded-full bg-muted px-2 py-0.5">{t.category}</span>
                   <span className={`rounded-full px-2 py-0.5 ${
-                    t.status === "open" ? "bg-primary/10 text-primary" :
+                    t.status === "open" ? "it-note-accent" :
                     t.status === "completed" ? "bg-muted text-muted-foreground" :
                     "bg-success/15 text-success"
                   }`}>
@@ -833,7 +833,7 @@ function ReuploadIDSection({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-warning/30 bg-warning/10 p-4 space-y-3">
+    <div className="it-note-warning mt-3 rounded-xl border p-4 space-y-3">
        <div>
          <p className="text-sm font-medium text-warning">Verification pending</p>
          <p className="text-xs text-muted-foreground mt-0.5">
@@ -934,7 +934,7 @@ function EmailVerificationSection({ userId, universityEmail }: { userId: string;
   });
 
   return (
-    <div className="mt-3 rounded-xl border border-warning/30 bg-warning/10 p-4 space-y-3">
+    <div className="it-note-warning mt-3 rounded-xl border p-4 space-y-3">
       <div>
         <p className="text-sm font-medium text-warning">Email verification pending</p>
         <p className="text-xs text-muted-foreground mt-0.5">

@@ -134,7 +134,7 @@ function AssessmentsPage() {
                 onClick={() => selectAnswer(q.id, i)}
                 className={`w-full rounded-xl border p-4 text-left text-sm transition-colors ${
                   answers[q.id] === i
-                    ? "border-primary bg-primary/10 text-primary font-medium"
+                    ? "it-chip-active font-medium"
                     : "border-border bg-card text-foreground hover:border-primary/50"
                 }`}
               >
@@ -193,7 +193,7 @@ function AssessmentsPage() {
         </p>
 
         {passed && (
-          <div className="mt-6 rounded-xl border border-success/30 bg-success/10 p-4">
+          <div className="it-note-success mt-6 rounded-xl border p-4">
             <div className="flex items-center justify-center gap-2">
               <Award className="size-5 text-success" />
               <p className="font-semibold text-success">{activeAssessment.skill} — Verified</p>
@@ -226,7 +226,7 @@ function AssessmentsPage() {
         <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
-        <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4 py-3 shadow-sm">
+        <div className="it-hero-surface rounded-2xl border px-4 py-3 shadow-sm">
           <h1 className="text-lg font-semibold">Skill Assessments</h1>
         </div>
       </header>

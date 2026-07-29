@@ -155,7 +155,7 @@ function ManageCoursePage() {
       </header>
 
       <div className="px-4 pt-4 space-y-4">
-        <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-3.5 flex items-center justify-between shadow-sm">
+        <div className="it-hero-surface rounded-2xl border p-3.5 flex items-center justify-between shadow-sm">
           <div>
             <p className="text-sm font-semibold">{lessons?.length ?? 0} lessons</p>
             <p className="text-xs text-muted-foreground">{course?.enrolled_count ?? 0} students enrolled</p>
@@ -169,7 +169,7 @@ function ManageCoursePage() {
           <div className="rounded-2xl border border-border/80 bg-card/90 p-4 space-y-3 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">{editingLesson ? "Edit lesson" : "New lesson"}</h2>
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">Lesson builder</span>
+              <span className="it-note-accent rounded-full border px-2.5 py-1 text-[11px] font-medium">Lesson builder</span>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Title *</label>

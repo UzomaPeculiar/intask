@@ -97,7 +97,7 @@ function MentorshipPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 px-4 pb-10 pt-5">
-      <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+      <div className="it-hero-surface rounded-3xl border p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">Mentorship</h1>
           {isAlumni && (
@@ -120,7 +120,7 @@ function MentorshipPage() {
 
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Categories</span>
-          <button onClick={() => setShowAllCategories((prev) => !prev)} className="font-medium text-primary hover:underline">
+          <button onClick={() => setShowAllCategories((prev) => !prev)} className="it-link-accent font-medium hover:underline">
             {showAllCategories ? "Show fewer" : "Show all"}
           </button>
         </div>
@@ -131,7 +131,7 @@ function MentorshipPage() {
               key={c}
               onClick={() => setCategory(c)}
               className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                category === c ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"
+                category === c ? "it-chip-active" : "border-border bg-card text-foreground"
               }`}
             >
               {c}

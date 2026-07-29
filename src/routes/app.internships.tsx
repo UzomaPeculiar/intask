@@ -95,7 +95,7 @@ function InternshipsPage() {
           <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
             <ArrowLeft className="size-4" />
           </button>
-          <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4 py-3 shadow-sm">
+          <div className="it-hero-surface rounded-2xl border px-4 py-3 shadow-sm">
             <h1 className="text-lg font-semibold">Internships</h1>
           </div>
         </div>
@@ -114,7 +114,7 @@ function InternshipsPage() {
 
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {INTERNSHIP_CATEGORIES.map((c) => (
-            <button key={c} onClick={() => setCategory(c)} className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${category === c ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>
+            <button key={c} onClick={() => setCategory(c)} className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${category === c ? "it-chip-active" : "border-border bg-card text-foreground"}`}>
               {c}
             </button>
           ))}

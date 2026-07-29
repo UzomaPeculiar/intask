@@ -125,9 +125,9 @@ function LearnPage() {
       </header>
 
       <div className="px-4 pt-4 space-y-4">
-        <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
+        <div className="it-hero-surface rounded-2xl border p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
-            <div className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary">
+            <div className="it-note-accent grid size-9 place-items-center rounded-xl border">
               <BookOpen className="size-4" />
             </div>
             <div>
@@ -163,8 +163,8 @@ function LearnPage() {
                 return (
                   <Link key={c.id} to="/app/learn/$courseId" params={{ courseId: c.id }} className="block">
                     <div className="rounded-xl border border-border bg-card p-3 flex items-center gap-3">
-                      <div className="grid size-12 place-items-center rounded-lg bg-primary/10 shrink-0">
-                        <Play className="size-5 text-primary" />
+                      <div className="it-note-accent grid size-12 place-items-center rounded-lg border shrink-0">
+                        <Play className="size-5" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground line-clamp-1">{c.title}</p>
@@ -200,7 +200,7 @@ function LearnPage() {
         
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {COURSE_CATEGORIES.map((c) => (
-            <button key={c} onClick={() => setCategory(c)} className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-all ${category === c ? "border-primary bg-primary text-primary-foreground shadow-sm" : "border-border bg-card text-foreground hover:border-primary/50"}`}>
+            <button key={c} onClick={() => setCategory(c)} className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-all ${category === c ? "it-chip-active shadow-sm" : "border-border bg-card text-foreground hover:border-primary/50"}`}>
               {c}
             </button>
           ))}
@@ -208,7 +208,7 @@ function LearnPage() {
 
         <div className="flex gap-2">
           {LEVELS.map((l) => (
-            <button key={l} onClick={() => setLevel(l)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs capitalize transition-all ${level === l ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
+            <button key={l} onClick={() => setLevel(l)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs capitalize transition-all ${level === l ? "it-chip-active" : "border-border text-muted-foreground hover:border-primary/40"}`}>
               {l}
             </button>
           ))}

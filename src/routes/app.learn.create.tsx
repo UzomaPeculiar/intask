@@ -139,7 +139,7 @@ function CreateCoursePage() {
         <div className="rounded-2xl border border-border/80 bg-card/90 p-4 space-y-3 shadow-sm">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">Course details</h2>
-            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">Ready to publish</span>
+            <span className="it-note-accent rounded-full border px-2.5 py-1 text-[11px] font-medium">Ready to publish</span>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Title *</label>

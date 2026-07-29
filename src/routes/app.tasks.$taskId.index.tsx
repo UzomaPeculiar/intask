@@ -73,154 +73,182 @@ function TaskDetail() {
   if (!task) return <div className="px-4 pt-10 text-center text-muted-foreground">Task not found.</div>;
 
   const isOwn = me?.id === task.poster_id;
+  const isAssignedStudent = !isOwn && task.matched_student_id === me?.id;
+
+  const ownerActions = (
+    <>
+      {task.status === "open" && (
+        <Button size="lg" className="w-full" onClick={() => nav({ to: "/app/tasks/$taskId/applicants", params: { taskId: task.id } })}>
+          {applicantLabel(liveApplicantCount)}
+        </Button>
+      )}
+      {task.status === "matched" && (
+        <Link to="/app/payment/$taskId" params={{ taskId: task.id }}>
+          <Button size="lg" className="w-full">Fund escrow to start</Button>
+        </Link>
+      )}
+      {task.status === "in_progress" && <Button disabled size="lg" className="w-full">Student is working — you'll be notified</Button>}
+      {task.status === "in_review" && (
+        <Link to="/app/tasks/$taskId/review" params={{ taskId: task.id }}>
+          <Button size="lg" className="w-full bg-success text-success-foreground hover:bg-success/90">Review delivery</Button>
+        </Link>
+      )}
+      {task.status === "completed" && (
+        <Link to="/app/tasks/$taskId/rate" params={{ taskId: task.id }}>
+          <Button size="lg" variant="outline" className="w-full">Leave a review</Button>
+        </Link>
+      )}
+    </>
+  );
+
+  const assignedStudentActions = (
+    <>
+      {task.status === "in_progress" && (
+        <Link to="/app/tasks/$taskId/deliver" params={{ taskId: task.id }}>
+          <Button size="lg" className="w-full">Submit delivery</Button>
+        </Link>
+      )}
+      {task.status === "in_review" && <Button disabled size="lg" className="w-full">Awaiting poster review</Button>}
+      {task.status === "completed" && (
+        <Link to="/app/tasks/$taskId/rate" params={{ taskId: task.id }}>
+          <Button size="lg" variant="outline" className="w-full">Leave a review</Button>
+        </Link>
+      )}
+    </>
+  );
+
+  const applicantActions = (
+    <>
+      {canApply ? (
+        myApp ? (
+          <Button disabled size="lg" className="w-full">Application submitted</Button>
+        ) : (
+          <ApplySheet taskId={task.id} budget={task.budget} negotiable={task.budget_negotiable} />
+        )
+      ) : (
+        <p className="text-center text-xs text-muted-foreground">Only verified students can apply for tasks.</p>
+      )}
+      {canApply && (
+        <p className="mt-1.5 text-center text-[11px] text-muted-foreground">{liveApplicantCount} student{liveApplicantCount === 1 ? "" : "s"} applied</p>
+      )}
+    </>
+  );
 
   return (
-    <div className="mx-auto max-w-2xl pb-32">
-      <header className="flex items-center gap-2 px-4 pt-4">
+    <div className="mx-auto w-full max-w-7xl pb-32 lg:px-8 lg:pb-10">
+      <header className="flex items-center gap-2 px-4 pt-4 lg:px-0 lg:pt-6">
         <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
       </header>
 
-      <div className="space-y-5 px-4 pt-4">
-        <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
-          <h1 className="text-2xl font-semibold leading-tight tracking-tight">{task.title}</h1>
-          <p className="mt-2 text-3xl font-semibold text-success">{task.budget_negotiable ? "Open" : naira(task.budget)}</p>
-          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-            <ShieldCheck className="size-3 text-success" /> Held safely until work is approved
-          </p>
-        </div>
+      <div className="grid items-start gap-6 px-4 pt-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-0">
+        <div className="space-y-5">
+          <div className="it-hero-surface rounded-3xl border p-4 shadow-sm lg:p-6">
+            <h1 className="text-2xl font-semibold leading-tight tracking-tight lg:text-3xl">{task.title}</h1>
+            <p className="mt-2 text-3xl font-semibold text-success">{task.budget_negotiable ? "Open" : naira(task.budget)}</p>
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+              <ShieldCheck className="size-3 text-success" /> Held safely until work is approved
+            </p>
+          </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">{task.category}</span>
-          {task.deadline && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">{task.category}</span>
+            {task.deadline && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                <CalIcon className="size-3" /> {shortDate(task.deadline)}
+              </span>
+            )}
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              <CalIcon className="size-3" /> {shortDate(task.deadline)}
+              <MapPin className="size-3" /> {task.work_type === "remote" ? "Remote" : task.work_type === "on_campus" ? "On-campus" : "Remote or on-campus"}
             </span>
-          )}
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-            <MapPin className="size-3" /> {task.work_type === "remote" ? "Remote" : task.work_type === "on_campus" ? "On-campus" : "Remote or on-campus"}
-          </span>
-        </div>
+          </div>
 
-        <section className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-foreground">About this task</h2>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{task.description}</p>
-        </section>
+          <section className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm lg:p-5">
+            <h2 className="text-sm font-semibold text-foreground">About this task</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{task.description}</p>
+          </section>
 
-        <section className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-foreground">Task details</h2>
-          <Accordion type="multiple" className="mt-1 w-full">
-            {task.skills_needed?.length > 0 && (
-              <AccordionItem value="skills" className="border-border/70">
-                <AccordionTrigger className="py-3">Skills needed</AccordionTrigger>
+          <section className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm lg:p-5">
+            <h2 className="text-sm font-semibold text-foreground">Task details</h2>
+            <Accordion type="multiple" className="mt-1 w-full">
+              {task.skills_needed?.length > 0 && (
+                <AccordionItem value="skills" className="border-border/70">
+                  <AccordionTrigger className="py-3">Skills needed</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="flex flex-wrap gap-1.5">
+                      {task.skills_needed.map((s: string) => (
+                        <span key={s} className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">{s}</span>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+
+              <AccordionItem value="poster" className="border-border/70">
+                <AccordionTrigger className="py-3">Posted by</AccordionTrigger>
                 <AccordionContent>
-                  <div className="flex flex-wrap gap-1.5">
-                    {task.skills_needed.map((s: string) => (
-                      <span key={s} className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">{s}</span>
-                    ))}
-                  </div>
+                  <Link to="/app/profile/$userId" params={{ userId: task.poster_id }} className="flex items-center gap-3 rounded-2xl border border-border/80 bg-background/70 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                    <InitialsAvatar name={task.poster?.full_name} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-foreground">{task.poster?.full_name}</p>
+                      <div className="mt-0.5"><VerifiedBadge role={task.poster?.role} verified={true} /></div>
+                    </div>
+                  </Link>
+                  {task.poster_id !== me?.id && (
+                    <div className="mt-3">
+                      <ReportButton reportedId={task.poster_id} reportedName={task.poster?.full_name ?? "this poster"} />
+                    </div>
+                  )}
                 </AccordionContent>
               </AccordionItem>
-            )}
+            </Accordion>
+          </section>
 
-            <AccordionItem value="poster" className="border-border/70">
-              <AccordionTrigger className="py-3">Posted by</AccordionTrigger>
-              <AccordionContent>
-                <Link to="/app/profile/$userId" params={{ userId: task.poster_id }} className="flex items-center gap-3 rounded-2xl border border-border/80 bg-background/70 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-                  <InitialsAvatar name={task.poster?.full_name} size={40} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-foreground">{task.poster?.full_name}</p>
-                    <div className="mt-0.5"><VerifiedBadge role={task.poster?.role} verified={true} /></div>
-                  </div>
-                </Link>
-                {task.poster_id !== me?.id && (
-                  <div className="mt-3">
-                    <ReportButton reportedId={task.poster_id} reportedName={task.poster?.full_name ?? "this poster"} />
-                  </div>
-                )}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </section>
+          {(task as any)?.is_team_task && <TeamMembersSection taskId={taskId} teamSize={(task as any).team_size} />}
+
+          {(task as any).is_team_task && (
+            <div className="it-note-accent rounded-2xl border px-3 py-3 shadow-sm">
+              <p className="text-sm font-medium">👥 Team task — {(task as any).team_size} students needed</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Total budget: ₦{task.budget ? Number(task.budget).toLocaleString("en-NG") : "0"} · Each student receives ₦{task.budget ? Math.floor((task.budget * 0.92) / (task as any).team_size).toLocaleString("en-NG") : "0"} after platform fee
+              </p>
+            </div>
+          )}
+
+          {!isOwn && <div className="pb-6 lg:hidden">{applicantActions}</div>}
+        </div>
+
+        <aside className="hidden lg:block">
+          <div className="sticky top-6 space-y-4">
+            <div className="rounded-2xl border border-border/80 bg-card/95 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Decision panel</p>
+              <div className="mt-3 space-y-2">
+                {isAssignedStudent ? assignedStudentActions : isOwn ? ownerActions : applicantActions}
+              </div>
+            </div>
+
+            <Link to="/app/profile/$userId" params={{ userId: task.poster_id }} className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/95 p-4 shadow-sm transition-colors hover:bg-accent/40">
+              <InitialsAvatar name={task.poster?.full_name} size={40} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">{task.poster?.full_name}</p>
+                <p className="text-xs text-muted-foreground">Task poster</p>
+              </div>
+            </Link>
+          </div>
+        </aside>
       </div>
 
-      {(task as any)?.is_team_task && (
-        <TeamMembersSection taskId={taskId} teamSize={(task as any).team_size} />
-      )}
-
-      {(task as any).is_team_task && (
-        <div className="mx-4 mb-3 rounded-2xl border border-primary/30 bg-primary/10 px-3 py-3 shadow-sm">
-          <p className="text-sm font-medium text-primary">
-            👥 Team task — {(task as any).team_size} students needed
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Total budget: ₦{task.budget ? Number(task.budget).toLocaleString("en-NG") : "0"} · Each student receives ₦{task.budget ? Math.floor((task.budget * 0.92) / (task as any).team_size).toLocaleString("en-NG") : "0"} after platform fee
-          </p>
-        </div>
-      )}
-
-      {!isOwn && task.matched_student_id === me?.id && (
-        <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
-          <div className="mx-auto max-w-md space-y-2">
-            {task.status === "in_progress" && (
-              <Link to="/app/tasks/$taskId/deliver" params={{ taskId: task.id }}>
-                <Button size="lg" className="w-full">Submit delivery</Button>
-              </Link>
-            )}
-            {task.status === "in_review" && <Button disabled size="lg" className="w-full">Awaiting poster review</Button>}
-            {task.status === "completed" && (
-              <Link to="/app/tasks/$taskId/rate" params={{ taskId: task.id }}>
-                <Button size="lg" variant="outline" className="w-full">Leave a review</Button>
-              </Link>
-            )}
-          </div>
+      {isAssignedStudent && (
+        <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="mx-auto max-w-md space-y-2">{assignedStudentActions}</div>
         </div>
       )}
 
       {isOwn && (
-        <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
-          <div className="mx-auto max-w-md space-y-2">
-            {task.status === "open" && (
-              <Button size="lg" className="w-full" onClick={() => nav({ to: "/app/tasks/$taskId/applicants", params: { taskId: task.id } })}>
-                {applicantLabel(liveApplicantCount)}
-              </Button>
-            )}
-            {task.status === "matched" && (
-              <Link to="/app/payment/$taskId" params={{ taskId: task.id }}>
-                <Button size="lg" className="w-full">Fund escrow to start</Button>
-              </Link>
-            )}
-            {task.status === "in_progress" && <Button disabled size="lg" className="w-full">Student is working — you'll be notified</Button>}
-            {task.status === "in_review" && (
-              <Link to="/app/tasks/$taskId/review" params={{ taskId: task.id }}>
-                <Button size="lg" className="w-full bg-success text-success-foreground hover:bg-success/90">Review delivery</Button>
-              </Link>
-            )}
-            {task.status === "completed" && (
-              <Link to="/app/tasks/$taskId/rate" params={{ taskId: task.id }}>
-                <Button size="lg" variant="outline" className="w-full">Leave a review</Button>
-              </Link>
-            )}
-          </div>
+        <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="mx-auto max-w-md space-y-2">{ownerActions}</div>
         </div>
-      )}
-
-      {!isOwn && (
-        <>
-          {canApply ? (
-            myApp ? (
-              <Button disabled size="lg" className="w-full">Application submitted</Button>
-            ) : (
-              <ApplySheet taskId={task.id} budget={task.budget} negotiable={task.budget_negotiable} />
-            )
-          ) : (
-            <p className="text-center text-xs text-muted-foreground">Only verified students can apply for tasks.</p>
-          )}
-          {canApply && (
-            <p className="mt-1.5 text-center text-[11px] text-muted-foreground">{liveApplicantCount} student{liveApplicantCount === 1 ? "" : "s"} applied</p>
-          )}
-        </>
       )}
     </div>
   );

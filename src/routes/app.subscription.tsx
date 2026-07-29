@@ -184,7 +184,7 @@ function SubscriptionPage() {
       </header>
 
       {currentSub && (
-        <div className="mx-4 mt-4 rounded-xl border border-success/30 bg-success/10 p-4">
+        <div className="it-note-success mx-4 mt-4 rounded-xl border p-4">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="size-5 text-success" />
             <div>
@@ -212,11 +212,11 @@ function SubscriptionPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <div className={`grid size-9 place-items-center rounded-lg ${i === 0 ? "bg-muted" : i === 1 ? "bg-primary/15" : "bg-warning/15"}`}>
-                    <Icon className={`size-5 ${i === 0 ? "text-muted-foreground" : i === 1 ? "text-primary" : "text-warning"}`} />
+                    <Icon className={`size-5 ${i === 0 ? "text-muted-foreground" : i === 1 ? "text-accent-foreground" : "text-warning"}`} />
                   </div>
                   <div>
                     <p className="font-semibold text-foreground">{plan.name}</p>
-                    {i === 1 && <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Most popular</span>}
+                    {i === 1 && <span className="it-note-accent text-[10px] font-medium px-1.5 py-0.5 rounded-full border">Most popular</span>}
                     {i === 2 && <span className="text-[10px] font-medium text-warning bg-warning/10 px-1.5 py-0.5 rounded-full">Best value</span>}
                   </div>
                 </div>

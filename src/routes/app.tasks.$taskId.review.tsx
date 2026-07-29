@@ -75,20 +75,20 @@ function ReviewPage() {
           <p className="mt-1 whitespace-pre-wrap text-sm">
             {(task.delivery_message ?? "—").split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g).map((part: string, i: number) =>
               /^(https?:\/\/|www\.)/.test(part) ? (
-                <a key={i} href={/^https?:\/\//.test(part) ? part : `https://${part}`} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 break-all">
+                <a key={i} href={/^https?:\/\//.test(part) ? part : `https://${part}`} target="_blank" rel="noreferrer" className="it-link-accent underline underline-offset-2 break-all">
                   {part}
                 </a>
               ) : part
             )}
           </p>
           {task.delivery_url && (
-            <a href={task.delivery_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary">
+            <a href={task.delivery_url} target="_blank" rel="noreferrer" className="it-link-accent mt-3 inline-flex items-center gap-1 text-sm font-medium">
               Open delivery <ExternalLink className="size-3.5" />
             </a>
           )}
         </div>
 
-        <div className="rounded-xl border border-success/30 bg-success/5 p-4">
+        <div className="it-note-success rounded-xl border p-4">
           <p className="flex items-center gap-2 text-sm font-medium text-success"><ShieldCheck className="size-4" /> Happy with the work?</p>
           <p className="mt-1 text-xs text-muted-foreground">Releases {naira(Number(task.budget))} to the student (minus 8% platform fee).</p>
           <Button className="mt-3 w-full bg-success text-success-foreground hover:bg-success/90" size="lg" disabled={busy} onClick={approve}>
