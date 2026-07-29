@@ -284,6 +284,23 @@ function ApplySheet({ taskId, budget, negotiable }: { taskId: string; budget: nu
         throw authErr;
       }
       if (!user) throw new Error("Not signed in");
+
+      const { data: limitData } = await (supabase as any)
+        .rpc("application_limit_for_student", { _student_id: user.id });
+      const maxAllowed = Number(Array.isArray(limitData) ? limitData[0] : limitData);
+
+      if (Number.isFinite(maxAllowed) && maxAllowed < 2147483647) {
+        const { count } = await supabase
+          .from("applications")
+          .select("id", { count: "exact", head: true })
+          .eq("student_id", user.id)
+          .eq("status", "pending");
+
+        if ((count ?? 0) >= maxAllowed) {
+          throw new Error(`You can only have ${maxAllowed} active applications on the free plan. Upgrade to Alumni Pro for unlimited applications.`);
+        }
+      }
+
       const { data, error } = await supabase
         .from("applications")
         .insert({
@@ -310,7 +327,12 @@ function ApplySheet({ taskId, budget, negotiable }: { taskId: string; budget: nu
     },
     onError: (e: any) => {
       console.error("[apply] failed", e);
-      toast.error("Something went wrong submitting your application. Please try again.");
+      const msg = String(e?.message ?? "");
+      if (msg.toLowerCase().includes("row-level security") || msg.toLowerCase().includes("policy")) {
+        toast.error("Application blocked: free plan limit reached or this task is no longer open.");
+        return;
+      }
+      toast.error(msg || "Something went wrong submitting your application. Please try again.");
     },
   });
 

@@ -5,7 +5,7 @@ import { Share2 } from "lucide-react";
 import { ReportButton } from "@/components/intask/ReportButton";
 import { Link } from "@tanstack/react-router";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +20,9 @@ import { VerifiedBadge } from "@/components/intask/Badges";
 import { SKILLS, NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY } from "@/lib/constants";
 import { ArrowLeft, LogOut, Star, Briefcase, Edit3, Save, Plus, ExternalLink, Trash2, FolderGit2, GraduationCap, Mail, Phone, Building2, MapPin, Globe } from "lucide-react";
 import { toast } from "sonner";
+
+const SUPABASE_BASE_URL = import.meta.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
+const SUPABASE_FUNCTIONS_URL = `${SUPABASE_BASE_URL.replace(/\/$/, "")}/functions/v1`;
 
 export const Route = createFileRoute("/app/profile/$userId")({
   head: () => ({ meta: [{ title: "Profile — InTask" }] }),
@@ -76,7 +79,7 @@ function ProfilePage() {
       if (profile?.role === "student" || profile?.role === "alumni") {
         const { data, error } = await supabase
           .from("student_profiles")
-          .select("user_id, department, portfolio, rating_average, rating_count, skills, tasks_completed, university, verified, year_of_study, verification_method, created_at, updated_at")
+          .select("user_id, department, portfolio, rating_average, rating_count, skills, tasks_completed, university, university_email, verified, verification_status, year_of_study, verification_method, created_at, updated_at")
           .eq("user_id", targetId!)
           .maybeSingle();
         if (error) throw error;
@@ -210,9 +213,12 @@ function ProfilePage() {
               <p className="truncate text-sm text-muted-foreground">{company.company_name}</p>
             )}
             <div className="mt-1.5"><VerifiedBadge role={profile.role} verified={student?.verified} isPro={!!alumniProSub} /></div>
-              {isOwn && profile.role === "student" && student?.verification_method === "id_upload" && !student?.verified && (
-                <ReuploadIDSection userId={profile.id} />
-              )}
+            {isOwn && profile.role === "student" && !student?.verified && student?.verification_method === "id_upload" && (
+              <ReuploadIDSection userId={profile.id} />
+            )}
+            {isOwn && profile.role === "student" && !student?.verified && student?.verification_method === "email" && (
+              <EmailVerificationSection userId={profile.id} universityEmail={student?.university_email} />
+            )}
           </div>
           </div>
         </div>
@@ -864,6 +870,104 @@ function ReuploadIDSection({ userId }: { userId: string }) {
        >
          {uploading ? "Uploading..." : "Submit for review"}
        </Button>
+    </div>
+  );
+}
+
+function EmailVerificationSection({ userId, universityEmail }: { userId: string; universityEmail?: string | null }) {
+  const qc = useQueryClient();
+  const [code, setCode] = useState("");
+
+  const sendCode = useMutation({
+    mutationFn: async () => {
+      if (!universityEmail?.trim()) throw new Error("Add a university email in your profile first.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("You are signed out. Please log in again.");
+
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/send-student-verification-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ university_email: universityEmail.trim() }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        if (data?.code === "EMAIL_VERIFICATION_NOT_CONFIGURED") {
+          throw new Error("Student email verification is temporarily unavailable. Use student ID upload verification for now.");
+        }
+        throw new Error(data?.error ?? "Could not send code");
+      }
+    },
+    onSuccess: () => toast.success("Verification code sent."),
+    onError: (e: any) => toast.error(e?.message ?? "Could not send code"),
+  });
+
+  const confirmCode = useMutation({
+    mutationFn: async () => {
+      if (!/^\d{6}$/.test(code.trim())) throw new Error("Enter the 6-digit code sent to your university email.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("You are signed out. Please log in again.");
+
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/confirm-student-verification-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ code: code.trim() }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) throw new Error(data?.error ?? "Could not verify code");
+    },
+    onSuccess: () => {
+      toast.success("University email verified successfully.");
+      setCode("");
+      qc.invalidateQueries({ queryKey: ["profile", userId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not verify code"),
+  });
+
+  return (
+    <div className="mt-3 rounded-xl border border-warning/30 bg-warning/10 p-4 space-y-3">
+      <div>
+        <p className="text-sm font-medium text-warning">Email verification pending</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Confirm the 6-digit code sent to {universityEmail || "your university email"}.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">Verification code</label>
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+          placeholder="Enter 6-digit code"
+          inputMode="numeric"
+          maxLength={6}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          variant="outline"
+          disabled={sendCode.isPending || !universityEmail?.trim()}
+          onClick={() => sendCode.mutate()}
+        >
+          {sendCode.isPending ? "Sending..." : "Resend code"}
+        </Button>
+        <Button
+          disabled={confirmCode.isPending || code.length !== 6}
+          onClick={() => confirmCode.mutate()}
+        >
+          {confirmCode.isPending ? "Verifying..." : "Verify"}
+        </Button>
+      </div>
     </div>
   );
 }

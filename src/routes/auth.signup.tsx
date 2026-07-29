@@ -10,6 +10,9 @@ import { NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY, SKILLS, NG_PHONE_REGEX } from "@
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 
+const SUPABASE_BASE_URL = import.meta.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
+const SUPABASE_FUNCTIONS_URL = `${SUPABASE_BASE_URL.replace(/\/$/, "")}/functions/v1`;
+
 export const Route = createFileRoute("/auth/signup")({
   head: () => ({ meta: [{ title: "Sign up — InTask" }] }),
   component: SignupPage,
@@ -170,13 +173,39 @@ function SignupPage() {
         university_email: s.university_email || null,
         skills: s.skills,
         verification_method: s.verification_method ?? "email",
-        verified: s.verification_method === "email",
-        verification_status: s.verification_method === "email" ? "approved" : "pending",
+        verified: false,
+        verification_status: "pending",
         id_upload_path: idUploadPath,
         rating_average: 0,
         rating_count: 0,
         tasks_completed: 0,
       });
+
+      if (s.verification_method === "email" && s.university_email.trim()) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (accessToken && SUPABASE_FUNCTIONS_URL) {
+          const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/send-student-verification-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ university_email: s.university_email.trim() }),
+          });
+
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || result?.success === false) {
+            if (result?.code === "EMAIL_VERIFICATION_NOT_CONFIGURED") {
+              toast.error("Student email verification is temporarily unavailable. Your account is active, and you can upload a student ID from your profile to complete verification.");
+            } else {
+              toast.error(result?.error ?? "Could not send verification code. You can retry from your profile.");
+            }
+          } else {
+            toast.success("Verification code sent to your university email.");
+          }
+        }
+      }
     } else if (isAlumni) {
       await supabase.from("student_profiles").upsert({
         user_id: user.id,
@@ -390,7 +419,7 @@ function SignupPage() {
               </div>
             )}
 
-            <Button size="lg" className="mt-6 w-full" disabled={!s.verification_method || (s.verification_method === "id_upload" && !idFile)} onClick={next}>
+            <Button size="lg" className="mt-6 w-full" disabled={!s.verification_method || (s.verification_method === "id_upload" && !idFile) || (s.verification_method === "email" && !s.university_email.trim())} onClick={next}>
               Continue <ArrowRight className="size-4" />
             </Button>
             <p className="mt-3 text-center text-xs text-muted-foreground">Your ID is stored securely and only used for verification.</p>
@@ -477,7 +506,7 @@ function SignupPage() {
                   <div className="mt-1">
                     <VerifiedBadge
                       role={s.role ?? "student"}
-                      verified={s.role === "student" ? s.verification_method === "email" : undefined} />
+                      verified={false} />
                   </div>
                 </div>
               </div>

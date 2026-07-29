@@ -2,6 +2,57 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+function normalizeCreditWalletResult(data: any) {
+  if (Array.isArray(data)) return data[0] ?? null;
+  return data ?? null;
+}
+
+function computePayoutSplits(
+  totalAmount: number,
+  members: Array<{ student_id: string; payment_share?: number | null }>,
+) {
+  const validMembers = members.filter((m) => !!m.student_id);
+  if (validMembers.length === 0) return [] as Array<{ studentId: string; amount: number }>;
+
+  const explicitWeights = validMembers.map((m) => Number(m.payment_share ?? 0));
+  const hasExplicitWeights = explicitWeights.some((w) => Number.isFinite(w) && w > 0);
+  const weights = hasExplicitWeights
+    ? explicitWeights.map((w) => (Number.isFinite(w) && w > 0 ? w : 0))
+    : validMembers.map(() => 1);
+
+  const sumWeights = weights.reduce((acc, w) => acc + w, 0);
+  if (!Number.isFinite(sumWeights) || sumWeights <= 0) {
+    throw new Error("Invalid team payment weights");
+  }
+
+  const totalCents = Math.round(totalAmount * 100);
+  const split = validMembers.map((m, i) => {
+    const raw = (totalCents * weights[i]) / sumWeights;
+    return {
+      studentId: m.student_id,
+      cents: Math.floor(raw),
+      remainderWeight: raw - Math.floor(raw),
+    };
+  });
+
+  let distributed = split.reduce((acc, s) => acc + s.cents, 0);
+  let remainder = totalCents - distributed;
+  if (remainder > 0) {
+    split
+      .sort((a, b) => b.remainderWeight - a.remainderWeight)
+      .forEach((s) => {
+        if (remainder > 0) {
+          s.cents += 1;
+          remainder -= 1;
+        }
+      });
+  }
+
+  return split
+    .map((s) => ({ studentId: s.studentId, amount: s.cents / 100 }))
+    .filter((s) => s.amount > 0);
+}
+
 async function ensureAdmin(userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const db = supabaseAdmin as any;
@@ -146,7 +197,7 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
 
     const { data: task, error: tErr } = await db
       .from("tasks")
-      .select("id, poster_id, matched_student_id")
+      .select("id, poster_id, matched_student_id, is_team_task")
       .eq("id", dispute.task_id)
       .maybeSingle();
     if (tErr || !task) throw new Error("Task not found for dispute");
@@ -171,21 +222,49 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
     }
 
     if (data.releaseToStudent) {
-      if (!tx.student_id) throw new Error("No matched student found for payout");
       const payout = Number(tx.amount) - Number(tx.platform_fee);
       if (!Number.isFinite(payout) || payout <= 0) {
         throw new Error("Calculated payout is invalid");
       }
 
-      const creditRes = await db.rpc("credit_wallet", {
-        p_user_id: tx.student_id,
-        p_amount: payout,
-        p_description: `Dispute resolved in your favor for task ${task.id}`,
-        p_reference: `DISPUTE_RELEASE_${task.id}`,
-      });
+      let recipients: Array<{ studentId: string; amount: number }> = [];
 
-      if (creditRes.error || !creditRes.data?.success) {
-        throw new Error(creditRes.error?.message ?? creditRes.data?.error ?? "Could not credit student wallet");
+      if (task.is_team_task) {
+        const { data: teamMembers, error: tmErr } = await db
+          .from("task_team_members")
+          .select("student_id, payment_share, status")
+          .eq("task_id", task.id)
+          .eq("status", "active");
+
+        if (tmErr) throw new Error(tmErr.message);
+
+        const members = (teamMembers ?? []).filter((m: any) => !!m.student_id);
+        if (members.length > 0) {
+          recipients = computePayoutSplits(payout, members);
+        }
+      }
+
+      if (recipients.length === 0) {
+        if (!tx.student_id) throw new Error("No matched student found for payout");
+        recipients = [{ studentId: tx.student_id, amount: payout }];
+      }
+
+      for (const recipient of recipients) {
+        const creditRes = await db.rpc("credit_wallet", {
+          p_user_id: recipient.studentId,
+          p_amount: recipient.amount,
+          p_description: `Dispute resolved in your favor for task ${task.id}`,
+          p_reference: `DISPUTE_RELEASE_${task.id}_${recipient.studentId}`,
+        });
+
+        if (creditRes.error) {
+          throw new Error(`Could not credit team member ${recipient.studentId}: ${creditRes.error.message ?? "unknown error"}`);
+        }
+
+        const creditPayload = normalizeCreditWalletResult(creditRes.data);
+        if (creditPayload?.success === false || creditPayload?.error) {
+          throw new Error(`Could not credit team member ${recipient.studentId}: ${creditPayload.error ?? "unknown error"}`);
+        }
       }
 
       await db.from("transactions").update({ status: "released" }).eq("id", tx.id);
@@ -195,16 +274,16 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
         .eq("id", task.id);
 
       await db.from("notifications").insert([
-        {
-          user_id: tx.student_id,
+        ...recipients.map((recipient) => ({
+          user_id: recipient.studentId,
           type: "dispute_resolved",
-          message: "Dispute resolved in your favor. Payment has been released to your wallet.",
+          message: `Dispute resolved in your favor. ₦${recipient.amount.toLocaleString("en-NG")} has been released to your wallet.`,
           link: `/app/tasks/${task.id}`,
-        },
+        })),
         {
           user_id: tx.poster_id,
           type: "dispute_resolved",
-          message: "Dispute resolved. Escrow has been released to the student.",
+          message: "Dispute resolved. Escrow has been released to the student team.",
           link: `/app/tasks/${task.id}`,
         },
       ]);

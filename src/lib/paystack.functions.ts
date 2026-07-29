@@ -3,6 +3,57 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const FEE_RATE = 0.08;
 
+function normalizeCreditWalletResult(data: any) {
+  if (Array.isArray(data)) return data[0] ?? null;
+  return data ?? null;
+}
+
+function computePayoutSplits(
+  totalAmount: number,
+  members: Array<{ student_id: string; payment_share?: number | null }>,
+) {
+  const validMembers = members.filter((m) => !!m.student_id);
+  if (validMembers.length === 0) return [] as Array<{ studentId: string; amount: number }>;
+
+  const explicitWeights = validMembers.map((m) => Number(m.payment_share ?? 0));
+  const hasExplicitWeights = explicitWeights.some((w) => Number.isFinite(w) && w > 0);
+  const weights = hasExplicitWeights
+    ? explicitWeights.map((w) => (Number.isFinite(w) && w > 0 ? w : 0))
+    : validMembers.map(() => 1);
+
+  const sumWeights = weights.reduce((acc, w) => acc + w, 0);
+  if (!Number.isFinite(sumWeights) || sumWeights <= 0) {
+    throw new Error("Invalid team payment weights");
+  }
+
+  const totalCents = Math.round(totalAmount * 100);
+  const split = validMembers.map((m, i) => {
+    const raw = (totalCents * weights[i]) / sumWeights;
+    return {
+      studentId: m.student_id,
+      cents: Math.floor(raw),
+      remainderWeight: raw - Math.floor(raw),
+    };
+  });
+
+  let distributed = split.reduce((acc, s) => acc + s.cents, 0);
+  let remainder = totalCents - distributed;
+  if (remainder > 0) {
+    split
+      .sort((a, b) => b.remainderWeight - a.remainderWeight)
+      .forEach((s) => {
+        if (remainder > 0) {
+          s.cents += 1;
+          remainder -= 1;
+        }
+      });
+  }
+
+  return split
+    .map((s) => ({ studentId: s.studentId, amount: s.cents / 100 }))
+    .filter((s) => s.amount > 0);
+}
+
 export const getPaystackPublicKey = createServerFn({ method: "GET" }).handler(async () => {
   return { publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? process.env.VITE_PAYSTACK_PUBLIC_KEY ?? "" };
 });
@@ -244,7 +295,7 @@ export const releaseEscrow = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: task, error } = await supabase
       .from("tasks")
-      .select("id, poster_id, matched_student_id, status")
+      .select("id, poster_id, matched_student_id, status, is_team_task")
       .eq("id", data.taskId)
       .single();
     if (error || !task) throw new Error("Task not found");
@@ -261,15 +312,48 @@ export const releaseEscrow = createServerFn({ method: "POST" })
     if (!tx || tx.status !== "in_escrow") throw new Error("No escrow to release");
 
     const payout = Number(tx.amount) - Number(tx.platform_fee);
-    const creditRes = await supabaseAdmin.rpc("credit_wallet", {
-      p_user_id: tx.student_id,
-      p_amount: payout,
-      p_description: `Payment for task ${task.id}`,
-      p_reference: `ESCROW_RELEASE_${task.id}`,
-    });
+    if (!Number.isFinite(payout) || payout <= 0) {
+      throw new Error("Calculated payout is invalid");
+    }
 
-    if (creditRes.error || !creditRes.data?.success) {
-      throw new Error(creditRes.error?.message ?? creditRes.data?.error ?? "Could not credit student wallet");
+    let recipients: Array<{ studentId: string; amount: number }> = [];
+
+    if (task.is_team_task) {
+      const { data: teamMembers, error: tmErr } = await supabaseAdmin
+        .from("task_team_members")
+        .select("student_id, payment_share, status")
+        .eq("task_id", task.id)
+        .eq("status", "active");
+
+      if (tmErr) throw new Error(tmErr.message);
+
+      const members = (teamMembers ?? []).filter((m: any) => !!m.student_id);
+      if (members.length > 0) {
+        recipients = computePayoutSplits(payout, members);
+      }
+    }
+
+    if (recipients.length === 0) {
+      if (!tx.student_id) throw new Error("No matched student found for payout");
+      recipients = [{ studentId: tx.student_id, amount: payout }];
+    }
+
+    for (const recipient of recipients) {
+      const creditRes = await supabaseAdmin.rpc("credit_wallet", {
+        p_user_id: recipient.studentId,
+        p_amount: recipient.amount,
+        p_description: `Payment for task ${task.id}`,
+        p_reference: `ESCROW_RELEASE_${task.id}_${recipient.studentId}`,
+      });
+
+      if (creditRes.error) {
+        throw new Error(`Could not credit team member ${recipient.studentId}: ${creditRes.error.message ?? "unknown error"}`);
+      }
+
+      const creditPayload = normalizeCreditWalletResult(creditRes.data);
+      if (creditPayload?.success === false || creditPayload?.error) {
+        throw new Error(`Could not credit team member ${recipient.studentId}: ${creditPayload.error ?? "unknown error"}`);
+      }
     }
 
     await supabaseAdmin.from("transactions").update({ status: "released" }).eq("id", tx.id);
@@ -278,27 +362,29 @@ export const releaseEscrow = createServerFn({ method: "POST" })
       .update({ status: "completed", delivery_approved_at: new Date().toISOString() })
       .eq("id", task.id);
 
-    // Bump student tasks_completed counter
-    const { data: sp } = await supabaseAdmin
-      .from("student_profiles")
-      .select("tasks_completed")
-      .eq("user_id", tx.student_id)
-      .maybeSingle();
-    if (sp) {
-      await supabaseAdmin
+    // Bump tasks_completed counters for every credited recipient.
+    for (const recipient of recipients) {
+      const { data: sp } = await supabaseAdmin
         .from("student_profiles")
-        .update({ tasks_completed: (sp.tasks_completed ?? 0) + 1 })
-        .eq("user_id", tx.student_id);
+        .select("tasks_completed")
+        .eq("user_id", recipient.studentId)
+        .maybeSingle();
+      if (sp) {
+        await supabaseAdmin
+          .from("student_profiles")
+          .update({ tasks_completed: (sp.tasks_completed ?? 0) + 1 })
+          .eq("user_id", recipient.studentId);
+      }
     }
 
-    await supabaseAdmin.from("notifications").insert([
-      {
-        user_id: tx.student_id,
+    await supabaseAdmin.from("notifications").insert(
+      recipients.map((recipient) => ({
+        user_id: recipient.studentId,
         type: "payment_released",
-        message: `Payment released. ₦${payout.toLocaleString("en-NG")} is on the way.`,
+        message: `Payment released. ₦${recipient.amount.toLocaleString("en-NG")} is on the way.`,
         link: `/app/tasks/${task.id}`,
-      },
-    ]);
+      })),
+    );
 
     return { ok: true, payout };
   });

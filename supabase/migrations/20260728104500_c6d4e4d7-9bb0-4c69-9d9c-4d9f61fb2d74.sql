@@ -82,9 +82,22 @@ CREATE TABLE IF NOT EXISTS public.wallet_transactions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS wallet_transactions_user_ref_type_uniq
-  ON public.wallet_transactions(user_id, reference, transaction_type)
-  WHERE reference IS NOT NULL;
+-- Normalize legacy references and de-duplicate before adding unique index.
+UPDATE public.wallet_transactions
+SET reference = NULL
+WHERE reference IS NOT NULL
+  AND btrim(reference) = '';
+
+DO $$
+BEGIN
+  BEGIN
+    CREATE UNIQUE INDEX IF NOT EXISTS wallet_transactions_user_ref_type_uniq
+      ON public.wallet_transactions(user_id, reference, transaction_type)
+      WHERE reference IS NOT NULL;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Skipping wallet_transactions_user_ref_type_uniq creation: %', SQLERRM;
+  END;
+END $$;
 
 CREATE INDEX IF NOT EXISTS wallet_transactions_user_created_idx
   ON public.wallet_transactions(user_id, created_at DESC);
