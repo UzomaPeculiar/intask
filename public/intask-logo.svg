@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 120" fill="none">
+  <defs>
+    <!-- Gradient for the icon mark -->
+    <linearGradient id="greenGradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3DCB6C"/>
+      <stop offset="100%" stop-color="#1A7A42"/>
+    </linearGradient>
+    
+    <!-- Shadow filter for depth -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#3DCB6C" flood-opacity="0.25"/>
+    </filter>
+    
+    <!-- Glow effect -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- ============================================ -->
+  <!-- LOGOMARK: Abstract "task complete" icon      -->
+  <!-- A rounded square with a dynamic checkmark    -->
+  <!-- that also suggests forward motion/growth     -->
+  <!-- ============================================ -->
+  <g transform="translate(20, 20)" filter="url(#shadow)">
+    <!-- Rounded square background -->
+    <rect x="0" y="0" width="80" height="80" rx="20" fill="url(#greenGradient)"/>
+    
+    <!-- Inner circle - creates depth -->
+    <circle cx="40" cy="40" r="28" fill="rgba(255,255,255,0.12)"/>
+    
+    <!-- Dynamic checkmark - suggests task completion -->
+    <path 
+      d="M28 42 L36 50 L54 30" 
+      stroke="white" 
+      stroke-width="6" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+      fill="none"
+      filter="url(#glow)"
+    >
+      <!-- Animate the checkmark drawing -->
+      <animate 
+        attributeName="stroke-dasharray" 
+        from="0 100" 
+        to="60 100" 
+        dur="0.8s" 
+        fill="freeze"
+      />
+      <animate 
+        attributeName="stroke-dashoffset" 
+        from="-60" 
+        to="0" 
+        dur="0.8s" 
+        fill="freeze"
+      />
+    </path>
+    
+    <!-- Small spark/skill indicator dots -->
+    <circle cx="62" cy="18" r="4" fill="#3DCB6C" opacity="0.8">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="70" cy="28" r="2.5" fill="#1A7A42" opacity="0.6">
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- ============================================ -->
+  <!-- WORDMARK: "InTask" typography                -->
+  <!-- Space Grotesk feel with custom letterforms   -->
+  <!-- ============================================ -->
+  <g transform="translate(120, 22)">
+    <!-- "In" in dark color -->
+    <text 
+      x="0" 
+      y="62" 
+      font-family="'Space Grotesk', 'Inter', system-ui, sans-serif" 
+      font-size="64" 
+      font-weight="700" 
+      fill="#1A1E16"
+      letter-spacing="-1"
+    >In</text>
+    
+    <!-- "Task" in primary green -->
+    <text 
+      x="108" 
+      y="62" 
+      font-family="'Space Grotesk', 'Inter', system-ui, sans-serif" 
+      font-size="64" 
+      font-weight="700" 
+      fill="#3DCB6C"
+      letter-spacing="-1"
+    >Task</text>
+    
+    <!-- Subtle underline accent -->
+    <rect x="0" y="72" width="280" height="3" rx="1.5" fill="url(#greenGradient)" opacity="0.6"/>
+  </g>
+  
+  <!-- Tagline (optional - below the logo) -->
+  <text 
+    x="140" 
+    y="110" 
+    font-family="'Inter', system-ui, sans-serif" 
+    font-size="13" 
+    font-weight="500" 
+    fill="#6A8064"
+    letter-spacing="0.5"
+  >Get paid for your skills</text>
+</svg>

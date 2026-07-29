@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+  <defs>
+    <linearGradient id="greenGradient" x1="0" y1="0" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3DCB6C"/>
+      <stop offset="100%" stop-color="#1A7A42"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Logomark -->
+  <g transform="translate(10, 10)">
+    <rect width="60" height="60" rx="15" fill="url(#greenGradient)"/>
+    <circle cx="30" cy="30" r="20" fill="rgba(255,255,255,0.1)"/>
+    <path d="M21 31 L27 37 L40 22" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="46" cy="11" r="3" fill="white" opacity="0.7"/>
+    <circle cx="50" cy="18" r="1.8" fill="white" opacity="0.5"/>
+  </g>
+  
+  <!-- Wordmark - dark version -->
+  <g transform="translate(82, 14)">
+    <text 
+      x="0" 
+      y="42" 
+      font-family="'Space Grotesk', 'Inter', system-ui, sans-serif" 
+      font-size="48" 
+      font-weight="700" 
+      fill="#1A1E16"
+      letter-spacing="-1"
+    >In</text>
+    <text 
+      x="80" 
+      y="42" 
+      font-family="'Space Grotesk', 'Inter', system-ui, sans-serif" 
+      font-size="48" 
+      font-weight="700" 
+      fill="#3DCB6C"
+      letter-spacing="-1"
+    >Task</text>
+  </g>
+</svg>
