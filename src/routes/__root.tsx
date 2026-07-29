@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { getSupabaseClientConfig, hasSupabaseClientConfig } from "@/integrations/supabase/env";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -104,10 +105,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const { supabaseUrl, supabaseKey } = getSupabaseClientConfig();
+  const supabaseProjectId = import.meta.env.VITE_SUPABASE_PROJECT_ID as string | undefined;
+
   return (
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__INTASK_ENV__=${JSON.stringify({
+              SUPABASE_URL: supabaseUrl,
+              SUPABASE_PUBLISHABLE_KEY: supabaseKey,
+              SUPABASE_PROJECT_ID: supabaseProjectId,
+            })};`,
+          }}
+        />
         <script src="https://js.paystack.co/v2/inline.js" />
       </head>
       <body>
@@ -123,6 +136,8 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!hasSupabaseClientConfig()) return;
+
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();

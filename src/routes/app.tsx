@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tan
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { hasSupabaseClientConfig } from "@/integrations/supabase/env";
 import { AuthProvider } from "@/hooks/useAuth.tsx";
 import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2 } from "lucide-react";
 
@@ -13,8 +14,11 @@ function AppLayout() {
   const nav = useNavigate();
   const [ready, setReady] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const hasSupabaseConfig = hasSupabaseClientConfig();
 
   useEffect(() => {
+    if (!hasSupabaseConfig) return;
+
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
@@ -25,7 +29,25 @@ function AppLayout() {
       if (!sess) nav({ to: "/auth/login" });
     });
     return () => { mounted = false; sub.subscription.unsubscribe(); };
-  }, [nav]);
+  }, [hasSupabaseConfig, nav]);
+
+  if (!hasSupabaseConfig) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+          <h1 className="text-xl font-semibold text-foreground">App is not configured</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The Supabase environment variables are missing in this deployment, so the app area cannot load yet.
+          </p>
+          <div className="mt-5">
+            <Link to="/" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              Go home
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!ready) {
     return (
