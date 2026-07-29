@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { SKILLS, NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY } from "@/lib/constants";
@@ -722,8 +722,8 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Campus delivery app" />
           </div>
           <div className="space-y-1.5">
-            <Label>Short description (max 200 chars)</Label>
-            <Textarea rows={3} maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Label>Description</Label>
+            <Textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Write your project description exactly as you want it shown" />
           </div>
           <div className="space-y-1.5">
             <Label>External link (optional)</Label>
@@ -860,28 +860,33 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
       )}
 
       <Sheet open={!!selectedProject} onOpenChange={(open) => { if (!open) setSelectedProject(null); }}>
-        <SheetContent side="bottom" className="rounded-t-2xl">
-          <SheetHeader>
-            <SheetTitle>{selectedProject?.title ?? "Project details"}</SheetTitle>
-            <SheetDescription>
-              {selectedProject?.description ? selectedProject.description : "This project has no description yet."}
-            </SheetDescription>
-          </SheetHeader>
-          {selectedProject?.cover_url && (
-            <img src={selectedProject.cover_url} alt={selectedProject.title} className="mt-4 h-44 w-full rounded-2xl border border-border object-cover" />
-          )}
-          <div className="mt-4 space-y-3">
-            {selectedProject?.description && <p className="text-sm text-foreground/90">{selectedProject.description}</p>}
-            {selectedProject?.link && (
-              <a
-                href={/^https?:\/\//.test(selectedProject.link) ? selectedProject.link : `https://${selectedProject.link}`}
-                target="_blank"
-                rel="noreferrer"
-                className="it-link-accent inline-flex items-center gap-1 text-sm font-medium"
-              >
-                <ExternalLink className="size-3.5" /> Open project link
-              </a>
+        <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-2xl px-4 pb-6 sm:px-6">
+          <div className="space-y-4">
+            {selectedProject?.cover_url && (
+              <img src={selectedProject.cover_url} alt={selectedProject.title} className="h-56 w-full rounded-2xl border border-border object-cover" />
             )}
+            <SheetHeader className="space-y-2 px-0 text-left">
+              <SheetTitle>{selectedProject?.title ?? "Project details"}</SheetTitle>
+            </SheetHeader>
+            <div className="space-y-3">
+              {selectedProject?.description ? (
+                <div className="whitespace-pre-wrap break-words text-sm leading-7 text-foreground/90">
+                  {selectedProject.description}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">This project has no description yet.</p>
+              )}
+              {selectedProject?.link && (
+                <a
+                  href={/^https?:\/\//.test(selectedProject.link) ? selectedProject.link : `https://${selectedProject.link}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="it-link-accent inline-flex items-center gap-1 text-sm font-medium"
+                >
+                  <ExternalLink className="size-3.5" /> Open project link
+                </a>
+              )}
+            </div>
           </div>
         </SheetContent>
       </Sheet>
