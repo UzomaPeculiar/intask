@@ -6,7 +6,7 @@ import { ReportButton } from "@/components/intask/ReportButton";
 import { Link } from "@tanstack/react-router";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { SKILLS, NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY } from "@/lib/constants";
-import { ArrowLeft, LogOut, Star, Briefcase, Edit3, Save, Plus, ExternalLink, Trash2, FolderGit2, GraduationCap, Mail, Phone, Building2, MapPin, Globe } from "lucide-react";
+import { ArrowLeft, LogOut, Star, Briefcase, Edit3, Save, Plus, ExternalLink, Trash2, FolderGit2, GraduationCap, Mail, Phone, Building2, MapPin, Globe, ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const SUPABASE_BASE_URL = import.meta.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
@@ -588,12 +588,16 @@ function EditPanel({ profile, student, company, onDone }: any) {
 
 function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) {
   const qc = useQueryClient();
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
 
   const { data: projects } = useQuery({
     queryKey: ["projects", userId],
@@ -612,8 +616,32 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
     setTitle(p.title);
     setDescription(p.description ?? "");
     setLink(p.link ?? "");
+    setCoverUrl(p.cover_url ?? null);
     setEditingProject(p);
     setAdding(true)
+  }
+
+  async function uploadCover(file: File) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB");
+      return;
+    }
+
+    setCoverUploading(true);
+    const fileExt = file.name.split(".").pop() ?? "jpg";
+    const filePath = `${userId}/projects/${editingProject?.id ?? `temp-${Date.now()}`}/cover.${fileExt}`;
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
+    if (uploadError) {
+      setCoverUploading(false);
+      toast.error("Could not upload cover image");
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    setCoverUrl(`${urlData.publicUrl}?t=${Date.now()}`);
+    setCoverUploading(false);
+    toast.success("Cover image ready");
   }
 
   async function save() {
@@ -622,32 +650,49 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
       return;
     }
     setSaving(true);
-    if (editingProject) {
-      const { error } = await supabase
-        .from("student_projects")
-        .update({
-          title: title.trim(),
-          description: description.trim() || null,
-          link: link.trim() || null,
-        })
-        .eq("id", editingProject.id);
-      setSaving(false);
-      if (error) { toast.error(error.message); return; }
-      toast.success("Project updated");
-    } else {
-      const { error } = await supabase.from("student_projects").insert({
-        user_id: userId,
-        title: title.trim(),
-        description: description.trim() || null,
-        link: link.trim() || null,
-      });
-      setSaving(false);
-      if (error) { toast.error(error.message); return; }
-      toast.success("Project added");
+
+    const basePayload = {
+      title: title.trim(),
+      description: description.trim() || null,
+      link: link.trim() || null,
+      cover_url: coverUrl || null,
+    };
+
+    const persistProject = async (payload: Record<string, any>) => {
+      if (editingProject) {
+        const { error } = await supabase.from("student_projects").update(payload).eq("id", editingProject.id);
+        if (error) throw error;
+        toast.success("Project updated");
+      } else {
+        const { error } = await supabase.from("student_projects").insert({ user_id: userId, ...payload });
+        if (error) throw error;
+        toast.success("Project added");
+      }
+    };
+
+    try {
+      await persistProject(basePayload);
+    } catch (error: any) {
+      const isMissingCoverColumn = error?.message?.includes("cover_url") || error?.code === "42703";
+      if (isMissingCoverColumn) {
+        const fallbackPayload = Object.fromEntries(Object.entries(basePayload).filter(([key]) => key !== "cover_url"));
+        try {
+          await persistProject(fallbackPayload);
+          toast.warning("Cover image support is not enabled yet on this project table, so the project was saved without a cover image.");
+        } catch (fallbackError: any) {
+          toast.error(fallbackError?.message ?? "Couldn't save project");
+        }
+      } else {
+        toast.error(error?.message ?? "Couldn't save project");
+      }
     }
+
+    setSaving(false);
     setTitle(""); 
     setDescription(""); 
-    setLink(""); setAdding(false);
+    setLink("");
+    setCoverUrl(null);
+    setCoverUploading(false);
     setAdding(false);
     setEditingProject(null);
     qc.invalidateQueries({ queryKey: ["projects", userId] });
@@ -684,6 +729,37 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
             <Label>External link (optional)</Label>
             <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="e.g., GitHub or live URL" />
           </div>
+          <div className="space-y-2">
+            <Label>Project cover image (optional)</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" className="gap-2" onClick={() => coverInputRef.current?.click()} disabled={coverUploading}>
+                {coverUploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+                {coverUrl ? "Replace cover" : "Upload cover"}
+              </Button>
+              {coverUrl && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setCoverUrl(null)}>
+                  Remove
+                </Button>
+              )}
+            </div>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void uploadCover(file);
+              }}
+            />
+            {coverUrl ? (
+              <img src={coverUrl} alt="Project cover preview" className="h-32 w-full rounded-xl border border-border object-cover" />
+            ) : (
+              <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-border bg-background/60 text-sm text-muted-foreground">
+                No cover image yet
+              </div>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button className="flex-1" onClick={save} disabled={saving}>
               {saving ? "Saving…" : editingProject ? "Update project" : "Save project"}
@@ -692,7 +768,9 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
               setAdding(false); 
               setTitle(""); 
               setDescription(""); 
-              setLink(""); 
+              setLink("");
+              setCoverUrl(null);
+              setCoverUploading(false);
               setEditingProject(null);
             }}>
               Cancel
@@ -718,43 +796,95 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
       {projects && projects.length > 0 && (
         <ul className="mt-3 space-y-2">
           {projects.map((p) => (
-            <li key={p.id} className="rounded-xl border border-border bg-card p-3 shadow-card">
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-medium text-foreground">{p.title}</p>
+            <li key={p.id} className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+              <div className="relative">
+                <button type="button" onClick={() => setSelectedProject(p)} className="block w-full text-left">
+                  <div className="relative h-36 w-full bg-gradient-to-br from-primary/20 to-accent/20">
+                    {p.cover_url ? (
+                      <img src={p.cover_url} alt={p.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-end bg-gradient-to-br from-primary/20 via-background/80 to-accent/20 p-4">
+                        <div className="rounded-full bg-background/80 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                          Project
+                        </div>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-3">
+                      <p className="line-clamp-2 text-sm font-semibold text-white">{p.title}</p>
+                      {p.description && <p className="mt-1 line-clamp-2 text-xs text-white/80">{p.description}</p>}
+                    </div>
+                  </div>
+                </button>
                 {isOwn && (
-                  <div className="flex items-center gap-2">
+                  <div className="absolute right-2 top-2 flex gap-1 rounded-full bg-background/80 p-1 shadow-sm backdrop-blur">
                     <button
-                      onClick={() => startEdit(p)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEdit(p);
+                      }}
                       aria-label="Edit project"
-                      className="text-muted-foreground hover:text-foreground"
+                      className="rounded-full p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                     >
-                      <Edit3 className="size-4" />
+                      <Edit3 className="size-3.5" />
                     </button>
-                    <button 
-                      onClick={() => remove(p.id)}
-                      aria-label="Delete project" 
-                      className="text-muted-foreground hover:text-destructive"
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        remove(p.id);
+                      }}
+                      aria-label="Delete project"
+                      className="rounded-full p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     >
-                      <Trash2 className="size-4" />
+                      <Trash2 className="size-3.5" />
                     </button>
                   </div>
                 )}
-                </div>
-                {p.description && <p className="mt-1 text-sm text-foreground/80">{p.description}</p>}
+              </div>
+              <div className="flex items-center justify-between p-3">
+                <span className="text-xs font-medium text-muted-foreground">Tap to read more</span>
                 {p.link && (
-                  <a 
-                    href={/^https?:\/\//.test(p.link) ? p.link : `https://${p.link}`} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    className="it-link-accent mt-2 inline-flex items-center gap-1 text-xs font-medium"
+                  <a
+                    href={/^https?:\/\//.test(p.link) ? p.link : `https://${p.link}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="it-link-accent inline-flex items-center gap-1 text-xs font-medium"
                   >
                     <ExternalLink className="size-3" /> View
                   </a>
                 )}
-              </li>
-            ))}
-          </ul>
-        )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Sheet open={!!selectedProject} onOpenChange={(open) => { if (!open) setSelectedProject(null); }}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>{selectedProject?.title ?? "Project details"}</SheetTitle>
+            <SheetDescription>
+              {selectedProject?.description ? selectedProject.description : "This project has no description yet."}
+            </SheetDescription>
+          </SheetHeader>
+          {selectedProject?.cover_url && (
+            <img src={selectedProject.cover_url} alt={selectedProject.title} className="mt-4 h-44 w-full rounded-2xl border border-border object-cover" />
+          )}
+          <div className="mt-4 space-y-3">
+            {selectedProject?.description && <p className="text-sm text-foreground/90">{selectedProject.description}</p>}
+            {selectedProject?.link && (
+              <a
+                href={/^https?:\/\//.test(selectedProject.link) ? selectedProject.link : `https://${selectedProject.link}`}
+                target="_blank"
+                rel="noreferrer"
+                className="it-link-accent inline-flex items-center gap-1 text-sm font-medium"
+              >
+                <ExternalLink className="size-3.5" /> Open project link
+              </a>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
       </section>
     );
 }

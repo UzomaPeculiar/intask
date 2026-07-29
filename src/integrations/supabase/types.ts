@@ -1492,6 +1492,7 @@ export type Database = {
       }
       student_projects: {
         Row: {
+          cover_url: string | null
           created_at: string
           description: string | null
           id: string
@@ -1501,6 +1502,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cover_url?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1510,6 +1512,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cover_url?: string | null
           created_at?: string
           description?: string | null
           id?: string
