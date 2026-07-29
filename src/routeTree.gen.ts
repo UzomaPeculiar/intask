@@ -47,6 +47,7 @@ import { Route as AppLearnCourseIdRouteImport } from './routes/app.learn.$course
 import { Route as AppTasksTaskIdIndexRouteImport } from './routes/app.tasks.$taskId.index'
 import { Route as AppTasksTaskIdReviewRouteImport } from './routes/app.tasks.$taskId.review'
 import { Route as AppTasksTaskIdRateRouteImport } from './routes/app.tasks.$taskId.rate'
+import { Route as AppTasksTaskIdEditRouteImport } from './routes/app.tasks.$taskId.edit'
 import { Route as AppTasksTaskIdDeliverRouteImport } from './routes/app.tasks.$taskId.deliver'
 import { Route as AppTasksTaskIdApplicantsRouteImport } from './routes/app.tasks.$taskId.applicants'
 import { Route as AppTasksTaskIdAnalyticsRouteImport } from './routes/app.tasks.$taskId.analytics'
@@ -244,6 +245,11 @@ const AppTasksTaskIdRateRoute = AppTasksTaskIdRateRouteImport.update({
   path: '/tasks/$taskId/rate',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTasksTaskIdEditRoute = AppTasksTaskIdEditRouteImport.update({
+  id: '/tasks/$taskId/edit',
+  path: '/tasks/$taskId/edit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTasksTaskIdDeliverRoute = AppTasksTaskIdDeliverRouteImport.update({
   id: '/tasks/$taskId/deliver',
   path: '/tasks/$taskId/deliver',
@@ -313,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
   '/app/tasks/$taskId/applicants': typeof AppTasksTaskIdApplicantsRoute
   '/app/tasks/$taskId/deliver': typeof AppTasksTaskIdDeliverRoute
+  '/app/tasks/$taskId/edit': typeof AppTasksTaskIdEditRoute
   '/app/tasks/$taskId/rate': typeof AppTasksTaskIdRateRoute
   '/app/tasks/$taskId/review': typeof AppTasksTaskIdReviewRoute
   '/app/tasks/$taskId/': typeof AppTasksTaskIdIndexRoute
@@ -357,6 +364,7 @@ export interface FileRoutesByTo {
   '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
   '/app/tasks/$taskId/applicants': typeof AppTasksTaskIdApplicantsRoute
   '/app/tasks/$taskId/deliver': typeof AppTasksTaskIdDeliverRoute
+  '/app/tasks/$taskId/edit': typeof AppTasksTaskIdEditRoute
   '/app/tasks/$taskId/rate': typeof AppTasksTaskIdRateRoute
   '/app/tasks/$taskId/review': typeof AppTasksTaskIdReviewRoute
   '/app/tasks/$taskId': typeof AppTasksTaskIdIndexRoute
@@ -403,6 +411,7 @@ export interface FileRoutesById {
   '/app/tasks/$taskId/analytics': typeof AppTasksTaskIdAnalyticsRoute
   '/app/tasks/$taskId/applicants': typeof AppTasksTaskIdApplicantsRoute
   '/app/tasks/$taskId/deliver': typeof AppTasksTaskIdDeliverRoute
+  '/app/tasks/$taskId/edit': typeof AppTasksTaskIdEditRoute
   '/app/tasks/$taskId/rate': typeof AppTasksTaskIdRateRoute
   '/app/tasks/$taskId/review': typeof AppTasksTaskIdReviewRoute
   '/app/tasks/$taskId/': typeof AppTasksTaskIdIndexRoute
@@ -450,6 +459,7 @@ export interface FileRouteTypes {
     | '/app/tasks/$taskId/analytics'
     | '/app/tasks/$taskId/applicants'
     | '/app/tasks/$taskId/deliver'
+    | '/app/tasks/$taskId/edit'
     | '/app/tasks/$taskId/rate'
     | '/app/tasks/$taskId/review'
     | '/app/tasks/$taskId/'
@@ -494,6 +504,7 @@ export interface FileRouteTypes {
     | '/app/tasks/$taskId/analytics'
     | '/app/tasks/$taskId/applicants'
     | '/app/tasks/$taskId/deliver'
+    | '/app/tasks/$taskId/edit'
     | '/app/tasks/$taskId/rate'
     | '/app/tasks/$taskId/review'
     | '/app/tasks/$taskId'
@@ -539,6 +550,7 @@ export interface FileRouteTypes {
     | '/app/tasks/$taskId/analytics'
     | '/app/tasks/$taskId/applicants'
     | '/app/tasks/$taskId/deliver'
+    | '/app/tasks/$taskId/edit'
     | '/app/tasks/$taskId/rate'
     | '/app/tasks/$taskId/review'
     | '/app/tasks/$taskId/'
@@ -828,6 +840,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTasksTaskIdRateRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/tasks/$taskId/edit': {
+      id: '/app/tasks/$taskId/edit'
+      path: '/tasks/$taskId/edit'
+      fullPath: '/app/tasks/$taskId/edit'
+      preLoaderRoute: typeof AppTasksTaskIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/tasks/$taskId/deliver': {
       id: '/app/tasks/$taskId/deliver'
       path: '/tasks/$taskId/deliver'
@@ -940,6 +959,7 @@ interface AppRouteChildren {
   AppTasksTaskIdAnalyticsRoute: typeof AppTasksTaskIdAnalyticsRoute
   AppTasksTaskIdApplicantsRoute: typeof AppTasksTaskIdApplicantsRoute
   AppTasksTaskIdDeliverRoute: typeof AppTasksTaskIdDeliverRoute
+  AppTasksTaskIdEditRoute: typeof AppTasksTaskIdEditRoute
   AppTasksTaskIdRateRoute: typeof AppTasksTaskIdRateRoute
   AppTasksTaskIdReviewRoute: typeof AppTasksTaskIdReviewRoute
   AppTasksTaskIdIndexRoute: typeof AppTasksTaskIdIndexRoute
@@ -966,6 +986,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTasksTaskIdAnalyticsRoute: AppTasksTaskIdAnalyticsRoute,
   AppTasksTaskIdApplicantsRoute: AppTasksTaskIdApplicantsRoute,
   AppTasksTaskIdDeliverRoute: AppTasksTaskIdDeliverRoute,
+  AppTasksTaskIdEditRoute: AppTasksTaskIdEditRoute,
   AppTasksTaskIdRateRoute: AppTasksTaskIdRateRoute,
   AppTasksTaskIdReviewRoute: AppTasksTaskIdReviewRoute,
   AppTasksTaskIdIndexRoute: AppTasksTaskIdIndexRoute,

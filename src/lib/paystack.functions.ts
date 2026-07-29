@@ -70,6 +70,12 @@ export const initEscrow = createServerFn({ method: "POST" })
       .eq("id", data.taskId)
       .single();
 
+    const { data: existingTransaction, error: existingTxError } = await supabase
+      .from("transactions")
+      .select("id, status, paystack_reference")
+      .eq("task_id", task?.id)
+      .maybeSingle();
+
     if (tErr || !task) throw new Error("Task not found");
     if (task.poster_id !== userId) {
       throw new Error("Only the poster can pay for this task");
@@ -90,13 +96,6 @@ export const initEscrow = createServerFn({ method: "POST" })
     if (!email) {
       throw new Error("Add an email to your profile first");
     }
-
-    // Reuse pending transaction if one exists
-    const { data: existingTransaction, error: existingTxError } = await supabase
-      .from("transactions")
-      .select("id, status, paystack_reference")
-      .eq("task_id", task.id)
-      .maybeSingle();
 
     if (existingTxError) {
       throw existingTxError;

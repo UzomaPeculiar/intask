@@ -47,6 +47,22 @@ function TaskDetail() {
     queryFn: async () => (await supabase.auth.getUser()).data.user,
   });
 
+  const { data: escrowTx } = useQuery({
+    queryKey: ["task-escrow-lock", taskId],
+    enabled: !!taskId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("status")
+        .eq("task_id", taskId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+  });
+
   const { data: myApp } = useQuery({
     queryKey: ["my-app", taskId, me?.id],
     enabled: !!me?.id,
@@ -74,9 +90,15 @@ function TaskDetail() {
 
   const isOwn = me?.id === task.poster_id;
   const isAssignedStudent = !isOwn && task.matched_student_id === me?.id;
+  const isTaskEditable = (task.status === "open" || task.status === "matched") && !["pending", "in_escrow", "released", "refunded"].includes(escrowTx?.status ?? "");
 
   const ownerActions = (
     <>
+      {isTaskEditable && (
+        <Link to="/app/tasks/$taskId/edit" params={{ taskId: task.id }}>
+          <Button size="lg" variant="outline" className="w-full">Edit task</Button>
+        </Link>
+      )}
       {task.status === "open" && (
         <Button size="lg" className="w-full" onClick={() => nav({ to: "/app/tasks/$taskId/applicants", params: { taskId: task.id } })}>
           {applicantLabel(liveApplicantCount)}
