@@ -2,11 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle2, Lock, Play, Award, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/learn/$courseId")({
+  beforeLoad: () => ensureMvpFeatureEnabled("learn"),
   head: () => ({ meta: [{ title: "Course — InTask Learn" }] }),
   component: CourseDetailPage,
 });
@@ -226,3 +228,4 @@ function CourseDetailPage() {
     </div>
   );
 }
+

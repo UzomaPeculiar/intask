@@ -18,14 +18,12 @@ export function SettingsTab() {
   const numericSettingRules: Record<string, { min: number; max: number; label: string }> = {
     platform_fee_percent: { min: 0, max: 30, label: "Platform fee (%)" },
     min_withdrawal_amount: { min: 100, max: 1000000, label: "Minimum withdrawal (NGN)" },
-    featured_task_slots: { min: 1, max: 100, label: "Featured slots" },
     min_task_budget: { min: 500, max: 10000000, label: "Minimum task budget (NGN)" },
   };
 
   const defaultSettingsSeed = [
     { key: "platform_fee_percent", value: 8, description: "Platform fee percentage charged on each completed task" },
     { key: "min_withdrawal_amount", value: 550, description: "Minimum withdrawal amount in Naira" },
-    { key: "featured_task_slots", value: 10, description: "Maximum number of featured tasks at any time" },
     { key: "maintenance_mode", value: false, description: "When true, non-admin users see a maintenance page" },
     { key: "min_task_budget", value: 1000, description: "Minimum task budget in Naira" },
   ];

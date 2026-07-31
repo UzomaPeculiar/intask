@@ -28,7 +28,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const nav = useNavigate();
-  const [tab, setTab] = useState<"overview" | "users" | "tasks" | "verifications" | "communications" | "settings" | "moderation" | "partnerships" | "withdrawals">("overview");
+  const [tab, setTab] = useState<"overview" | "users" | "tasks" | "verifications" | "communications" | "settings" | "moderation" | "withdrawals">("overview");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -93,7 +93,7 @@ function AdminPage() {
 
       <div className="mx-auto max-w-5xl px-6 py-6">
         <div className="flex gap-2 mb-6">
-          {(["overview", "users", "tasks", "verifications", "communications", "settings", "moderation", "partnerships", "withdrawals"] as const).map((t) => (
+          {(["overview", "users", "tasks", "verifications", "communications", "settings", "moderation", "withdrawals"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -103,7 +103,7 @@ function AdminPage() {
                   : "bg-card border border-border text-foreground hover:bg-accent"
               }`}
             >
-              {t === "overview" ? "Overview" : t === "users" ? "Users" : t === "tasks" ? "Tasks" : t === "verifications" ? "Verifications" : t === "communications" ? "Communications" : t === "settings" ? "Settings" : t === "moderation" ? "Moderation" : t === "partnerships" ? "Partnerships" : "Financial"}
+              {t === "overview" ? "Overview" : t === "users" ? "Users" : t === "tasks" ? "Tasks" : t === "verifications" ? "Verifications" : t === "communications" ? "Communications" : t === "settings" ? "Settings" : t === "moderation" ? "Moderation" : "Financial"}
             </button>
           ))}
         </div>
@@ -116,7 +116,6 @@ function AdminPage() {
           {tab === "communications" && <CommunicationsTab />}
           {tab === "settings" && <SettingsTab />}
           {tab === "moderation" && <ModerationTab />}
-          {tab === "partnerships" && <PartnershipsTab />}
           {tab === "withdrawals" && <WithdrawalsTab />}
         </Suspense>
       </div>

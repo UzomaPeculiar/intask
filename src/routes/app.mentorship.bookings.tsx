@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, GraduationCap, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/app/mentorship/bookings")({
+  beforeLoad: () => ensureMvpFeatureEnabled("mentorship"),
   head: () => ({ meta: [{ title: "My Bookings — InTask" }] }),
   component: MyBookingsPage,
 });
@@ -119,3 +121,4 @@ function MyBookingsPage() {
     </div>
   );
 }
+

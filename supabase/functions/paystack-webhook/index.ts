@@ -34,10 +34,15 @@ serve(async (req) => {
 
       if (!withdrawal || withdrawal.webhook_processed) return new Response("OK", { status: 200 });
 
-      await supabase
+      const { data: claimedWithdrawal } = await supabase
         .from("withdrawal_requests")
         .update({ status: "completed", processed_at: new Date().toISOString(), webhook_processed: true })
-        .eq("reference", reference);
+        .eq("reference", reference)
+        .eq("webhook_processed", false)
+        .select("id")
+        .maybeSingle();
+
+      if (!claimedWithdrawal) return new Response("OK", { status: 200 });
 
       await supabase
         .from("wallet_transactions")
@@ -65,10 +70,15 @@ serve(async (req) => {
 
       const newStatus = eventType === "transfer.failed" ? "failed" : "reversed";
 
-      await supabase
+      const { data: claimedWithdrawal } = await supabase
         .from("withdrawal_requests")
         .update({ status: newStatus, processed_at: new Date().toISOString(), webhook_processed: true, failure_reason: data.reason ?? eventType })
-        .eq("reference", reference);
+        .eq("reference", reference)
+        .eq("webhook_processed", false)
+        .select("id")
+        .maybeSingle();
+
+      if (!claimedWithdrawal) return new Response("OK", { status: 200 });
 
       // Reverse the wallet debit — return funds to user
       await supabase.rpc("reverse_wallet_debit", {

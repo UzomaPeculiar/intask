@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { EmptyState } from "@/components/intask/EmptyState";
@@ -11,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { GraduationCap, Search, Clock, Star } from "lucide-react";
 
 export const Route = createFileRoute("/app/mentorship")({
+  beforeLoad: () => ensureMvpFeatureEnabled("mentorship"),
   head: () => ({ meta: [{ title: "Mentorship — InTask" }] }),
   component: MentorshipLayout,
 });
@@ -199,3 +201,4 @@ function MentorshipPage() {
     </div>
   );
 }
+

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle2, Star, Briefcase, GraduationCap, Search, Award, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ declare global {
 }
 
 export const Route = createFileRoute("/app/alumni-pro")({
+  beforeLoad: () => ensureMvpFeatureEnabled("alumniPro"),
   head: () => ({ meta: [{ title: "InTask Alumni Pro — InTask" }] }),
   component: AlumniProPage,
 });
@@ -283,3 +285,4 @@ function AlumniProPage() {
     </div>
   );
 }
+

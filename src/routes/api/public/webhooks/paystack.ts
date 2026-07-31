@@ -37,7 +37,18 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
           return new Response("already processed");
         }
 
-        await supabaseAdmin.from("transactions").update({ status: "in_escrow" }).eq("id", tx.id);
+        const { data: claimedTx } = await supabaseAdmin
+          .from("transactions")
+          .update({ status: "in_escrow" })
+          .eq("id", tx.id)
+          .eq("status", tx.status)
+          .select("id")
+          .maybeSingle();
+
+        if (!claimedTx) {
+          return new Response("already processed");
+        }
+
         await supabaseAdmin
           .from("tasks")
           .update({ status: "in_progress" })

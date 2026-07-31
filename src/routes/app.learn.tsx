@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { ArrowLeft, BookOpen, Search, Clock, Star, Users, CheckCircle2, Lock, Pl
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/learn")({
+  beforeLoad: () => ensureMvpFeatureEnabled("learn"),
   head: () => ({ meta: [{ title: "InTask Learn — InTask" }] }),
   component: LearnPage,
 });
@@ -315,3 +317,4 @@ function LearnPage() {
     </div>
   );
 }
+

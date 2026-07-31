@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/intask/EmptyState";
@@ -9,6 +10,7 @@ import { ArrowLeft, Plus, Trash2, Pencil, BookOpen, CheckCircle2 } from "lucide-
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/learn/$courseId/manage")({
+  beforeLoad: () => ensureMvpFeatureEnabled("learn"),
   head: () => ({ meta: [{ title: "Manage Course — InTask Learn" }] }),
   component: ManageCoursePage,
 });
@@ -246,3 +248,4 @@ function ManageCoursePage() {
     </div>
   );
 }
+

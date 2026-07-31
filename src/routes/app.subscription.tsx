@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle2, Zap, Star, Building2 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ declare global {
 }
 
 export const Route = createFileRoute("/app/subscription")({
+  beforeLoad: () => ensureMvpFeatureEnabled("subscriptions"),
   head: () => ({ meta: [{ title: "Subscription — InTask" }] }),
   component: SubscriptionPage,
 });
@@ -303,3 +305,4 @@ function SubscriptionPage() {
     </div>
   );
 }
+

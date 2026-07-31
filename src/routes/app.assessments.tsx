@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { ArrowLeft, Award, CheckCircle2, Clock, Star } from "lucide-react";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/app/assessments")({
+  beforeLoad: () => ensureMvpFeatureEnabled("assessments"),
   head: () => ({ meta: [{ title: "Skill Assessments — InTask" }] }),
   component: AssessmentsPage,
 });
@@ -293,3 +295,4 @@ function AssessmentsPage() {
     </div>
   );
 }
+

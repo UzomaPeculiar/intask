@@ -82,6 +82,16 @@ CREATE TABLE IF NOT EXISTS public.wallet_transactions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+DO $$
+BEGIN
+  BEGIN
+    CREATE UNIQUE INDEX IF NOT EXISTS transactions_task_id_uniq
+      ON public.transactions(task_id);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Skipping transactions_task_id_uniq creation: %', SQLERRM;
+  END;
+END $$;
+
 -- Normalize legacy references and de-duplicate before adding unique index.
 UPDATE public.wallet_transactions
 SET reference = NULL
@@ -303,6 +313,7 @@ AS $$
 DECLARE
   v_wallet public.wallets%ROWTYPE;
   v_new_balance NUMERIC;
+  v_transaction_id UUID;
 BEGIN
   IF p_user_id IS NULL THEN
     RETURN jsonb_build_object('success', false, 'error', 'User is required');
@@ -311,6 +322,8 @@ BEGIN
   IF p_amount IS NULL OR p_amount <= 0 THEN
     RETURN jsonb_build_object('success', false, 'error', 'Amount must be greater than zero');
   END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtext(p_user_id::text), hashtext(COALESCE(p_reference, '')));
 
   IF p_reference IS NOT NULL AND EXISTS (
     SELECT 1
@@ -327,6 +340,33 @@ BEGIN
   VALUES (p_user_id, 0, 0, 0)
   ON CONFLICT (user_id) DO NOTHING;
 
+  INSERT INTO public.wallet_transactions(
+    wallet_id,
+    user_id,
+    transaction_type,
+    amount,
+    status,
+    description,
+    reference
+  )
+  SELECT
+    w.id,
+    p_user_id,
+    'credit',
+    p_amount,
+    'completed',
+    COALESCE(p_description, 'Wallet credit'),
+    p_reference
+  FROM public.wallets w
+  WHERE w.user_id = p_user_id
+  ON CONFLICT DO NOTHING
+  RETURNING id INTO v_transaction_id;
+
+  IF v_transaction_id IS NULL THEN
+    SELECT * INTO v_wallet FROM public.wallets WHERE user_id = p_user_id;
+    RETURN jsonb_build_object('success', true, 'wallet_id', v_wallet.id, 'balance', COALESCE(v_wallet.balance, 0));
+  END IF;
+
   SELECT * INTO v_wallet
   FROM public.wallets
   WHERE user_id = p_user_id
@@ -338,25 +378,6 @@ BEGIN
     total_earned = v_wallet.total_earned + p_amount
   WHERE id = v_wallet.id
   RETURNING balance INTO v_new_balance;
-
-  INSERT INTO public.wallet_transactions(
-    wallet_id,
-    user_id,
-    transaction_type,
-    amount,
-    status,
-    description,
-    reference
-  ) VALUES (
-    v_wallet.id,
-    p_user_id,
-    'credit',
-    p_amount,
-    'completed',
-    COALESCE(p_description, 'Wallet credit'),
-    p_reference
-  )
-  ON CONFLICT DO NOTHING;
 
   RETURN jsonb_build_object('success', true, 'wallet_id', v_wallet.id, 'balance', v_new_balance);
 END;
@@ -384,6 +405,8 @@ BEGIN
   IF p_amount IS NULL OR p_amount <= 0 THEN
     RETURN jsonb_build_object('success', false, 'error', 'Amount must be greater than zero');
   END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtext(p_user_id::text), hashtext(COALESCE(p_reference, '')));
 
   IF p_reference IS NOT NULL AND EXISTS (
     SELECT 1
@@ -460,6 +483,8 @@ BEGIN
   IF p_amount IS NULL OR p_amount <= 0 THEN
     RETURN jsonb_build_object('success', false, 'error', 'Amount must be greater than zero');
   END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtext(p_user_id::text), hashtext(COALESCE(p_reference, '')));
 
   IF p_reference IS NOT NULL AND EXISTS (
     SELECT 1

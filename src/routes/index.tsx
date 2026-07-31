@@ -67,7 +67,7 @@ const WHO_IS_IT_FOR = [
   {
     icon: User,
     title: "Alumni",
-    body: "Keep earning after graduation. Offer mentorship, take on tasks, and grow your network.",
+    body: "Keep earning after graduation. Take on tasks, build your portfolio, and grow your network.",
     cta: "Join as alumni",
     color: "bg-warning/10 text-warning",
   },
@@ -172,7 +172,6 @@ function DesktopLanding() {
 
           <nav className="flex items-center gap-7 text-sm font-medium text-[#4A5244]">
             <Link to="/app/browse" className="hover:text-[#1A1E16]">Browse tasks</Link>
-            <Link to="/app/talent" className="hover:text-[#1A1E16]">Browse freelancers</Link>
             <a href="#how-it-works" className="hover:text-[#1A1E16]">How it works</a>
             <a href="#" className="hover:text-[#1A1E16]">Blog</a>
             <Link to="/contact" className="hover:text-[#1A1E16]">Contact us</Link>
@@ -441,41 +440,6 @@ function DesktopLanding() {
       </section>
 
       <section className="mx-auto w-full max-w-[1200px] px-12 pb-[72px]">
-        <div className="mb-8 grid grid-cols-2 items-center gap-6 rounded-2xl border border-[#D4E8CC] bg-white p-7">
-          <div>
-            <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-[#F7ECD9] px-3 py-1 text-xs font-medium text-[#8B5F17]">
-              <GraduationCap className="size-3" /> For Universities
-            </span>
-            <h2 className="text-[34px] font-bold" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>Partner with InTask</h2>
-            <p className="mt-3 text-sm leading-[1.7] text-[#4A5A44]">
-              Give your students access to real paid work while they study. InTask partners with Nigerian universities to bridge the gap between education and employment.
-            </p>
-            <ul className="mt-4 space-y-2">
-              {["Free for institutions", "Verified work experience before graduation", "Dashboard showing your students' activity"].map((item) => (
-                <li key={item} className="flex items-center gap-2 text-sm text-[#4A5A44]">
-                  <CheckCircle2 className="size-4 shrink-0 text-[#1A7A42]" /> {item}
-                </li>
-              ))}
-            </ul>
-            <Link to="/app/partnership" className="mt-5 inline-block text-sm font-semibold text-[#3DCB6C]">Request a partnership →</Link>
-          </div>
-
-          <div className="rounded-xl border border-[#D4E8CC] bg-[#F4FBF0] p-5">
-            <p className="text-sm font-semibold text-[#1A1E16]">Partnership benefits at a glance</p>
-            {[
-              { label: "Student employability", value: "Higher" },
-              { label: "Graduate readiness", value: "Verified" },
-              { label: "Cost to university", value: "Free" },
-              { label: "Setup time", value: "3 days" },
-            ].map(({ label, value }) => (
-              <div key={label} className="flex items-center justify-between border-b border-[#D4E8CC] py-3 last:border-0 last:pb-0">
-                <p className="text-sm text-[#6A8064]">{label}</p>
-                <p className="text-sm font-semibold text-[#1A1E16]">{value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="grid grid-cols-[1fr_auto] items-center gap-10 rounded-[20px] bg-[#3DCB6C] px-16 py-14">
           <div>
             <h2 className="mb-2 text-[34px] font-bold text-white" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>Want to work as a freelancer?</h2>
@@ -514,7 +478,6 @@ function DesktopLanding() {
               title: "Platform",
               links: [
                 { label: "Browse tasks", to: "/app/browse" },
-                { label: "Browse freelancers", to: "/app/talent" },
                 { label: "Post a task", to: "/auth/signup" },
                 { label: "Pricing", to: "#" },
               ],
@@ -778,9 +741,7 @@ function MobileLanding() {
                   </li>
                 ))}
               </ul>
-              <Link to="/app/partnership">
-                <Button className="mt-6 gap-2">Request a partnership <ArrowRight className="size-4" /></Button>
-              </Link>
+              <Button className="mt-6 gap-2" disabled>Marketplace only</Button>
             </div>
             <div className="space-y-4 rounded-2xl border border-border bg-background p-6">
               <p className="text-sm font-medium text-foreground">Partnership benefits at a glance</p>
@@ -837,7 +798,6 @@ function MobileLanding() {
           <div className="flex flex-wrap gap-4 text-xs">
             <Link to="/about" className="hover:text-foreground">About</Link>
             <Link to="/contact" className="hover:text-foreground">Contact</Link>
-            <Link to="/app/partnership" className="hover:text-foreground">Universities</Link>
             <Link to="/terms" className="hover:text-foreground">Terms</Link>
             <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
           </div>

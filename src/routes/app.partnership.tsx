@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, GraduationCap, CheckCircle2, Users, Briefcase, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/partnership")({
+  beforeLoad: () => ensureMvpFeatureEnabled("partnerships"),
   head: () => ({ meta: [{ title: "University Partnership — InTask" }] }),
   component: PartnershipPage,
 });
@@ -134,3 +136,4 @@ function PartnershipPage() {
     </div>
   );
 }
+

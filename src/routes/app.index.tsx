@@ -20,6 +20,7 @@ import { FEED_FILTERS } from "@/lib/constants";
 import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle, Users, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import { useApplicantCount, applicantLabel } from "@/hooks/useApplicantCount";
 import { MessagePartyLink } from "@/components/intask/MessagePartyLink";
+import { MVP_FEATURES } from "@/lib/mvp-features";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({ meta: [{ title: "Dashboard — InTask" }] }),
@@ -135,7 +136,7 @@ function Dashboard() {
         </div>
       )}
 
-      {role === "alumni" && mode === "find" && <MentorshipSection />}
+      {role === "alumni" && mode === "find" && MVP_FEATURES.mentorship && <MentorshipSection />}
 
       {mode === "find" && canFindWork ? (
         <FindWorkView userId={user?.id} filter={filter} onFilter={setFilter} onSwitchToPost={() => setMode("post")} />
@@ -243,6 +244,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
         <WalletBalanceCard userId={userId} />
       </section>
 
+      {(MVP_FEATURES.mentorship || MVP_FEATURES.internships || MVP_FEATURES.learn) && (
       <section className="space-y-2">
         <Collapsible open={showQuickLinks} onOpenChange={setShowQuickLinks}>
           <div className="flex items-center justify-between rounded-2xl border border-border/80 bg-card/90 px-4 py-3 shadow-sm">
@@ -316,6 +318,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
           </CollapsibleContent>
         </Collapsible>
       </section>
+      )}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -602,9 +605,9 @@ function PostWorkView({ userId }: { userId?: string }) {
         <Plus className="size-4" /> Post a new task
       </Button>
 
-      <SubscriptionBanner userId={userId} />
+      {MVP_FEATURES.featuredTasks && <SubscriptionBanner userId={userId} />}
 
-      <div className="rounded-xl border border-border bg-card p-3 shadow-card">
+      {MVP_FEATURES.featuredTasks && <div className="rounded-xl border border-border bg-card p-3 shadow-card">
         <p className="text-sm font-medium text-foreground">Featured listings this month</p>
         <p className="text-xs text-muted-foreground mt-0.5">
           {featuredQuotaLoading
@@ -613,7 +616,7 @@ function PostWorkView({ userId }: { userId?: string }) {
               ? `${featuredQuota?.used ?? 0} of ${featuredQuota?.cap ?? 0} used · ${featuredQuota?.remaining ?? 0} remaining`
               : "No featured slots on your current plan"}
         </p>
-      </div>
+      </div>}
 
       {isLoading && <SkeletonList />}
 
@@ -701,24 +704,28 @@ function PosterTaskRow({
               className="flex-1"
             />
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1 shrink-0"
-            disabled={featureButtonDisabled}
-            onClick={() => onToggleFeatured?.(task)}
-          >
-            <Star className="size-3.5" />
-            {togglingFeatured ? "Saving..." : task.featured ? "Unfeature" : "Feature"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1 shrink-0"
-            onClick={() => nav({ to: "/app/tasks/$taskId/analytics", params: { taskId: task.id } })}
-          >
-            <BarChart2 className="size-3.5" /> Stats
-          </Button>
+          {MVP_FEATURES.featuredTasks && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 shrink-0"
+              disabled={featureButtonDisabled}
+              onClick={() => onToggleFeatured?.(task)}
+            >
+              <Star className="size-3.5" />
+              {togglingFeatured ? "Saving..." : task.featured ? "Unfeature" : "Feature"}
+            </Button>
+          )}
+          {MVP_FEATURES.advancedAnalytics && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 shrink-0"
+              onClick={() => nav({ to: "/app/tasks/$taskId/analytics", params: { taskId: task.id } })}
+            >
+              <BarChart2 className="size-3.5" /> Stats
+            </Button>
+          )}
         </div>
         {taskStatus === "in_progress" && (
           <DisputeButton taskId={task.id} taskTitle={task.title} />

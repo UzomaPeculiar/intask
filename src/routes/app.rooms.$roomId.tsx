@@ -2,12 +2,14 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send, Paperclip, Users, CheckCircle2, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/rooms/$roomId")({
+  beforeLoad: () => ensureMvpFeatureEnabled("rooms"),
   head: () => ({ meta: [{ title: "Project Room — InTask" }] }),
   component: ProjectRoomPage,
 });
@@ -247,3 +249,4 @@ function ProjectRoomPage() {
     </div>
   );
 }
+

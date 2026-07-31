@@ -11,6 +11,7 @@ import { VerifiedBadge } from "@/components/intask/Badges";
 import { Inbox, Search, Star, SlidersHorizontal, Lock, ShieldCheck, Briefcase } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { MVP_FEATURES } from "@/lib/mvp-features";
 
 export const Route = createFileRoute("/app/browse")({
   head: () => ({ meta: [{ title: "Browse — InTask" }] }),
@@ -47,7 +48,7 @@ function BrowsePage() {
   const role = myProfile?.role;
   const isHiringRole = role === "company" || role === "individual";
 
-  if (isHiringRole) {
+  if (isHiringRole && MVP_FEATURES.advancedTalentDiscovery) {
     return <HiringTalentBrowse />;
   }
 
@@ -180,7 +181,7 @@ function BrowsePage() {
           Looking to hire?{" "}
           <Link to="/app/tasks/create" className="it-link-accent font-medium hover:underline">Post a task</Link>
           {" . "}
-          <Link to="/app/internships" className="it-link-accent font-medium hover:underline">Browse internships</Link>
+          {MVP_FEATURES.internships ? <Link to="/app/internships" className="it-link-accent font-medium hover:underline">Browse internships</Link> : <span className="it-link-accent font-medium">Post tasks instead</span>}
         </p>
       )}
     </div>
@@ -403,7 +404,7 @@ function HiringTalentBrowse() {
               Free and Growth plans can preview talent cards. Upgrade to Pro to open full profiles and contact options.
             </p>
           </div>
-          <Button size="sm" onClick={() => nav({ to: "/app/subscription" as any })}>Upgrade</Button>
+          <Button size="sm" onClick={() => nav({ to: "/app/tasks/create" as any })}>Post a task</Button>
         </div>
       )}
 

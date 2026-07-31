@@ -174,25 +174,11 @@ export const initEscrow = createServerFn({ method: "POST" })
       }
     }
 
-    // The existing transaction is still pending but Paystack did not
-    // confirm a successful payment. Remove it before creating a new one.
-    if (existingTransaction) {
-      const { error: deleteError } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("id", existingTransaction.id);
-
-      if (deleteError) {
-        throw deleteError;
-      }
-    }
-
-    // Create a new transaction and Paystack reference.
-    const reference = `intask_${task.id.slice(0, 8)}_${Date.now()}`;
+    const reference = existingTransaction?.paystack_reference ?? `intask_${task.id}_escrow`;
 
     const { data: tx, error: txErr } = await supabase
       .from("transactions")
-      .insert({
+      .upsert({
         task_id: task.id,
         poster_id: task.poster_id,
         student_id: task.matched_student_id,
@@ -200,8 +186,8 @@ export const initEscrow = createServerFn({ method: "POST" })
         platform_fee: Number(task.budget) * FEE_RATE,
         status: "pending",
         paystack_reference: reference,
-      })
-      .select("id")
+      }, { onConflict: "task_id" })
+      .select("id, paystack_reference")
       .single();
   
     if (txErr || !tx) {
@@ -355,7 +341,18 @@ export const releaseEscrow = createServerFn({ method: "POST" })
       }
     }
 
-    await supabaseAdmin.from("transactions").update({ status: "released" }).eq("id", tx.id);
+    const { data: releaseClaimed } = await supabaseAdmin
+      .from("transactions")
+      .update({ status: "released" })
+      .eq("id", tx.id)
+      .eq("status", "in_escrow")
+      .select("id")
+      .maybeSingle();
+
+    if (!releaseClaimed) {
+      throw new Error("Escrow was already released or refunded");
+    }
+
     await supabaseAdmin
       .from("tasks")
       .update({ status: "completed", delivery_approved_at: new Date().toISOString() })

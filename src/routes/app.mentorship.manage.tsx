@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +11,7 @@ import { ArrowLeft, Plus, GraduationCap, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/mentorship/manage")({
+  beforeLoad: () => ensureMvpFeatureEnabled("mentorship"),
   head: () => ({ meta: [{ title: "My Mentorship Services — InTask" }] }),
   component: ManageMentorshipPage,
 });
@@ -305,3 +307,4 @@ function ManageMentorshipPage() {
     </div>
   );
 }
+

@@ -116,7 +116,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: resendFrom,
-        to: ["uzomapeculiar1@gmail.com"],
+        to: [universityEmail],
         subject: "Your InTask student verification code",
         html: `
           <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">

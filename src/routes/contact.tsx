@@ -10,12 +10,11 @@ function ContactPage() {
       <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 sm:p-8">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">Contact InTask</h1>
         <p className="mt-4 text-sm leading-7 text-muted-foreground">
-          Need help with your account, payments, partnerships, or disputes? Reach out and our team will respond as quickly as possible.
+          Need help with your account, payments, or disputes? Reach out and our team will respond as quickly as possible.
         </p>
 
         <div className="mt-6 space-y-3 text-sm text-foreground">
           <p><span className="font-medium">Email:</span> support@intask.ng</p>
-          <p><span className="font-medium">Partnerships:</span> partnerships@intask.ng</p>
           <p><span className="font-medium">Hours:</span> Mon–Fri, 9:00 AM – 5:00 PM (WAT)</p>
         </div>
 

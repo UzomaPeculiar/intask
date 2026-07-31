@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { MVP_FEATURES } from "@/lib/mvp-features";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -143,8 +144,6 @@ function ProfilePage() {
   });
 
   const [editing, setEditing] = useState(false);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [upgrading, setUpgrading] = useState(false);
 
   if (isLoading && !timedOut) {
     return <div className="grid min-h-[60vh] place-items-center text-muted-foreground">Loading profile…</div>;
@@ -169,17 +168,6 @@ function ProfilePage() {
   const isCompany = profile.role === "company";
   const isIndividual = profile.role === "individual";
   const fromBottomNav = userId === "me";
-
-  async function upgradeToAlumni() {
-    setUpgrading(true);
-    const { error } = await supabase.from("profiles").update({ role: "alumni" }).eq("id", profile.id);
-    setUpgrading(false);
-    if (error) { toast.error(error.message); return; }
-    setUpgradeOpen(false);
-    toast.success("Welcome to InTask Alumni. Your profile and history are all still here.");
-    qc.invalidateQueries({ queryKey: ["profile", targetId] });
-    qc.invalidateQueries({ queryKey: ["me"] });
-  }
 
   return (
     <div className="mx-auto max-w-2xl pb-10">
@@ -314,14 +302,16 @@ function ProfilePage() {
               <Share2 className="size-3.5" /> Share profile
             </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1"
-              onClick={() => nav({ to: "/app/assessments" as any })}
-            >
-              <Award className="size-3.5" /> Take skill assessments
-            </Button>
+            {MVP_FEATURES.assessments && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => nav({ to: "/app/assessments" as any })}
+              >
+                <Award className="size-3.5" /> Take skill assessments
+              </Button>
+            )}
             
             {(profile.role === "student" || profile.role === "alumni" || profile.role === "individual" || profile.role === "company") && (
               <Button
@@ -335,13 +325,10 @@ function ProfilePage() {
             )}
             
             {isStudent && (
-              <button 
-                onClick={() => setUpgradeOpen(true)} 
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <GraduationCap className="size-3.5" /> 
-                Have you graduated? Upgrade to Alumni →
-              </button>
+              <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <GraduationCap className="size-3.5" />
+                Alumni status is handled by support.
+              </p>
             )}
           </div>
         )}
@@ -427,20 +414,6 @@ function ProfilePage() {
         </section>
       )}
 
-      <Sheet open={upgradeOpen} onOpenChange={setUpgradeOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl">
-          <SheetHeader>
-            <SheetTitle>Upgrade to Alumni</SheetTitle>
-            <SheetDescription>
-              Upgrading your account to Alumni keeps all your reviews, portfolio, and earnings history. Your badge will change from Verified Student to Alumni and you will gain access to mentorship features. This cannot be undone.
-            </SheetDescription>
-          </SheetHeader>
-          <SheetFooter className="mt-4 flex-col gap-2 sm:flex-col">
-            <Button onClick={upgradeToAlumni} disabled={upgrading}>{upgrading ? "Upgrading…" : "Upgrade my account"}</Button>
-            <Button variant="ghost" onClick={() => setUpgradeOpen(false)}>Cancel</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

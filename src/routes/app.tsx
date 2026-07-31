@@ -85,7 +85,7 @@ function DesktopSidebar({ path }: { path: string }) {
     },
   });
 
-  const browseLabel = myProfile?.role === "company" || myProfile?.role === "individual" ? "Find Talent" : "Find Work";
+  const browseLabel = "Browse Tasks";
 
   const { data: unreadMsgs = 0 } = useQuery({
     queryKey: ["desktop-unread-messages"],
@@ -127,7 +127,7 @@ function DesktopSidebar({ path }: { path: string }) {
 
       <nav className="flex-1 space-y-1 px-3 py-4">
         <DesktopNavItem to="/app" label="Dashboard" icon={Home} active={path === "/app" || path === "/app/"} />
-        <DesktopNavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks") || path.startsWith("/app/mentorship")} />
+        <DesktopNavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} />
         <DesktopNavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} />
         <DesktopNavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} />
         <DesktopNavItem to="/app/profile/$userId" label="Profile" icon={UserIcon} active={path.startsWith("/app/profile")} params={{ userId: "me" }} />
@@ -175,7 +175,7 @@ function BottomNav({ path }: { path: string }) {
     },
   });
 
-  const browseLabel = myProfile?.role === "company" || myProfile?.role === "individual" ? "Talent" : "Work";
+  const browseLabel = "Browse";
 
   const { data: unreadMsgs = 0 } = useQuery({
     queryKey: ["unread-messages"],
@@ -237,7 +237,7 @@ function BottomNav({ path }: { path: string }) {
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/95 backdrop-blur shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.25)] lg:hidden">
       <ul className="mx-auto grid max-w-md grid-cols-5">
         <NavItem to="/app" label="Home" icon={Home} active={path === "/app" || path === "/app/"} badge={0} />
-        <NavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks") || path.startsWith("/app/mentorship")} badge={0} />
+        <NavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} badge={0} />
         <NavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} />
         <NavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} />
         <li>

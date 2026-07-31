@@ -347,7 +347,7 @@ function ApplySheet({ taskId, budget, negotiable }: { taskId: string; budget: nu
           .eq("status", "pending");
 
         if ((count ?? 0) >= maxAllowed) {
-          throw new Error(`You can only have ${maxAllowed} active applications on the free plan. Upgrade to Alumni Pro for unlimited applications.`);
+          throw new Error(`You can only have ${maxAllowed} active applications on the free plan.`);
         }
       }
 

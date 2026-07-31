@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { ArrowLeft, Briefcase, Search, Clock, MapPin, Plus, ShieldCheck } from "
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/internships")({
+  beforeLoad: () => ensureMvpFeatureEnabled("internships"),
   head: () => ({ meta: [{ title: "Internships — InTask" }] }),
   component: InternshipsPage,
 });
@@ -416,3 +418,4 @@ function PostInternshipSheet({ open, onClose, posterId, onSuccess }: { open: boo
     </Sheet>
   );
 }
+

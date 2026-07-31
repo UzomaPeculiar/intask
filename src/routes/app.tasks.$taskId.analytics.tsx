@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
 import { ArrowLeft, Eye, Users, Star, CheckCircle2, Clock } from "lucide-react";
 import { naira } from "@/lib/format";
 
 export const Route = createFileRoute("/app/tasks/$taskId/analytics")({
+  beforeLoad: () => ensureMvpFeatureEnabled("advancedAnalytics"),
   head: () => ({ meta: [{ title: "Task Analytics — InTask" }] }),
   component: AnalyticsPage,
 });
@@ -173,3 +175,4 @@ function AnalyticsPage() {
     </div>
   );
 }
+
