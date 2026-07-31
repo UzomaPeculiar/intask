@@ -1,16 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ShieldCheck, Users, Briefcase, DollarSign, CheckCircle2, XCircle, Clock, Building2, Eye, Mail, Phone, MapPin, Globe, GraduationCap, ExternalLink, Search } from "lucide-react";
+import { ShieldCheck, Users, Briefcase, DollarSign, CheckCircle2, XCircle, Clock, Building2, Eye, Mail, Phone, MapPin, Globe, GraduationCap, ExternalLink, Activity, AlertTriangle, Search } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
-import { adminResolveDispute } from "@/lib/admin.functions";
+import { adminForceCancelTask, adminManualRefund } from "@/lib/admin.functions";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
+
+const CommunicationsTab = lazy(async () => import("@/components/intask/admin/CommunicationsTab").then((mod) => ({ default: mod.CommunicationsTab })));
+const SettingsTab = lazy(async () => import("@/components/intask/admin/SettingsTab").then((mod) => ({ default: mod.SettingsTab })));
+const ModerationTab = lazy(async () => import("@/components/intask/admin/ModerationTab").then((mod) => ({ default: mod.ModerationTab })));
+const WithdrawalsTab = lazy(async () => import("@/components/intask/admin/FinancialTab").then((mod) => ({ default: mod.FinancialTab })));
+const UserManagementTab = lazy(async () => import("@/components/intask/admin/UserManagementTab").then((mod) => ({ default: mod.UserManagementTab })));
+const TaskManagementTab = lazy(async () => import("@/components/intask/admin/TaskManagementTab").then((mod) => ({ default: mod.TaskManagementTab })));
+const VerificationsHubTab = lazy(async () => import("@/components/intask/admin/VerificationsHubTab").then((mod) => ({ default: mod.VerificationsHubTab })));
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — InTask" }] }),
@@ -19,7 +28,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const nav = useNavigate();
-  const [tab, setTab] = useState<"overview" | "students" | "companies" | "individuals" | "reports" | "disputes" | "partnerships" | "withdrawals">("overview");
+  const [tab, setTab] = useState<"overview" | "users" | "tasks" | "verifications" | "communications" | "settings" | "moderation" | "partnerships" | "withdrawals">("overview");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -84,7 +93,7 @@ function AdminPage() {
 
       <div className="mx-auto max-w-5xl px-6 py-6">
         <div className="flex gap-2 mb-6">
-          {(["overview", "students", "companies", "individuals", "reports", "disputes", "partnerships", "withdrawals"] as const).map((t) => (
+          {(["overview", "users", "tasks", "verifications", "communications", "settings", "moderation", "partnerships", "withdrawals"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -94,19 +103,35 @@ function AdminPage() {
                   : "bg-card border border-border text-foreground hover:bg-accent"
               }`}
             >
-              {t === "overview" ? "Overview" : t === "students" ? "Student Verifications" : t === "companies" ? "Company Verifications" : t === "individuals" ? "Individual Verifications" : t === "reports" ? "Reports" : t === "disputes" ? "Disputes" : t === "partnerships" ? "Partnerships" : "Withdrawals"}
+              {t === "overview" ? "Overview" : t === "users" ? "Users" : t === "tasks" ? "Tasks" : t === "verifications" ? "Verifications" : t === "communications" ? "Communications" : t === "settings" ? "Settings" : t === "moderation" ? "Moderation" : t === "partnerships" ? "Partnerships" : "Financial"}
             </button>
           ))}
         </div>
 
-        {tab === "overview" && <OverviewTab />}
-        {tab === "students" && <StudentVerificationsTab />}
-        {tab === "companies" && <CompanyVerificationsTab />}
-        {tab === "individuals" && <IndividualVerificationsTab />}
-        {tab === "reports" && <ReportsTab />}
-        {tab === "disputes" && <DisputesTab />}
-        {tab === "partnerships" && <PartnershipsTab />}
-        {tab === "withdrawals" && <WithdrawalsTab />}
+        <Suspense fallback={<AdminTabSkeleton />}> 
+          {tab === "overview" && <OverviewTab />}
+          {tab === "users" && <UserManagementTab />}
+          {tab === "tasks" && <TaskManagementTab />}
+          {tab === "verifications" && <VerificationsHubTab />}
+          {tab === "communications" && <CommunicationsTab />}
+          {tab === "settings" && <SettingsTab />}
+          {tab === "moderation" && <ModerationTab />}
+          {tab === "partnerships" && <PartnershipsTab />}
+          {tab === "withdrawals" && <WithdrawalsTab />}
+        </Suspense>
+      </div>
+    </div>
+  );
+}
+
+function AdminTabSkeleton() {
+  return (
+    <div className="rounded-xl border border-border bg-card p-8">
+      <div className="h-5 w-40 animate-pulse rounded bg-muted" />
+      <div className="mt-3 space-y-2">
+        <div className="h-4 w-full animate-pulse rounded bg-muted/80" />
+        <div className="h-4 w-5/6 animate-pulse rounded bg-muted/80" />
+        <div className="h-4 w-2/3 animate-pulse rounded bg-muted/80" />
       </div>
     </div>
   );
@@ -114,799 +139,480 @@ function AdminPage() {
 
 function OverviewTab() {
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
-  const [showAllUsers, setShowAllUsers] = useState(false);
-  const [showAllTasks, setShowAllTasks] = useState(false);
-  const [showPayoutBreakdown, setShowPayoutBreakdown] = useState(false);
   const [viewingTask, setViewingTask] = useState<string | null>(null);
-  const [searchUsers, setSearchUsers] = useState("");
-  const [searchTasks, setSearchTasks] = useState("");
+  const [revenueMode, setRevenueMode] = useState<"weekly" | "monthly">("weekly");
 
-  const { data: stats } = useQuery({
-    queryKey: ["admin-stats"],
+  function startOfToday() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  function hoursAgo(hours: number) {
+    return new Date(Date.now() - hours * 60 * 60 * 1000);
+  }
+
+  function formatCurrency(value: number) {
+    return `₦${Math.round(value).toLocaleString("en-NG")}`;
+  }
+
+  function weekKey(dateStr: string) {
+    const date = new Date(dateStr);
+    const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    const day = d.getUTCDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    d.setUTCDate(d.getUTCDate() + diffToMonday);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function monthKey(dateStr: string) {
+    const d = new Date(dateStr);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+
+  function formatWeekLabel(key: string) {
+    const d = new Date(`${key}T00:00:00Z`);
+    return d.toLocaleDateString("en-NG", { month: "short", day: "numeric" });
+  }
+
+  function formatMonthLabel(key: string) {
+    const [year, month] = key.split("-");
+    const d = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
+    return d.toLocaleDateString("en-NG", { month: "short", year: "2-digit" });
+  }
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["admin-command-center"],
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
-      const [users, tasks, transactions] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("tasks").select("id", { count: "exact", head: true }),
-        supabase.from("transactions").select("amount").eq("status", "released"),
+      const today = startOfToday();
+      const matchedCutoff = hoursAgo(48).toISOString();
+      const reviewCutoff = hoursAgo(72).toISOString();
+
+      const [profilesRes, tasksRes, transactionsRes, disputesRes, reportsRes, withdrawalsRes, studentRes, companyRes, individualRes, fundingRes] = await Promise.all([
+        supabase.from("profiles").select("id, role, created_at"),
+        supabase.from("tasks").select("id, title, status, created_at, updated_at"),
+        supabase.from("transactions").select("id, task_id, status, amount, platform_fee, created_at, updated_at"),
+        (supabase as any).from("disputes").select("id, status"),
+        (supabase as any).from("reports").select("id, status"),
+        (supabase as any).from("withdrawal_requests").select("id, status, created_at, webhook_processed"),
+        (supabase as any).from("student_profiles").select("user_id, verified, verification_status, verification_method"),
+        (supabase as any).from("company_profiles").select("user_id, verified, verification_status"),
+        (supabase as any).from("individual_profiles").select("user_id, verification_status"),
+        (supabase as any).from("wallet_funding").select("id, status, created_at, webhook_processed"),
       ]);
-      const totalPayout = (transactions.data ?? []).reduce((sum, t) => sum + Number(t.amount ?? 0), 0);
-      const { data: openTasks } = await supabase
-        .from("tasks")
-        .select("id, title, featured, featured_until, poster_id")
-        .eq("status", "open")
-        .order("created_at", { ascending: false })
-        .limit(20);
+      if (profilesRes.error) throw profilesRes.error;
+      if (tasksRes.error) throw tasksRes.error;
+      if (transactionsRes.error) throw transactionsRes.error;
+      if (disputesRes.error) throw disputesRes.error;
+      if (reportsRes.error) throw reportsRes.error;
+      if (withdrawalsRes.error) throw withdrawalsRes.error;
+      if (studentRes.error) throw studentRes.error;
+      if (companyRes.error) throw companyRes.error;
+      if (individualRes.error) throw individualRes.error;
+      if (fundingRes.error) throw fundingRes.error;
 
-      return { users: users.count ?? 0, tasks: tasks.count ?? 0, totalPayout, openTasks: openTasks ?? [] };
-    },
-  });
+      const profiles = profilesRes.data ?? [];
+      const tasks = tasksRes.data ?? [];
+      const transactions = transactionsRes.data ?? [];
+      const disputes = disputesRes.data ?? [];
+      const reports = reportsRes.data ?? [];
+      const withdrawals = withdrawalsRes.data ?? [];
+      const students = studentRes.data ?? [];
+      const companies = companyRes.data ?? [];
+      const individuals = individualRes.data ?? [];
+      const funding = fundingRes.data ?? [];
 
-  const { data: allUsers, isLoading: usersLoading } = useQuery({
-    queryKey: ["admin-all-users"],
-    enabled: showAllUsers,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, email, role, is_admin, created_at")
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+      const roleCounts = {
+        student: profiles.filter((p: any) => p.role === "student").length,
+        alumni: profiles.filter((p: any) => p.role === "alumni").length,
+        individual: profiles.filter((p: any) => p.role === "individual").length,
+        company: profiles.filter((p: any) => p.role === "company").length,
+      };
 
-  const { data: allTasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ["admin-all-tasks"],
-    enabled: showAllTasks,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("id, title, budget, status, created_at, featured, poster_id, category")
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+      const taskStatusCounts = {
+        open: tasks.filter((t: any) => t.status === "open").length,
+        inProgress: tasks.filter((t: any) => t.status === "in_progress").length,
+        completed: tasks.filter((t: any) => t.status === "completed").length,
+        disputed: tasks.filter((t: any) => t.status === "disputed").length,
+        cancelled: tasks.filter((t: any) => t.status === "cancelled").length,
+        matched: tasks.filter((t: any) => t.status === "matched").length,
+        inReview: tasks.filter((t: any) => t.status === "in_review").length,
+      };
 
-  const { data: payoutBreakdown, isLoading: payoutLoading } = useQuery({
-    queryKey: ["admin-payout-breakdown"],
-    enabled: showPayoutBreakdown,
-    queryFn: async () => {
-      const { data: released, error } = await (supabase as any)
-        .from("transactions")
-        .select("id, amount, task_id, recipient_id, created_at, task:tasks(title), recipient:profiles(full_name, email)")
-        .eq("status", "released")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const txns = released ?? [];
-      const byUser: Record<string, { name: string; email: string; total: number; count: number }> = {};
-      for (const tx of txns) {
-        const rid = tx.recipient_id;
-        if (!rid) continue;
-        if (!byUser[rid]) byUser[rid] = { name: tx.recipient?.full_name ?? "Unknown", email: tx.recipient?.email ?? "", total: 0, count: 0 };
-        byUser[rid].total += Number(tx.amount ?? 0);
-        byUser[rid].count += 1;
+      const escrowVolume = transactions
+        .filter((tx: any) => tx.status === "in_escrow" || tx.status === "disputed")
+        .reduce((sum: number, tx: any) => sum + Number(tx.amount ?? 0), 0);
+
+      const platformFeesEarned = transactions
+        .filter((tx: any) => tx.status === "released")
+        .reduce((sum: number, tx: any) => sum + Number(tx.platform_fee ?? 0), 0);
+
+      const signupsToday = profiles.filter((p: any) => p.created_at && new Date(p.created_at) >= today).length;
+      const tasksPostedToday = tasks.filter((t: any) => t.created_at && new Date(t.created_at) >= today).length;
+      const tasksCompletedToday = tasks.filter((t: any) => t.status === "completed" && t.updated_at && new Date(t.updated_at) >= today).length;
+      const paymentsProcessedToday = transactions.filter((tx: any) => tx.updated_at && new Date(tx.updated_at) >= today && ["in_escrow", "released", "refunded", "disputed"].includes(tx.status)).length;
+
+      const pendingStudent = students.filter((s: any) => !s.verified && (s.verification_method === "id_upload" || s.verification_status === "pending" || s.verification_status === "pending_review")).length;
+      const pendingCompany = companies.filter((c: any) => !c.verified && c.verification_status !== "rejected").length;
+      const pendingIndividual = individuals.filter((i: any) => i.verification_status === "pending_review").length;
+
+      const openDisputes = disputes.filter((d: any) => d.status === "open").length;
+      const pendingWithdrawals = withdrawals.filter((w: any) => w.status === "pending").length;
+      const unresolvedReports = reports.filter((r: any) => r.status === "pending").length;
+
+      const failedWithdrawalPayments = withdrawals.filter((w: any) => ["failed", "reversed", "rejected"].includes(w.status)).length;
+      const failedWalletTopups = funding.filter((f: any) => f.status === "failed").length;
+      const webhookBacklog = withdrawals.filter((w: any) => w.status === "pending" && !w.webhook_processed).length + funding.filter((f: any) => f.status === "pending" && !f.webhook_processed).length;
+
+      const paidTaskIds = new Set(
+        transactions
+          .filter((tx: any) => ["in_escrow", "released", "disputed"].includes(tx.status))
+          .map((tx: any) => tx.task_id)
+      );
+
+      const matchedStuck = tasks
+        .filter((t: any) => t.status === "matched" && t.created_at && new Date(t.created_at).toISOString() <= matchedCutoff && !paidTaskIds.has(t.id))
+        .slice(0, 8)
+        .map((t: any) => ({ id: t.id, title: t.title, since: t.created_at }));
+
+      const inReviewStuck = tasks
+        .filter((t: any) => t.status === "in_review" && t.updated_at && new Date(t.updated_at).toISOString() <= reviewCutoff)
+        .slice(0, 8)
+        .map((t: any) => ({ id: t.id, title: t.title, since: t.updated_at }));
+
+      const releasedFees = transactions
+        .filter((tx: any) => tx.status === "released" && tx.created_at)
+        .map((tx: any) => ({ created_at: tx.created_at, fee: Number(tx.platform_fee ?? 0) }));
+
+      const weeklyMap: Record<string, number> = {};
+      const monthlyMap: Record<string, number> = {};
+
+      for (const row of releasedFees) {
+        const wk = weekKey(row.created_at);
+        const mk = monthKey(row.created_at);
+        weeklyMap[wk] = (weeklyMap[wk] ?? 0) + row.fee;
+        monthlyMap[mk] = (monthlyMap[mk] ?? 0) + row.fee;
       }
-      const sorted = Object.entries(byUser)
-        .map(([id, v]) => ({ id, ...v }))
-        .sort((a, b) => b.total - a.total);
-      return { transactions: txns, byUser: sorted, total: txns.reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0) };
+
+      const weeklyTrend = Object.keys(weeklyMap)
+        .sort()
+        .slice(-8)
+        .map((key) => ({ key, label: formatWeekLabel(key), amount: Math.round(weeklyMap[key]) }));
+
+      const monthlyTrend = Object.keys(monthlyMap)
+        .sort()
+        .slice(-6)
+        .map((key) => ({ key, label: formatMonthLabel(key), amount: Math.round(monthlyMap[key]) }));
+
+      return {
+        liveStats: {
+          totalUsers: profiles.length,
+          roleCounts,
+          totalTasks: tasks.length,
+          taskStatusCounts,
+          escrowVolume,
+          platformFeesEarned,
+        },
+        today: {
+          signupsToday,
+          tasksPostedToday,
+          tasksCompletedToday,
+          paymentsProcessedToday,
+        },
+        queue: {
+          pendingVerifications: pendingStudent + pendingCompany + pendingIndividual,
+          openDisputes,
+          pendingWithdrawals,
+          unresolvedReports,
+        },
+        health: {
+          failedPayments: failedWithdrawalPayments + failedWalletTopups,
+          webhookBacklog,
+          matchedStuck,
+          inReviewStuck,
+        },
+        revenueTrend: {
+          weekly: weeklyTrend,
+          monthly: monthlyTrend,
+        },
+      };
     },
   });
 
-  const statCards = [
-    { label: "Total users", value: stats?.users ?? 0, icon: Users, color: "text-primary bg-primary/10", clickable: true, active: showAllUsers, toggle: () => { setShowAllUsers(!showAllUsers); setShowAllTasks(false); setShowPayoutBreakdown(false); } },
-    { label: "Total tasks", value: stats?.tasks ?? 0, icon: Briefcase, color: "text-success bg-success/15", clickable: true, active: showAllTasks, toggle: () => { setShowAllTasks(!showAllTasks); setShowAllUsers(false); setShowPayoutBreakdown(false); } },
-    { label: "Total paid out", value: `₦${Number(stats?.totalPayout ?? 0).toLocaleString("en-NG")}`, icon: DollarSign, color: "text-warning bg-warning/15", clickable: true, active: showPayoutBreakdown, toggle: () => { setShowPayoutBreakdown(!showPayoutBreakdown); setShowAllUsers(false); setShowAllTasks(false); } },
+  const trendData = useMemo(() => {
+    if (!data) return [] as Array<{ key: string; label: string; amount: number }>;
+    return revenueMode === "weekly" ? data.revenueTrend.weekly : data.revenueTrend.monthly;
+  }, [data, revenueMode]);
+
+  const topLiveCards = [
+    {
+      label: "Total users",
+      value: data?.liveStats.totalUsers ?? 0,
+      icon: Users,
+      tone: "text-primary bg-primary/10",
+    },
+    {
+      label: "Total tasks",
+      value: data?.liveStats.totalTasks ?? 0,
+      icon: Briefcase,
+      tone: "text-success bg-success/15",
+    },
+    {
+      label: "Escrow volume",
+      value: formatCurrency(data?.liveStats.escrowVolume ?? 0),
+      icon: Activity,
+      tone: "text-warning bg-warning/15",
+    },
+    {
+      label: "Platform fees earned",
+      value: formatCurrency(data?.liveStats.platformFeesEarned ?? 0),
+      icon: DollarSign,
+      tone: "text-foreground bg-muted",
+    },
   ];
+
+  if (isLoading && !data) {
+    return <div className="text-center text-muted-foreground py-10">Loading command center...</div>;
+  }
 
   return (
     <div className="space-y-6">
       <AdminUserProfileSheet userId={viewingProfile} open={!!viewingProfile} onOpenChange={(open) => { if (!open) setViewingProfile(null); }} />
       <AdminTaskDetailSheet taskId={viewingTask} open={!!viewingTask} onOpenChange={(open) => { if (!open) setViewingTask(null); }} />
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        {statCards.map(({ label, value, icon: Icon, color, clickable, active, toggle }) => (
-          <div
-            key={label}
-            className={`rounded-xl border border-border bg-card p-4 shadow-sm transition-all ${clickable ? "cursor-pointer hover:bg-accent/50 hover:shadow-md" : ""} ${active ? "ring-2 ring-primary/30 bg-accent/30" : ""}`}
-            onClick={clickable ? toggle : undefined}
-          >
-            <div className={`grid size-9 place-items-center rounded-lg ${color} mb-3`}>
-              <Icon className="size-5" />
-            </div>
-            <p className="text-2xl font-semibold text-foreground">{value}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* All Users Panel */}
-      {showAllUsers && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">All Users</h2>
-            <button onClick={() => { setShowAllUsers(false); setSearchUsers(""); }} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
-          </div>
-          {usersLoading && <div className="text-center text-muted-foreground py-4">Loading users...</div>}
-          {!usersLoading && allUsers && allUsers.length === 0 && (
-            <p className="text-sm text-muted-foreground">No users found</p>
-          )}
-          {!usersLoading && allUsers && allUsers.length > 0 && (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchUsers}
-                onChange={(e) => setSearchUsers(e.target.value)}
-                className="w-full rounded-xl border border-border bg-card pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          )}
-          {!usersLoading && allUsers && (
-            <p className="text-xs text-muted-foreground">Showing {(() => {
-              const q = searchUsers.toLowerCase();
-              if (!q) return allUsers.length;
-              return allUsers.filter((u: any) => (u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q))).length;
-            })()} of {allUsers.length} most recent users</p>
-          )}
-          {!usersLoading && allUsers && allUsers.length > 0 && (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {allUsers
-                .filter((u: any) => {
-                  const q = searchUsers.toLowerCase();
-                  if (!q) return true;
-                  return u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
-                })
-                .map((u: any) => (
-                <button
-                  key={u.id}
-                  onClick={() => setViewingProfile(u.id)}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 text-left hover:bg-accent/50 hover:shadow-sm transition-all"
-                >
-                  <InitialsAvatar name={u.full_name} size={36} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium text-foreground hover:text-primary">{u.full_name}</p>
-                      {u.is_admin && (
-                        <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">{u.email}</p>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground capitalize">
-                    {u.role}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* All Tasks Panel */}
-      {showAllTasks && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">All Tasks</h2>
-            <button onClick={() => { setShowAllTasks(false); setSearchTasks(""); }} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
-          </div>
-          {tasksLoading && <div className="text-center text-muted-foreground py-4">Loading tasks...</div>}
-          {!tasksLoading && allTasks && allTasks.length === 0 && (
-            <p className="text-sm text-muted-foreground">No tasks found</p>
-          )}
-          {!tasksLoading && allTasks && allTasks.length > 0 && (
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search by title or category..."
-                value={searchTasks}
-                onChange={(e) => setSearchTasks(e.target.value)}
-                className="w-full rounded-xl border border-border bg-card pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          )}
-          {!tasksLoading && allTasks && (
-            <p className="text-xs text-muted-foreground">Showing {(() => {
-              const q = searchTasks.toLowerCase();
-              if (!q) return allTasks.length;
-              return allTasks.filter((t: any) => t.title?.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q) || t.status?.toLowerCase().includes(q)).length;
-            })()} of {allTasks.length} most recent tasks</p>
-          )}
-          {!tasksLoading && allTasks && allTasks.length > 0 && (
-            <div className="space-y-2">
-              {allTasks
-                .filter((t: any) => {
-                  const q = searchTasks.toLowerCase();
-                  if (!q) return true;
-                  return t.title?.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q) || t.status?.replace(/_/g, " ").toLowerCase().includes(q);
-                })
-                .map((t: any) => (
-                <button
-                  key={t.id}
-                  onClick={() => setViewingTask(t.id)}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-left hover:bg-accent/50 hover:shadow-sm transition-all w-full"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">{t.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-muted-foreground">₦{Number(t.budget).toLocaleString("en-NG")}</span>
-                      {t.category && <span className="text-xs text-muted-foreground">· {t.category}</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {t.featured && (
-                      <span className="text-[10px] font-medium text-warning">⭐</span>
-                    )}
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                      t.status === "open" ? "bg-success/15 text-success" :
-                      t.status === "in_progress" ? "bg-primary/15 text-primary" :
-                      t.status === "completed" ? "bg-muted text-muted-foreground" :
-                      t.status === "cancelled" ? "bg-destructive/15 text-destructive" :
-                      "bg-warning/15 text-warning"
-                    }`}>
-                      {t.status.replace(/_/g, " ")}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Payout Breakdown Panel */}
-      {showPayoutBreakdown && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Payout Breakdown by User</h2>
-            <button onClick={() => setShowPayoutBreakdown(false)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
-          </div>
-          {payoutLoading && <div className="text-center text-muted-foreground py-4">Loading payout data...</div>}
-          {!payoutLoading && payoutBreakdown && payoutBreakdown.byUser.length === 0 && (
-            <p className="text-sm text-muted-foreground">No payouts yet</p>
-          )}
-          {!payoutLoading && payoutBreakdown && payoutBreakdown.byUser.length > 0 && (
-            <div className="space-y-2">
-              {payoutBreakdown.byUser.map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => setViewingProfile(u.id)}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 text-left hover:bg-accent/50 hover:shadow-sm transition-all w-full"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <InitialsAvatar name={u.name} size={28} />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">{u.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{u.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold text-success">₦{u.total.toLocaleString("en-NG")}</p>
-                    <p className="text-[10px] text-muted-foreground">{u.count} payment{u.count === 1 ? "" : "s"}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {stats?.openTasks && stats.openTasks.length > 0 && (
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground mb-3">Manage featured tasks</h2>
-          <div className="space-y-3">
-            {stats.openTasks.map((t: any) => (
-              <FeaturedTaskRow key={t.id} task={t} />
-            ))}
+          <h2 className="text-base font-semibold text-foreground">Command Center</h2>
+          <p className="text-xs text-muted-foreground">Live operations view across users, tasks, money flow, and risk signals.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          Refresh
+        </Button>
+      </div>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Live platform stats</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {topLiveCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <div key={card.label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className={`mb-3 grid size-9 place-items-center rounded-lg ${card.tone}`}>
+                  <Icon className="size-5" />
+                </div>
+                <p className="text-2xl font-semibold text-foreground">{card.value}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{card.label}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Users by role</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-lg bg-muted/40 px-3 py-2 text-foreground">Students: <span className="font-semibold">{data?.liveStats.roleCounts.student ?? 0}</span></div>
+              <div className="rounded-lg bg-muted/40 px-3 py-2 text-foreground">Alumni: <span className="font-semibold">{data?.liveStats.roleCounts.alumni ?? 0}</span></div>
+              <div className="rounded-lg bg-muted/40 px-3 py-2 text-foreground">Individuals: <span className="font-semibold">{data?.liveStats.roleCounts.individual ?? 0}</span></div>
+              <div className="rounded-lg bg-muted/40 px-3 py-2 text-foreground">Companies: <span className="font-semibold">{data?.liveStats.roleCounts.company ?? 0}</span></div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tasks by status</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              <div className="rounded-lg bg-muted/40 px-3 py-2">Open: <span className="font-semibold">{data?.liveStats.taskStatusCounts.open ?? 0}</span></div>
+              <div className="rounded-lg bg-muted/40 px-3 py-2">In progress: <span className="font-semibold">{data?.liveStats.taskStatusCounts.inProgress ?? 0}</span></div>
+              <div className="rounded-lg bg-muted/40 px-3 py-2">Completed: <span className="font-semibold">{data?.liveStats.taskStatusCounts.completed ?? 0}</span></div>
+              <div className="rounded-lg bg-muted/40 px-3 py-2">Disputed: <span className="font-semibold">{data?.liveStats.taskStatusCounts.disputed ?? 0}</span></div>
+              <div className="rounded-lg bg-muted/40 px-3 py-2">Cancelled: <span className="font-semibold">{data?.liveStats.taskStatusCounts.cancelled ?? 0}</span></div>
+              <div className="rounded-lg bg-muted/40 px-3 py-2">Matched: <span className="font-semibold">{data?.liveStats.taskStatusCounts.matched ?? 0}</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Today at a glance</h3>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">New signups</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.today.signupsToday ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Tasks posted</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.today.tasksPostedToday ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Tasks completed</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.today.tasksCompletedToday ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Payments processed</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.today.paymentsProcessedToday ?? 0}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Pending action queue</h3>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-warning/40 bg-warning/10 p-4">
+            <p className="text-xs font-medium text-warning">Pending verifications</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.queue.pendingVerifications ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4">
+            <p className="text-xs font-medium text-destructive">Open disputes</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.queue.openDisputes ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-medium text-muted-foreground">Pending withdrawals</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.queue.pendingWithdrawals ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-medium text-muted-foreground">Unresolved reports</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.queue.unresolvedReports ?? 0}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Platform health</h3>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertTriangle className="size-4" />
+              <p className="text-xs font-medium">Failed payment events</p>
+            </div>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.health.failedPayments ?? 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Withdrawals/top-ups with failed or reversed payment outcome.</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertTriangle className="size-4" />
+              <p className="text-xs font-medium">Webhook backlog</p>
+            </div>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.health.webhookBacklog ?? 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Pending funding/withdrawal rows waiting on webhook completion.</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-medium text-muted-foreground">Stuck flow indicators</p>
+            <p className="mt-2 text-sm text-foreground">
+              Matched over 48h without escrow: <span className="font-semibold">{data?.health.matchedStuck.length ?? 0}</span>
+            </p>
+            <p className="text-sm text-foreground">
+              In review too long: <span className="font-semibold">{data?.health.inReviewStuck.length ?? 0}</span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {((data?.health.matchedStuck.length ?? 0) > 0 || (data?.health.inReviewStuck.length ?? 0) > 0) && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Matched for 48+ hours without payment</p>
+            <div className="mt-3 space-y-2">
+              {data?.health.matchedStuck.map((task: any) => (
+                <button
+                  key={task.id}
+                  onClick={() => setViewingTask(task.id)}
+                  className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left hover:bg-accent/40"
+                >
+                  <span className="truncate text-sm text-foreground">{task.title}</span>
+                  <span className="text-xs text-muted-foreground shrink-0 ml-2">Since {new Date(task.since).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">In review for too long</p>
+            <div className="mt-3 space-y-2">
+              {data?.health.inReviewStuck.map((task: any) => (
+                <button
+                  key={task.id}
+                  onClick={() => setViewingTask(task.id)}
+                  className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left hover:bg-accent/40"
+                >
+                  <span className="truncate text-sm text-foreground">{task.title}</span>
+                  <span className="text-xs text-muted-foreground shrink-0 ml-2">Since {new Date(task.since).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function StudentVerificationsTab() {
-  const qc = useQueryClient();
-  const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [viewingProfile, setViewingProfile] = useState<string | null>(null);
-
-  const { data: pending, isLoading, refetch } = useQuery({
-    queryKey: ["pending-students"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("student_profiles")
-        .select("*, profile:profiles!student_profiles_user_id_fkey(id, full_name, email)")
-        .eq("verified", false)
-        .eq("verification_method", "id_upload")
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const approve = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from("student_profiles")
-        .update({ verified: true, verification_status: "approved" } as any)
-        .eq("user_id", userId);
-      if (error) throw error;
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        type: "verification_approved",
-        message: "Your student ID has been verified. Your Verified Student badge is now active.",
-        link: "/app/profile/me",
-      });
-    },
-    onSuccess: () => {
-     toast.success("Student verified successfully");
-     refetch();
-     qc.invalidateQueries({ queryKey: ["admin-stats"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not approve"),
-  });
-
-  const reject = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from("student_profiles")
-        .update({ verification_status: "rejected" } as any)
-        .eq("user_id", userId);
-      if (error) throw error;
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        type: "verification_rejected",
-        message: "Your student ID could not be verified. Please upload a clearer photo of your valid student ID card.",
-        link: "/app",
-      });
-    },
-    onSuccess: () => {
-     toast.success("Student rejected and notified");
-     refetch();
-     qc.invalidateQueries({ queryKey: ["admin-stats"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not reject"),
-  });
-
-  async function viewID(path: string) {
-    const { data } = await supabase.storage
-      .from("student-ids")
-      .createSignedUrl(path, 60);
-    if (data?.signedUrl) setViewingImage(data.signedUrl);
-    else toast.error("Could not load ID image");
-  }
-
-  if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
-
-  if (!pending || pending.length === 0) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-10 text-center">
-        <CheckCircle2 className="size-8 text-success mx-auto mb-3" />
-        <p className="font-medium text-foreground">All caught up</p>
-        <p className="text-sm text-muted-foreground mt-1">No pending student ID verifications</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{pending.length} pending verification{pending.length === 1 ? "" : "s"}</p>
-
-      <AdminUserProfileSheet userId={viewingProfile} open={!!viewingProfile} onOpenChange={(open) => { if (!open) setViewingProfile(null); }} />
-
-      {viewingImage && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setViewingImage(null)}
-        >
-          <div className="relative max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-            <img src={viewingImage} alt="Student ID" className="w-full rounded-xl" />
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Revenue chart</h3>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setViewingImage(null)}
-              className="absolute -top-3 -right-3 grid size-8 place-items-center rounded-full bg-card border border-border text-foreground"
+              onClick={() => setRevenueMode("weekly")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium ${revenueMode === "weekly" ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground"}`}
             >
-              ✕
+              Weekly
+            </button>
+            <button
+              onClick={() => setRevenueMode("monthly")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium ${revenueMode === "monthly" ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground"}`}
+            >
+              Monthly
             </button>
           </div>
         </div>
-      )}
 
-      {pending.map((s: any) => (
-        <div key={s.user_id} className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div>
-              <button onClick={() => setViewingProfile(s.user_id)} className="font-medium text-foreground hover:text-primary hover:underline text-left">{s.profile?.full_name ?? "Unknown"}</button>
-              <p className="text-xs text-muted-foreground">{s.profile?.email}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {s.university} {s.year_of_study ? `· ${s.year_of_study}` : ""} {s.department ? `· ${s.department}` : ""}
-              </p>
+        <div className="rounded-xl border border-border bg-card p-4">
+          {trendData.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No released-fee data yet.</p>
+          ) : (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                  <defs>
+                    <linearGradient id="feesFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tickFormatter={(value) => `₦${Number(value).toLocaleString("en-NG")}`} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <RechartsTooltip formatter={(value: any) => [formatCurrency(Number(value)), "Fees"]} />
+                  <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="url(#feesFill)" strokeWidth={2.2} />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-            <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning flex items-center gap-1">
-              <Clock className="size-3" /> Pending
-            </span>
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            {s.id_upload_path ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                onClick={() => viewID(s.id_upload_path)}
-              >
-                <Eye className="size-3.5" /> View ID
-              </Button>
-            ) : (
-              <span className="text-xs text-muted-foreground italic">No ID uploaded — manual verification needed</span>
-            )}
-            <Button
-              size="sm"
-              className="gap-1 bg-success text-success-foreground hover:bg-success/90"
-              disabled={approve.isPending}
-              onClick={() => approve.mutate(s.user_id)}
-            >
-              <CheckCircle2 className="size-3.5" /> Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-              disabled={reject.isPending}
-              onClick={() => reject.mutate(s.user_id)}
-            >
-              <XCircle className="size-3.5" /> Reject
-            </Button>
-          </div>
+          )}
         </div>
-      ))}
-    </div>
-  );
-}
+      </section>
 
-function IndividualVerificationsTab() {
-  const qc = useQueryClient();
-  const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [viewingProfile, setViewingProfile] = useState<string | null>(null);
-
-  const { data: pending, isLoading } = useQuery({
-    queryKey: ["pending-individuals"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("individual_profiles")
-        .select("*, profile:profiles!individual_profiles_user_id_fkey(id, full_name, email)")
-        .eq("verification_status", "pending_review")
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const approve = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await (supabase as any)
-        .from("individual_profiles")
-        .update({ verified: true, verification_status: "approved", verified_at: new Date().toISOString() })
-        .eq("user_id", userId);
-      if (error) throw error;
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        type: "verification_approved",
-        message: "Your government ID has been verified. Your Verified Individual badge is now active.",
-        link: "/app/profile/me",
-      });
-    },
-    onSuccess: () => {
-      toast.success("Individual verified successfully");
-      qc.invalidateQueries({ queryKey: ["pending-individuals"] });
-      qc.invalidateQueries({ queryKey: ["admin-stats"] });
-      qc.invalidateQueries({ queryKey: ["profile-details"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not approve"),
-  });
-
-  const reject = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await (supabase as any)
-        .from("individual_profiles")
-        .update({ verification_status: "rejected" })
-        .eq("user_id", userId);
-      if (error) throw error;
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        type: "verification_rejected",
-        message: "Your government ID could not be verified. Please upload a clearer photo of a valid ID.",
-        link: "/app",
-      });
-    },
-    onSuccess: () => {
-      toast.success("Individual rejected and notified");
-      qc.invalidateQueries({ queryKey: ["pending-individuals"] });
-      qc.invalidateQueries({ queryKey: ["admin-stats"] });
-      qc.invalidateQueries({ queryKey: ["profile-details"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not reject"),
-  });
-
-  async function viewID(path: string) {
-    const { data } = await supabase.storage
-      .from("individual-docs")
-      .createSignedUrl(path, 60);
-    if (data?.signedUrl) setViewingImage(data.signedUrl);
-    else toast.error("Could not load ID image");
-  }
-
-  if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
-
-  if (!pending || pending.length === 0) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-10 text-center">
-        <CheckCircle2 className="size-8 text-success mx-auto mb-3" />
-        <p className="font-medium text-foreground">All caught up</p>
-        <p className="text-sm text-muted-foreground mt-1">No pending individual ID verifications</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{pending.length} pending verification{pending.length === 1 ? "" : "s"}</p>
-
-      {viewingImage && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setViewingImage(null)}
-        >
-          <div className="relative max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-            <img src={viewingImage} alt="Government ID" className="w-full rounded-xl" />
-            <button
-              onClick={() => setViewingImage(null)}
-              className="absolute -top-3 -right-3 grid size-8 place-items-center rounded-full bg-card border border-border text-foreground"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
-      <AdminUserProfileSheet userId={viewingProfile} open={!!viewingProfile} onOpenChange={(open) => { if (!open) setViewingProfile(null); }} />
-
-      {pending.map((ind: any) => (
-        <div key={ind.user_id} className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div>
-              <button onClick={() => setViewingProfile(ind.user_id)} className="font-medium text-foreground hover:text-primary hover:underline text-left">{ind.profile?.full_name ?? "Unknown"}</button>
-              <p className="text-xs text-muted-foreground">{ind.profile?.email}</p>
-              {ind.id_type && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  ID type: {ind.id_type === "NIN" ? "National ID (NIN)" : ind.id_type === "voter_card" ? "Voter's card" : ind.id_type === "drivers_license" ? "Driver's license" : "International passport"}
-                </p>
-              )}
-            </div>
-            <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning flex items-center gap-1">
-              <Clock className="size-3" /> Pending
-            </span>
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            {ind.id_upload_path ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                onClick={() => viewID(ind.id_upload_path)}
-              >
-                <Eye className="size-3.5" /> View ID
-              </Button>
-            ) : (
-              <span className="text-xs text-muted-foreground italic">No ID uploaded</span>
-            )}
-            <Button
-              size="sm"
-              className="gap-1 bg-success text-success-foreground hover:bg-success/90"
-              disabled={approve.isPending}
-              onClick={() => approve.mutate(ind.user_id)}
-            >
-              <CheckCircle2 className="size-3.5" /> Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-              disabled={reject.isPending}
-              onClick={() => reject.mutate(ind.user_id)}
-            >
-              <XCircle className="size-3.5" /> Reject
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CompanyVerificationsTab() {
-  const qc = useQueryClient();
-  const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [viewingProfile, setViewingProfile] = useState<string | null>(null);
-
-  const { data: pending, isLoading, refetch } = useQuery({
-    queryKey: ["pending-companies"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("company_profiles")
-        .select("*, profile:profiles!company_profiles_user_id_fkey(id, full_name, email)")
-        .eq("verified", false)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const approve = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from("company_profiles")
-        .update({ verified: true, verification_status: "approved", verified_at: new Date().toISOString() } as any)
-        .eq("user_id", userId);
-      if (error) throw error;
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        type: "verification_approved",
-        message: "Your business account has been verified. Your Verified Business badge is now active.",
-        link: "/app/profile/me",
-      });
-    },
-    onSuccess: () => {
-      toast.success("Company verified successfully");
-      refetch();
-      qc.invalidateQueries({ queryKey: ["pending-companies"] });
-      qc.invalidateQueries({ queryKey: ["admin-stats"] });
-      qc.invalidateQueries({ queryKey: ["profile-details"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not approve"),
-  });
-
-  const reject = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from("company_profiles")
-        .update({ verification_status: "rejected" } as any)
-        .eq("user_id", userId);
-      if (error) throw error;
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        type: "verification_rejected",
-        message: "Your business account could not be verified. Please contact support for assistance.",
-        link: "/app",
-      });
-    },
-    onSuccess: () => {
-      toast.success("Company rejected and notified");
-      refetch();
-      qc.invalidateQueries({ queryKey: ["pending-companies"] });
-      qc.invalidateQueries({ queryKey: ["admin-stats"] });
-      qc.invalidateQueries({ queryKey: ["profile-details"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not reject"),
-  });
-
-  async function viewDoc(path: string) {
-    const { data } = await supabase.storage
-      .from("company-docs")
-      .createSignedUrl(path, 60);
-    if (data?.signedUrl) setViewingImage(data.signedUrl);
-    else toast.error("Could not load document image");
-  }
-
-  if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
-
-  if (!pending || pending.length === 0) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-10 text-center">
-        <CheckCircle2 className="size-8 text-success mx-auto mb-3" />
-        <p className="font-medium text-foreground">All caught up</p>
-        <p className="text-sm text-muted-foreground mt-1">No pending company verifications</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{pending.length} pending verification{pending.length === 1 ? "" : "s"}</p>
-
-      {viewingImage && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setViewingImage(null)}
-        >
-          <div className="relative max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
-            <img src={viewingImage} alt="Company document" className="w-full rounded-xl" />
-            <button
-              onClick={() => setViewingImage(null)}
-              className="absolute -top-3 -right-3 grid size-8 place-items-center rounded-full bg-card border border-border text-foreground"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
-      <AdminUserProfileSheet userId={viewingProfile} open={!!viewingProfile} onOpenChange={(open) => { if (!open) setViewingProfile(null); }} />
-
-      {pending.map((c: any) => (
-        <div key={c.user_id} className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div>
-              <button onClick={() => setViewingProfile(c.user_id)} className="font-medium text-foreground hover:text-primary hover:underline text-left">{c.company_name ?? c.profile?.full_name}</button>
-              <p className="text-xs text-muted-foreground">{c.profile?.email}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {c.industry ? `${c.industry} ·` : ""} {c.location ?? ""} {c.website ? `· ${c.website}` : ""}
-              </p>
-              {c.verification_method && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Method: {c.verification_method === "email" ? "Company email" : "CAC certificate"}
-                  {c.company_email ? ` (${c.company_email})` : ""}
-                  {c.cac_number ? ` · CAC: ${c.cac_number}` : ""}
-                </p>
-              )}
-            </div>
-            <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning flex items-center gap-1">
-              <Clock className="size-3" /> Pending
-            </span>
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            {c.verification_doc_url ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                onClick={() => viewDoc(c.verification_doc_url)}
-              >
-                <Eye className="size-3.5" /> View document
-              </Button>
-            ) : c.verification_method === "email" ? (
-              <span className="text-xs text-muted-foreground italic">Awaiting email verification</span>
-            ) : (
-              <span className="text-xs text-muted-foreground italic">No document uploaded</span>
-            )}
-            <Button
-              size="sm"
-              className="gap-1 bg-success text-success-foreground hover:bg-success/90"
-              disabled={approve.isPending}
-              onClick={() => approve.mutate(c.user_id)}
-            >
-              <CheckCircle2 className="size-3.5" /> Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-              disabled={reject.isPending}
-              onClick={() => reject.mutate(c.user_id)}
-            >
-              <XCircle className="size-3.5" /> Reject
-            </Button>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
 
 function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const isMobile = useIsMobile();
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery<
-    { profile: any; student: any; company: any; individual: any; tasks: any[] } | null
+    {
+      profile: any;
+      student: any;
+      company: any;
+      individual: any;
+      postedTasks: any[];
+      appliedTasks: any[];
+      wallet: any;
+      walletTransactions: any[];
+      reviewsReceived: any[];
+      reportsAgainst: any[];
+      reportsBy: any[];
+    } | null
   >({
     queryKey: ["admin-user-profile", userId],
     enabled: !!userId && open,
@@ -948,22 +654,125 @@ function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string 
         individual = data;
       }
 
-      const { data: tasks } = await supabase
+      const { data: postedTasks } = await supabase
         .from("tasks")
-        .select("id, title, budget, status")
+        .select("id, title, budget, status, created_at")
         .eq("poster_id", userId)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
 
-      return { profile, student, company, individual, tasks: tasks ?? [] };
+      const { data: appliedTasks } = await (supabase as any)
+        .from("applications")
+        .select("id, status, created_at, task:tasks(id, title, budget, status)")
+        .eq("student_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      const { data: wallet } = await (supabase as any)
+        .from("wallets")
+        .select("balance, total_earned, total_withdrawn")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const { data: walletTransactions } = await (supabase as any)
+        .from("wallet_transactions")
+        .select("id, transaction_type, amount, status, description, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      const { data: reviewsReceived } = await (supabase as any)
+        .from("reviews")
+        .select("id, rating, comment, created_at, reviewer:profiles!reviews_reviewer_id_fkey(full_name, email)")
+        .eq("reviewee_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      const { data: reportsAgainst } = await (supabase as any)
+        .from("reports")
+        .select("id, reason, details, status, created_at, reporter:profiles!reports_reporter_id_fkey(full_name, email)")
+        .eq("reported_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      const { data: reportsBy } = await (supabase as any)
+        .from("reports")
+        .select("id, reason, details, status, created_at, reported:profiles!reports_reported_id_fkey(full_name, email)")
+        .eq("reporter_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      return {
+        profile,
+        student,
+        company,
+        individual,
+        postedTasks: postedTasks ?? [],
+        appliedTasks: appliedTasks ?? [],
+        wallet,
+        walletTransactions: walletTransactions ?? [],
+        reviewsReceived: reviewsReceived ?? [],
+        reportsAgainst: reportsAgainst ?? [],
+        reportsBy: reportsBy ?? [],
+      };
     },
+  });
+
+  const setAccountStatus = useMutation({
+    mutationFn: async ({ status, reason }: { status: "active" | "suspended" | "banned"; reason?: string }) => {
+      if (!userId) throw new Error("No user selected");
+      const { data: auth } = await supabase.auth.getUser();
+      const meId = auth.user?.id;
+      if (!meId) throw new Error("Could not identify current admin");
+      if (meId === userId) throw new Error("You cannot change your own status here");
+
+      const patch = status === "active"
+        ? { account_status: "active", account_status_reason: null, suspended_at: null }
+        : { account_status: status, account_status_reason: reason ?? null, suspended_at: new Date().toISOString() };
+
+      const { error } = await (supabase as any).from("profiles").update(patch).eq("id", userId);
+      if (error) throw error;
+
+      await (supabase as any).from("audit_log").insert({
+        admin_user_id: meId,
+        action: status === "active" ? "user.reactivate" : status === "banned" ? "user.ban" : "user.suspend",
+        target_type: "user",
+        target_id: userId,
+        details: { reason: reason ?? null, status },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Account status updated");
+      qc.invalidateQueries({ queryKey: ["admin-user-profile", userId] });
+      qc.invalidateQueries({ queryKey: ["admin-users-management"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not update account status"),
   });
 
   const profile = data?.profile;
   const student = data?.student;
   const company = data?.company;
   const individual = data?.individual;
-  const tasks = data?.tasks ?? [];
+  const postedTasks = data?.postedTasks ?? [];
+  const appliedTasks = data?.appliedTasks ?? [];
+  const wallet = data?.wallet;
+  const walletTransactions = data?.walletTransactions ?? [];
+  const reviewsReceived = data?.reviewsReceived ?? [];
+  const reportsAgainst = data?.reportsAgainst ?? [];
+  const reportsBy = data?.reportsBy ?? [];
+
+  function statusAction(next: "active" | "suspended" | "banned") {
+    if (next === "active") {
+      setAccountStatus.mutate({ status: "active" });
+      return;
+    }
+    const reason = window.prompt(`Reason for ${next === "banned" ? "banning" : "suspending"} this user:`) ?? "";
+    if (!reason.trim()) {
+      toast.error("A reason is required");
+      return;
+    }
+    setAccountStatus.mutate({ status: next, reason: reason.trim() });
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -1018,6 +827,42 @@ function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string 
                   Joined: <span className="font-medium text-foreground">{new Date(profile.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</span>
                 </div>
               )}
+              {profile.last_active_at && (
+                <div className="text-sm text-muted-foreground">
+                  Last active: <span className="font-medium text-foreground">{new Date(profile.last_active_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</span>
+                </div>
+              )}
+              <div className="text-sm text-muted-foreground">
+                Status:
+                <span className={`ml-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  (profile.account_status ?? "active") === "active"
+                    ? "bg-success/15 text-success"
+                    : (profile.account_status ?? "active") === "suspended"
+                      ? "bg-warning/15 text-warning"
+                      : "bg-destructive/15 text-destructive"
+                }`}>
+                  {profile.account_status ?? "active"}
+                </span>
+              </div>
+              {profile.account_status_reason && (
+                <p className="text-xs text-muted-foreground">Reason: {profile.account_status_reason}</p>
+              )}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {(profile.account_status ?? "active") === "active" ? (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => statusAction("suspended")} disabled={setAccountStatus.isPending}>
+                      Suspend user
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-destructive/40 text-destructive" onClick={() => statusAction("banned")} disabled={setAccountStatus.isPending}>
+                      Ban user
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => statusAction("active")} disabled={setAccountStatus.isPending}>
+                    Reactivate user
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Student Details */}
@@ -1130,16 +975,112 @@ function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string 
               </div>
             )}
 
-            {/* Recent Tasks */}
-            {tasks.length > 0 && (
+            {/* Posted Tasks */}
+            {postedTasks.length > 0 && (
               <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent Tasks</h3>
-                {tasks.map((t: any) => (
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Posted Tasks</h3>
+                {postedTasks.map((t: any) => (
                   <div key={t.id} className="flex items-center justify-between text-sm">
                     <span className="truncate text-foreground max-w-[200px]">{t.title}</span>
                     <span className="text-xs text-muted-foreground shrink-0 ml-2">₦{Number(t.budget).toLocaleString("en-NG")}</span>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Applied Tasks */}
+            {appliedTasks.length > 0 && (
+              <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Applied Tasks</h3>
+                {appliedTasks.map((a: any) => (
+                  <div key={a.id} className="text-sm">
+                    <p className="font-medium text-foreground truncate">{a.task?.title ?? "Unknown task"}</p>
+                    <p className="text-xs text-muted-foreground">Application: {a.status} · Task: {a.task?.status ?? "-"}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Wallet */}
+            <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wallet Summary</h3>
+              {wallet ? (
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Balance</p>
+                    <p className="font-semibold text-foreground">₦{Number(wallet.balance ?? 0).toLocaleString("en-NG")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Earned</p>
+                    <p className="font-semibold text-foreground">₦{Number(wallet.total_earned ?? 0).toLocaleString("en-NG")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Withdrawn</p>
+                    <p className="font-semibold text-foreground">₦{Number(wallet.total_withdrawn ?? 0).toLocaleString("en-NG")}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No wallet record found.</p>
+              )}
+            </div>
+
+            {/* Wallet Transactions */}
+            {walletTransactions.length > 0 && (
+              <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Wallet Transactions</h3>
+                {walletTransactions.map((tx: any) => (
+                  <div key={tx.id} className="flex items-center justify-between gap-2 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate text-foreground">{tx.description || (tx.transaction_type === "credit" ? "Credit" : "Debit")}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })} · {tx.status}</p>
+                    </div>
+                    <span className={`font-medium ${tx.transaction_type === "credit" ? "text-success" : "text-foreground"}`}>
+                      {tx.transaction_type === "credit" ? "+" : "-"}₦{Number(tx.amount).toLocaleString("en-NG")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Reviews Received */}
+            {reviewsReceived.length > 0 && (
+              <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reviews Received</h3>
+                {reviewsReceived.map((r: any) => (
+                  <div key={r.id} className="text-sm">
+                    <p className="text-foreground">{r.rating}/5 from {r.reviewer?.full_name ?? "Unknown"}</p>
+                    {r.comment && <p className="text-xs text-muted-foreground">{r.comment}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Reports */}
+            {(reportsAgainst.length > 0 || reportsBy.length > 0) && (
+              <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reports</h3>
+
+                {reportsAgainst.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-foreground">Filed against this user</p>
+                    {reportsAgainst.slice(0, 5).map((r: any) => (
+                      <p key={r.id} className="text-xs text-muted-foreground">
+                        {r.reason} · by {r.reporter?.full_name ?? "Unknown"} · {r.status}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {reportsBy.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-foreground">Filed by this user</p>
+                    {reportsBy.slice(0, 5).map((r: any) => (
+                      <p key={r.id} className="text-xs text-muted-foreground">
+                        {r.reason} · against {r.reported?.full_name ?? "Unknown"} · {r.status}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1151,6 +1092,15 @@ function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string 
               className="flex items-center gap-2 text-sm text-primary hover:underline"
             >
               <ExternalLink className="size-3.5" /> View full profile in app
+            </a>
+
+            <a
+              href={`/app/profile/${userId}?admin_view=1`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <ExternalLink className="size-3.5" /> View as user surface
             </a>
           </div>
         )}
@@ -1180,16 +1130,48 @@ function AdminTaskDetailSheet({ taskId, open, onOpenChange }: { taskId: string |
         .eq("task_id", taskId)
         .order("created_at", { ascending: false });
 
+      const { data: transactions } = await (supabase as any)
+        .from("transactions")
+        .select("id, amount, platform_fee, status, paystack_reference, created_at, updated_at")
+        .eq("task_id", taskId)
+        .order("created_at", { ascending: false });
+
+      const { data: disputes } = await (supabase as any)
+        .from("disputes")
+        .select("id, reason, details, resolution, status, created_at, updated_at, raiser:profiles!disputes_raised_by_fkey(full_name, email)")
+        .eq("task_id", taskId)
+        .order("created_at", { ascending: false });
+
+      const { data: conversation } = await (supabase as any)
+        .from("conversations")
+        .select("id")
+        .eq("task_id", taskId)
+        .maybeSingle();
+
+      let messages: any[] = [];
+      if (conversation?.id) {
+        const { data: msg } = await (supabase as any)
+          .from("messages")
+          .select("id, content, created_at, sender:profiles!messages_sender_id_fkey(full_name, email)")
+          .eq("conversation_id", conversation.id)
+          .order("created_at", { ascending: false })
+          .limit(20);
+        messages = msg ?? [];
+      }
+
       const { data: assignee } = (task as any).assignee_id
         ? await supabase.from("profiles").select("id, full_name, email").eq("id", (task as any).assignee_id).maybeSingle()
         : { data: null };
 
-      return { task, applicants: applicants ?? [], assignee };
+      return { task, applicants: applicants ?? [], transactions: transactions ?? [], disputes: disputes ?? [], messages, assignee };
     },
   });
 
   const task = data?.task;
   const applicants = data?.applicants ?? [];
+  const transactions = data?.transactions ?? [];
+  const disputes = data?.disputes ?? [];
+  const messages = data?.messages ?? [];
   const assignee = data?.assignee;
 
   return (
@@ -1314,6 +1296,58 @@ function AdminTaskDetailSheet({ taskId, open, onOpenChange }: { taskId: string |
               </div>
             )}
 
+            {/* Transaction Record */}
+            <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transaction Record</h3>
+              {transactions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No transaction created yet.</p>
+              ) : (
+                transactions.map((tx: any) => (
+                  <div key={tx.id} className="text-sm">
+                    <p className="text-foreground">
+                      ₦{Number(tx.amount).toLocaleString("en-NG")} · fee ₦{Number(tx.platform_fee ?? 0).toLocaleString("en-NG")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Status: {tx.status} · Ref: {tx.paystack_reference ?? "-"}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Conversation Thread Preview */}
+            <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Conversation Thread</h3>
+              {messages.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No messages for this task yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {messages.map((m: any) => (
+                    <div key={m.id} className="rounded-lg border border-border bg-background px-3 py-2">
+                      <p className="text-xs text-muted-foreground">{m.sender?.full_name ?? "Unknown"} · {new Date(m.created_at).toLocaleString("en-NG")}</p>
+                      <p className="mt-1 text-sm text-foreground">{m.content || "(attachment or empty message)"}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Dispute History */}
+            <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dispute History</h3>
+              {disputes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No disputes recorded for this task.</p>
+              ) : (
+                disputes.map((d: any) => (
+                  <div key={d.id} className="text-sm">
+                    <p className="text-foreground">{d.reason} · {d.status}</p>
+                    {d.details && <p className="text-xs text-muted-foreground">{d.details}</p>}
+                    {d.resolution && <p className="text-xs text-success">Resolution: {d.resolution}</p>}
+                  </div>
+                ))
+              )}
+            </div>
+
             {/* Link to task in app */}
             <a
               href={`/app/tasks/${taskId}`}
@@ -1327,133 +1361,6 @@ function AdminTaskDetailSheet({ taskId, open, onOpenChange }: { taskId: string |
         )}
       </SheetContent>
     </Sheet>
-  );
-}
-
-function ReportsTab() {
-  const qc = useQueryClient();
-
-  const { data: reports, isLoading } = useQuery({
-    queryKey: ["admin-reports"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("reports")
-        .select("*, reporter:profiles!reports_reporter_id_fkey(id, full_name, email), reported:profiles!reports_reported_id_fkey(id, full_name, email)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const resolve = useMutation({
-    mutationFn: async (reportId: string) => {
-      const { error } = await (supabase as any)
-        .from("reports")
-        .update({ status: "resolved" })
-        .eq("id", reportId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Report marked as resolved");
-      qc.invalidateQueries({ queryKey: ["admin-reports"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not resolve"),
-  });
-
-  const dismiss = useMutation({
-    mutationFn: async (reportId: string) => {
-      const { error } = await (supabase as any)
-        .from("reports")
-        .update({ status: "dismissed" })
-        .eq("id", reportId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Report dismissed");
-      qc.invalidateQueries({ queryKey: ["admin-reports"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not dismiss"),
-  });
-
-  if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
-
-  if (!reports || reports.length === 0) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-10 text-center">
-        <CheckCircle2 className="size-8 text-success mx-auto mb-3" />
-        <p className="font-medium text-foreground">No reports yet</p>
-        <p className="text-sm text-muted-foreground mt-1">Reports from users will appear here</p>
-      </div>
-    );
-  }
-
-  const pending = reports.filter((r: any) => r.status === "pending");
-  const resolved = reports.filter((r: any) => r.status !== "pending");
-
-  return (
-    <div className="space-y-6">
-      {pending.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-foreground">{pending.length} pending report{pending.length === 1 ? "" : "s"}</p>
-          {pending.map((r: any) => (
-            <div key={r.id} className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{r.reporter?.full_name ?? "Unknown"}</span>
-                    {" reported "}
-                    <span className="font-medium text-destructive">{r.reported?.full_name ?? "Unknown"}</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{r.reporter?.email} → {r.reported?.email}</p>
-                  <p className="mt-2 text-sm font-medium text-foreground">{r.reason}</p>
-                  {r.details && <p className="mt-1 text-sm text-muted-foreground">{r.details}</p>}
-                  <p className="mt-1 text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</p>
-                </div>
-                <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning shrink-0">Pending</span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="gap-1 bg-success text-success-foreground hover:bg-success/90"
-                  disabled={resolve.isPending}
-                  onClick={() => resolve.mutate(r.id)}
-                >
-                  <CheckCircle2 className="size-3.5" /> Resolve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1 text-muted-foreground"
-                  disabled={dismiss.isPending}
-                  onClick={() => dismiss.mutate(r.id)}
-                >
-                  <XCircle className="size-3.5" /> Dismiss
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {resolved.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground">{resolved.length} resolved report{resolved.length === 1 ? "" : "s"}</p>
-          {resolved.map((r: any) => (
-            <div key={r.id} className="rounded-xl border border-border bg-card p-4 opacity-60">
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{r.reporter?.full_name ?? "Unknown"}</span>
-                {" reported "}
-                <span className="font-medium text-foreground">{r.reported?.full_name ?? "Unknown"}</span>
-              </p>
-              <p className="mt-1 text-sm text-foreground">{r.reason}</p>
-              <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${r.status === "resolved" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
-                {r.status}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -1474,7 +1381,8 @@ function FeaturedTaskRow({ task }: { task: any }) {
       })
       .eq("id", task.id);
     setLoading(false);
-    qc.invalidateQueries({ queryKey: ["admin-stats"] });
+    qc.invalidateQueries({ queryKey: ["admin-command-center"] });
+    qc.invalidateQueries({ queryKey: ["admin-task-management"] });
     toast.success(nowFeatured ? "Task featured for 7 days" : "Task unfeatured");
   }
 
@@ -1498,146 +1406,6 @@ function FeaturedTaskRow({ task }: { task: any }) {
       >
         {loading ? "..." : task.featured ? "Unfeature" : "⭐ Feature"}
       </Button>
-    </div>
-  );
-}
-
-function DisputesTab() {
-  const qc = useQueryClient();
-  const resolveDisputeServer = useServerFn(adminResolveDispute);
-
-  const { data: disputes, isLoading, refetch } = useQuery({
-    queryKey: ["admin-disputes"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("disputes")
-        .select("*, task:tasks(id, title, budget), raiser:profiles!disputes_raised_by_fkey(id, full_name, email)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const resolve = useMutation({
-    mutationFn: async ({ disputeId, resolution, releaseToStudent }: { disputeId: string; resolution: string; releaseToStudent: boolean }) => {
-      await resolveDisputeServer({ data: { disputeId, resolution, releaseToStudent } });
-    },
-    onSuccess: () => {
-      toast.success("Dispute resolved");
-      refetch();
-      qc.invalidateQueries({ queryKey: ["admin-stats"] });
-    },
-    onError: (e: any) => toast.error(e.message ?? "Could not resolve dispute"),
-  });
-
-  if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
-
-  if (!disputes || disputes.length === 0) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-10 text-center">
-        <CheckCircle2 className="size-8 text-success mx-auto mb-3" />
-        <p className="font-medium text-foreground">No disputes</p>
-        <p className="text-sm text-muted-foreground mt-1">All transactions are running smoothly</p>
-      </div>
-    );
-  }
-
-  const open = disputes.filter((d: any) => d.status === "open");
-  const resolved = disputes.filter((d: any) => d.status === "resolved");
-
-  return (
-    <div className="space-y-6">
-      {open.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-foreground">{open.length} open dispute{open.length === 1 ? "" : "s"}</p>
-          {open.map((d: any) => (
-            <DisputeCard key={d.id} dispute={d} onResolve={resolve.mutate} pending={resolve.isPending} />
-          ))}
-        </div>
-      )}
-      {resolved.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground">{resolved.length} resolved dispute{resolved.length === 1 ? "" : "s"}</p>
-          {resolved.map((d: any) => (
-            <div key={d.id} className="rounded-xl border border-border bg-card p-4 opacity-60">
-              <p className="text-sm font-medium text-foreground">{d.task?.title}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Raised by {d.raiser?.full_name} · {d.reason}</p>
-              <p className="text-xs text-success mt-1">Resolved: {d.resolution}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DisputeCard({ dispute, onResolve, pending }: { dispute: any; onResolve: (args: any) => void; pending: boolean }) {
-  const [resolution, setResolution] = useState("");
-  const [showForm, setShowForm] = useState(false);
-
-  return (
-    <div className="rounded-xl border border-destructive/30 bg-card p-4">
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <p className="font-medium text-foreground">{dispute.task?.title}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Raised by <span className="font-medium">{dispute.raiser?.full_name}</span> · {dispute.raiser?.email}
-          </p>
-          <p className="mt-2 text-sm text-foreground">{dispute.reason}</p>
-          {dispute.details && <p className="mt-1 text-sm text-muted-foreground">{dispute.details}</p>}
-          <p className="mt-1 text-xs text-muted-foreground">
-            {new Date(dispute.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}
-          </p>
-          {dispute.task?.budget && (
-            <p className="mt-1 text-sm font-medium text-success">
-              Escrow: ₦{Number(dispute.task.budget).toLocaleString("en-NG")}
-            </p>
-          )}
-        </div>
-        <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-medium text-destructive shrink-0">
-          Open
-        </span>
-      </div>
-
-      {!showForm ? (
-        <Button size="sm" variant="outline" onClick={() => setShowForm(true)} className="w-full">
-          Resolve this dispute
-        </Button>
-      ) : (
-        <div className="space-y-3 mt-3 border-t border-border pt-3">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Resolution note</label>
-            <textarea
-              rows={2}
-              value={resolution}
-              onChange={(e) => setResolution(e.target.value)}
-              placeholder="Describe how this was resolved..."
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-            />
-          </div>
-          <p className="text-xs font-medium text-foreground">Where should the escrow funds go?</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              size="sm"
-              className="bg-success text-success-foreground hover:bg-success/90"
-              disabled={!resolution || pending}
-              onClick={() => onResolve({ disputeId: dispute.id, resolution, releaseToStudent: true })}
-            >
-              Release to student
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-destructive border-destructive/30"
-              disabled={!resolution || pending}
-              onClick={() => onResolve({ disputeId: dispute.id, resolution, releaseToStudent: false })}
-            >
-              Refund to poster
-            </Button>
-          </div>
-          <button className="text-xs text-muted-foreground" onClick={() => setShowForm(false)}>Cancel</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -1742,107 +1510,3 @@ function PartnershipsTab() {
   );
 }
 
-function WithdrawalsTab() {
-  const { data: withdrawals, isLoading, refetch } = useQuery({
-    queryKey: ["admin-withdrawals"],
-    refetchInterval: 15000,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: true,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("withdrawal_requests")
-        .select("*, user:profiles!withdrawal_requests_user_id_fkey(full_name, email)")
-        .order("created_at", { ascending: false });
-
-      if (!error) return data ?? [];
-
-      const { data: baseRows, error: baseError } = await (supabase as any)
-        .from("withdrawal_requests")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (baseError) throw baseError;
-
-      const userIds = Array.from(new Set((baseRows ?? []).map((row: any) => row.user_id).filter(Boolean)));
-      let profilesById: Record<string, any> = {};
-
-      if (userIds.length > 0) {
-        const { data: profiles, error: profilesError } = await (supabase as any)
-          .from("profiles")
-          .select("id, full_name, email")
-          .in("id", userIds);
-        if (profilesError) throw profilesError;
-        profilesById = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, p]));
-      }
-
-      return (baseRows ?? []).map((row: any) => ({
-        ...row,
-        user: profilesById[row.user_id] ?? null,
-      }));
-    },
-  });
-
-  if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading...</div>;
-
-  if (!withdrawals || withdrawals.length === 0) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-10 text-center">
-        <CheckCircle2 className="size-8 text-success mx-auto mb-3" />
-        <p className="font-medium">No withdrawal requests</p>
-        <p className="text-sm text-muted-foreground mt-1">Withdrawal requests will appear here</p>
-      </div>
-    );
-  }
-
-  const pending = withdrawals.filter((w: any) => w.status === "pending");
-  const processed = withdrawals.filter((w: any) => w.status !== "pending");
-
-  return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
-        Withdrawals are processed automatically via Paystack. This tab is for monitoring only.
-      </div>
-
-      {pending.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium">{pending.length} pending withdrawal{pending.length === 1 ? "" : "s"}</p>
-          {pending.map((w: any) => (
-            <div key={w.id} className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <p className="font-medium text-foreground">{w.user?.full_name}</p>
-                  <p className="text-xs text-muted-foreground">{w.user?.email}</p>
-                  <p className="text-lg font-bold text-success mt-1">₦{Number(w.amount).toLocaleString("en-NG")}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{w.bank_name} · {w.account_number}</p>
-                  <p className="text-xs font-medium text-foreground">{w.account_name}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(w.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
-                </div>
-                <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning shrink-0">Pending</span>
-              </div>
-              <p className="text-xs text-muted-foreground">Awaiting Paystack transfer webhook update.</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {processed.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground">Processed requests</p>
-          {processed.map((w: any) => (
-            <div key={w.id} className="rounded-xl border border-border bg-card p-3 opacity-70">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">{w.user?.full_name}</p>
-                  <p className="text-xs text-muted-foreground">₦{Number(w.amount).toLocaleString("en-NG")} · {w.bank_name}</p>
-                </div>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${w.status === "completed" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
-                  {w.status.charAt(0).toUpperCase() + w.status.slice(1)}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}

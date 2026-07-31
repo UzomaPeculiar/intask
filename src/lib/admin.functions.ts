@@ -312,5 +312,249 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
       .update({ status: "resolved", resolution: data.resolution, updated_at: new Date().toISOString() })
       .eq("id", dispute.id);
 
+    await db.from("audit_log").insert({
+      admin_user_id: userId,
+      action: "dispute.resolve",
+      target_type: "dispute",
+      target_id: dispute.id,
+      details: {
+        taskId: task.id,
+        releaseToStudent: data.releaseToStudent,
+        resolution: data.resolution,
+      },
+    });
+
     return { ok: true };
+  });
+
+export const adminForceCancelTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { taskId: string; reason: string; resolveEscrowAs?: "refund_poster" | "release_student" }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    if (!data.reason?.trim() || data.reason.trim().length < 8) {
+      throw new Error("Provide a cancellation reason (at least 8 characters)");
+    }
+
+    const resolutionMode = data.resolveEscrowAs ?? "refund_poster";
+
+    const { data: task, error: taskErr } = await db
+      .from("tasks")
+      .select("id, title, status, poster_id, matched_student_id")
+      .eq("id", data.taskId)
+      .maybeSingle();
+
+    if (taskErr || !task) throw new Error("Task not found");
+
+    const { data: tx } = await db
+      .from("transactions")
+      .select("id, status, amount, platform_fee, poster_id, student_id")
+      .eq("task_id", task.id)
+      .maybeSingle();
+
+    if (tx?.status === "released" || tx?.status === "refunded") {
+      await db
+        .from("tasks")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("id", task.id);
+
+      await db.from("audit_log").insert({
+        admin_user_id: userId,
+        action: "task.force_cancel",
+        target_type: "task",
+        target_id: task.id,
+        details: {
+          reason: data.reason.trim(),
+          previousTaskStatus: task.status,
+          transactionStatus: tx.status,
+          note: "Transaction was already terminal",
+        },
+      });
+
+      return { ok: true, alreadyTerminal: true };
+    }
+
+    if (tx && (tx.status === "in_escrow" || tx.status === "disputed")) {
+      if (resolutionMode === "release_student") {
+        const payout = Number(tx.amount) - Number(tx.platform_fee ?? 0);
+        if (!Number.isFinite(payout) || payout <= 0) throw new Error("Invalid payout calculation");
+
+        const creditRes = await db.rpc("credit_wallet", {
+          p_user_id: tx.student_id,
+          p_amount: payout,
+          p_description: `Admin force-cancel payout for task ${task.id}`,
+          p_reference: `ADMIN_FORCE_CANCEL_RELEASE_${task.id}`,
+        });
+
+        if (creditRes.error) throw new Error(creditRes.error.message ?? "Could not credit student wallet");
+
+        const creditPayload = normalizeCreditWalletResult(creditRes.data);
+        if (creditPayload?.success === false || creditPayload?.error) {
+          throw new Error(creditPayload.error ?? "Could not credit student wallet");
+        }
+
+        await db.from("transactions").update({ status: "released" }).eq("id", tx.id);
+      } else {
+        await db.from("transactions").update({ status: "refunded" }).eq("id", tx.id);
+      }
+    } else if (tx && tx.status === "pending") {
+      await db.from("transactions").update({ status: "refunded" }).eq("id", tx.id);
+    }
+
+    await db
+      .from("tasks")
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("id", task.id);
+
+    await db.from("notifications").insert([
+      {
+        user_id: task.poster_id,
+        type: "task_cancelled",
+        message:
+          resolutionMode === "release_student"
+            ? "An admin cancelled this task and released escrow to the student based on case review."
+            : "An admin cancelled this task and refunded escrow to your account based on case review.",
+        link: `/app/tasks/${task.id}`,
+      },
+      {
+        user_id: task.matched_student_id,
+        type: "task_cancelled",
+        message:
+          resolutionMode === "release_student"
+            ? "An admin cancelled this task and released escrow payout to your wallet based on case review."
+            : "An admin cancelled this task and refunded escrow to the poster based on case review.",
+        link: `/app/tasks/${task.id}`,
+      },
+    ]);
+
+    await db.from("audit_log").insert({
+      admin_user_id: userId,
+      action: "task.force_cancel",
+      target_type: "task",
+      target_id: task.id,
+      details: {
+        reason: data.reason.trim(),
+        previousTaskStatus: task.status,
+        transactionStatus: tx?.status ?? null,
+        resolveEscrowAs: resolutionMode,
+      },
+    });
+
+    return { ok: true };
+  });
+
+export const adminManualRefund = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { userId: string; amount: number; reason: string; method: "wallet" | "paystack"; paystackReference?: string }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId: adminId } = context;
+    const { db } = await ensureAdmin(adminId);
+
+    if (!data.userId) throw new Error("User is required");
+    if (!Number.isFinite(Number(data.amount)) || Number(data.amount) <= 0) {
+      throw new Error("Amount must be greater than 0");
+    }
+    if (!data.reason?.trim() || data.reason.trim().length < 8) {
+      throw new Error("Reason must be at least 8 characters");
+    }
+
+    const amount = Number(data.amount);
+    const refundRef = `ADMIN_REFUND_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    if (data.method === "wallet") {
+      const creditRes = await db.rpc("credit_wallet", {
+        p_user_id: data.userId,
+        p_amount: amount,
+        p_description: `Admin manual refund: ${data.reason.trim()}`,
+        p_reference: refundRef,
+      });
+
+      if (creditRes.error) {
+        throw new Error(creditRes.error.message ?? "Could not credit user wallet");
+      }
+
+      const payload = normalizeCreditWalletResult(creditRes.data);
+      if (payload?.success === false || payload?.error) {
+        throw new Error(payload.error ?? "Could not credit user wallet");
+      }
+
+      await db.from("notifications").insert({
+        user_id: data.userId,
+        type: "refund_processed",
+        message: `A manual refund of ₦${amount.toLocaleString("en-NG")} was applied to your wallet.`,
+        link: "/app/wallet",
+      });
+
+      await db.from("audit_log").insert({
+        admin_user_id: adminId,
+        action: "finance.manual_refund",
+        target_type: "user",
+        target_id: data.userId,
+        details: {
+          method: "wallet",
+          amount,
+          reason: data.reason.trim(),
+          reference: refundRef,
+        },
+      });
+
+      return { ok: true, method: "wallet", reference: refundRef };
+    }
+
+    if (!data.paystackReference?.trim()) {
+      throw new Error("Paystack reference is required for Paystack refunds");
+    }
+
+    const secret = process.env.PAYSTACK_SECRET_KEY;
+    if (!secret) {
+      throw new Error("Paystack is not configured on this server");
+    }
+
+    const paystackRes = await fetch("https://api.paystack.co/refund", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        transaction: data.paystackReference.trim(),
+        amount: Math.round(amount * 100),
+        currency: "NGN",
+      }),
+    });
+
+    const paystackJson = (await paystackRes.json()) as any;
+    if (!paystackRes.ok || !paystackJson?.status) {
+      throw new Error(paystackJson?.message ?? "Paystack refund failed");
+    }
+
+    await db.from("notifications").insert({
+      user_id: data.userId,
+      type: "refund_processed",
+      message: `A refund of ₦${amount.toLocaleString("en-NG")} was initiated to your payment source.`,
+      link: "/app/wallet",
+    });
+
+    await db.from("audit_log").insert({
+      admin_user_id: adminId,
+      action: "finance.manual_refund",
+      target_type: "user",
+      target_id: data.userId,
+      details: {
+        method: "paystack",
+        amount,
+        reason: data.reason.trim(),
+        paystackReference: data.paystackReference.trim(),
+        paystackRefundId: paystackJson?.data?.id ?? null,
+      },
+    });
+
+    return {
+      ok: true,
+      method: "paystack",
+      refundId: paystackJson?.data?.id ?? null,
+      status: paystackJson?.data?.status ?? null,
+    };
   });

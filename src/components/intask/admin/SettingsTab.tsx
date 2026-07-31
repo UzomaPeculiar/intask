@@ -1,0 +1,526 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useMemo, useState } from "react";
+import { History, Mail, SlidersHorizontal } from "lucide-react";
+
+export function SettingsTab() {
+  const qc = useQueryClient();
+  const [actionFilter, setActionFilter] = useState("");
+  const [targetFilter, setTargetFilter] = useState<"all" | "settings" | "user" | "task" | "dispute" | "announcement">("all");
+  const [periodFilter, setPeriodFilter] = useState<"all" | "7d" | "30d" | "90d">("30d");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementBody, setAnnouncementBody] = useState("");
+  const [announcementRole, setAnnouncementRole] = useState<"all" | "student" | "alumni" | "company" | "individual">("all");
+
+  const numericSettingRules: Record<string, { min: number; max: number; label: string }> = {
+    platform_fee_percent: { min: 0, max: 30, label: "Platform fee (%)" },
+    min_withdrawal_amount: { min: 100, max: 1000000, label: "Minimum withdrawal (NGN)" },
+    featured_task_slots: { min: 1, max: 100, label: "Featured slots" },
+    min_task_budget: { min: 500, max: 10000000, label: "Minimum task budget (NGN)" },
+  };
+
+  const defaultSettingsSeed = [
+    { key: "platform_fee_percent", value: 8, description: "Platform fee percentage charged on each completed task" },
+    { key: "min_withdrawal_amount", value: 550, description: "Minimum withdrawal amount in Naira" },
+    { key: "featured_task_slots", value: 10, description: "Maximum number of featured tasks at any time" },
+    { key: "maintenance_mode", value: false, description: "When true, non-admin users see a maintenance page" },
+    { key: "min_task_budget", value: 1000, description: "Minimum task budget in Naira" },
+  ];
+
+  function isEqualValue(a: any, b: any) {
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
+
+  function buildRiskNotice(key: string, newValue: any, currentValue: any) {
+    if (key === "maintenance_mode" && newValue === true && currentValue !== true) {
+      return "Enabling maintenance mode can temporarily block user workflows.";
+    }
+    if (key === "platform_fee_percent" && !isEqualValue(newValue, currentValue)) {
+      return "Changing platform fee affects all future earnings and payout calculations.";
+    }
+    if (key === "min_withdrawal_amount" && !isEqualValue(newValue, currentValue)) {
+      return "Changing minimum withdrawal directly affects cashout eligibility.";
+    }
+    if (key === "min_task_budget" && !isEqualValue(newValue, currentValue)) {
+      return "Changing minimum task budget affects future task posting validation.";
+    }
+    return null;
+  }
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["admin-settings-audit", periodFilter],
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const [settingsRes, auditRes, announcementsRes] = await Promise.all([
+        (supabase as any).from("platform_settings").select("key, value, description, updated_at, updated_by").order("key", { ascending: true }),
+        (supabase as any)
+          .from("audit_log")
+          .select("id, action, target_type, target_id, details, created_at, admin:profiles!audit_log_admin_user_id_fkey(full_name, email)")
+          .order("created_at", { ascending: false })
+          .limit(400),
+        (supabase as any)
+          .from("announcements")
+          .select("id, title, body, target_role, is_active, published_at, expires_at, created_at")
+          .order("created_at", { ascending: false })
+          .limit(15),
+      ]);
+
+      if (auditRes.error) throw auditRes.error;
+      if (announcementsRes.error) throw announcementsRes.error;
+
+      const allLogs = auditRes.data ?? [];
+      const days = periodFilter === "7d" ? 7 : periodFilter === "30d" ? 30 : periodFilter === "90d" ? 90 : null;
+      const logs = days == null
+        ? allLogs
+        : allLogs.filter((log: any) => Date.now() - new Date(log.created_at).getTime() <= days * 24 * 60 * 60 * 1000);
+
+      return {
+        settings: settingsRes.error ? [] : (settingsRes.data ?? []),
+        logs,
+        announcements: announcementsRes.data ?? [],
+        settingsError: settingsRes.error?.message ?? null,
+      };
+    },
+  });
+
+  const publishAnnouncement = useMutation({
+    mutationFn: async () => {
+      if (!announcementTitle.trim()) throw new Error("Announcement title is required");
+      if (!announcementBody.trim() || announcementBody.trim().length < 8) throw new Error("Announcement body is too short");
+
+      const { data: auth } = await supabase.auth.getUser();
+      const adminId = auth.user?.id;
+      if (!adminId) throw new Error("Could not determine admin account");
+
+      const { error } = await (supabase as any).from("announcements").insert({
+        title: announcementTitle.trim(),
+        body: announcementBody.trim(),
+        target_role: announcementRole === "all" ? null : announcementRole,
+        is_active: true,
+        published_at: new Date().toISOString(),
+        created_by: adminId,
+      });
+      if (error) throw error;
+
+      await (supabase as any).from("audit_log").insert({
+        admin_user_id: adminId,
+        action: "announcement.publish",
+        target_type: "announcement",
+        target_id: null,
+        details: {
+          title: announcementTitle.trim(),
+          targetRole: announcementRole,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Announcement published");
+      setAnnouncementTitle("");
+      setAnnouncementBody("");
+      setAnnouncementRole("all");
+      refetch();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not publish announcement"),
+  });
+
+  const initializeDefaults = useMutation({
+    mutationFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const adminId = auth.user?.id;
+      if (!adminId) throw new Error("Could not determine admin account");
+
+      const rows = defaultSettingsSeed.map((item) => ({
+        ...item,
+        updated_by: adminId,
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { error } = await (supabase as any).from("platform_settings").upsert(rows);
+      if (error) throw error;
+
+      await (supabase as any).from("audit_log").insert({
+        admin_user_id: adminId,
+        action: "settings.seed_defaults",
+        target_type: "settings",
+        target_id: null,
+        details: { count: rows.length },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Default platform settings initialized");
+      refetch();
+    },
+    onError: (e: any) => {
+      const message = String(e?.message ?? "");
+      if (message.toLowerCase().includes("permission denied")) {
+        toast.error("Permission denied while seeding defaults. Apply latest Supabase migrations and try again.");
+        return;
+      }
+      toast.error(e.message ?? "Could not initialize defaults");
+    },
+  });
+
+  const saveSetting = useMutation({
+    mutationFn: async ({ key, currentValue }: { key: string; currentValue: any }) => {
+      const raw = (drafts[key] ?? "").trim();
+      if (!raw) throw new Error("Value cannot be empty");
+
+      let parsed: any = raw;
+      if (key === "maintenance_mode") {
+        if (raw !== "true" && raw !== "false") throw new Error("Maintenance mode must be true or false");
+        parsed = raw === "true";
+      } else if (numericSettingRules[key]) {
+        const n = Number(raw);
+        if (!Number.isFinite(n)) throw new Error(`${numericSettingRules[key].label} must be a number`);
+        if (n < numericSettingRules[key].min || n > numericSettingRules[key].max) {
+          throw new Error(`${numericSettingRules[key].label} must be between ${numericSettingRules[key].min} and ${numericSettingRules[key].max}`);
+        }
+        parsed = Math.round(n);
+      } else if (raw === "true") {
+        parsed = true;
+      } else if (raw === "false") {
+        parsed = false;
+      } else if (!Number.isNaN(Number(raw)) && raw !== "") {
+        parsed = Number(raw);
+      } else {
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          parsed = raw;
+        }
+      }
+
+      if (isEqualValue(parsed, currentValue)) {
+        throw new Error("No change detected");
+      }
+
+      const riskNotice = buildRiskNotice(key, parsed, currentValue);
+      let reason = "";
+      if (riskNotice) {
+        const confirmed = window.confirm(`${riskNotice}\n\nDo you want to continue?`);
+        if (!confirmed) throw new Error("Change cancelled");
+
+        reason = window.prompt("Provide reason for this high-risk settings change (min 8 chars):") ?? "";
+        if (reason.trim().length < 8) {
+          throw new Error("Reason must be at least 8 characters for this change");
+        }
+      }
+
+      const { data: auth } = await supabase.auth.getUser();
+      const adminId = auth.user?.id;
+      if (!adminId) throw new Error("Could not determine admin account");
+
+      const { error: settingErr } = await (supabase as any)
+        .from("platform_settings")
+        .upsert({ key, value: parsed, updated_by: adminId, updated_at: new Date().toISOString() });
+      if (settingErr) throw settingErr;
+
+      const { error: logErr } = await (supabase as any).from("audit_log").insert({
+        admin_user_id: adminId,
+        action: "settings.update",
+        target_type: "settings",
+        target_id: key,
+        details: {
+          key,
+          oldValue: currentValue,
+          newValue: parsed,
+          reason: reason.trim() || null,
+          highRisk: !!riskNotice,
+        },
+      });
+      if (logErr) throw logErr;
+    },
+    onSuccess: () => {
+      toast.success("Setting updated");
+      refetch();
+      qc.invalidateQueries({ queryKey: ["admin-command-center"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not update setting"),
+  });
+
+  const filteredLogs = useMemo(() => {
+    const rows = data?.logs ?? [];
+    return rows.filter((row: any) => {
+      if (targetFilter !== "all" && row.target_type !== targetFilter) return false;
+      const q = actionFilter.trim().toLowerCase();
+      if (!q) return true;
+      const text = `${row.action ?? ""} ${row.target_type ?? ""} ${row.target_id ?? ""} ${row.admin?.full_name ?? ""} ${row.admin?.email ?? ""}`.toLowerCase();
+      return text.includes(q);
+    });
+  }, [data?.logs, targetFilter, actionFilter]);
+
+  function exportAuditCsv() {
+    if (filteredLogs.length === 0) {
+      toast.error("No audit rows to export");
+      return;
+    }
+
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const headers = ["created_at", "action", "target_type", "target_id", "admin_name", "admin_email", "details_json"];
+    const rows = filteredLogs.map((log: any) => [
+      new Date(log.created_at).toISOString(),
+      log.action ?? "",
+      log.target_type ?? "",
+      log.target_id ?? "",
+      log.admin?.full_name ?? "",
+      log.admin?.email ?? "",
+      JSON.stringify(log.details ?? {}),
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((cols) => cols.map((col) => escapeCsv(String(col))).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `admin-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Audit CSV exported");
+  }
+
+  function stringifyValue(value: any) {
+    if (typeof value === "string") return value;
+    return JSON.stringify(value);
+  }
+
+  function draftValueFor(setting: any) {
+    return drafts[setting.key] ?? stringifyValue(setting.value);
+  }
+
+  function isKnownNumericKey(key: string) {
+    return !!numericSettingRules[key];
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Settings and Audit Center</h2>
+            <p className="text-xs text-muted-foreground">Manage platform-wide controls and review a timestamped admin action trail.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>Refresh</Button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <SlidersHorizontal className="size-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-foreground">Platform settings</h3>
+        </div>
+
+        {isLoading && <p className="text-sm text-muted-foreground">Loading settings...</p>}
+
+        {!isLoading && data?.settingsError && (
+          <div className="mb-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+            <p className="text-sm font-medium text-destructive">Could not load platform settings</p>
+            <p className="text-xs text-muted-foreground mt-1">{data.settingsError}</p>
+          </div>
+        )}
+
+        {!isLoading && !data?.settingsError && (data?.settings ?? []).length === 0 && (
+          <div className="mb-3 rounded-lg border border-border bg-muted/20 p-3">
+            <p className="text-sm font-medium text-foreground">No settings found yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Initialize default platform settings to enable this section.</p>
+            <div className="mt-2">
+              <Button size="sm" variant="outline" onClick={() => initializeDefaults.mutate()} disabled={initializeDefaults.isPending}>
+                {initializeDefaults.isPending ? "Initializing..." : "Initialize defaults"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && (
+          <div className="space-y-3">
+            {(data?.settings ?? []).map((setting: any) => (
+              <div key={setting.key} className="rounded-lg border border-border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{setting.key}</p>
+                    {setting.description && <p className="text-xs text-muted-foreground mt-0.5">{setting.description}</p>}
+                    <p className="text-[11px] text-muted-foreground mt-1">Updated: {setting.updated_at ? new Date(setting.updated_at).toLocaleString("en-NG") : "-"}</p>
+                  </div>
+                </div>
+
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                  {setting.key === "maintenance_mode" ? (
+                    <label className="flex w-full items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={draftValueFor(setting) === "true"}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [setting.key]: e.target.checked ? "true" : "false",
+                          }))
+                        }
+                      />
+                      <span>Enable maintenance mode</span>
+                    </label>
+                  ) : isKnownNumericKey(setting.key) ? (
+                    <input
+                      type="number"
+                      min={numericSettingRules[setting.key].min}
+                      max={numericSettingRules[setting.key].max}
+                      step="1"
+                      value={draftValueFor(setting)}
+                      onChange={(e) => setDrafts((prev) => ({ ...prev, [setting.key]: e.target.value }))}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                    />
+                  ) : (
+                    <input
+                      value={draftValueFor(setting)}
+                      onChange={(e) => setDrafts((prev) => ({ ...prev, [setting.key]: e.target.value }))}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                    />
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => saveSetting.mutate({ key: setting.key, currentValue: setting.value })}
+                    disabled={saveSetting.isPending || draftValueFor(setting) === stringifyValue(setting.value)}
+                  >
+                    {saveSetting.isPending ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+                {isKnownNumericKey(setting.key) && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Allowed range: {numericSettingRules[setting.key].min} to {numericSettingRules[setting.key].max}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Mail className="size-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-foreground">Announcement controls</h3>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2">
+          <input
+            value={announcementTitle}
+            onChange={(e) => setAnnouncementTitle(e.target.value)}
+            placeholder="Announcement title"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          />
+          <textarea
+            rows={3}
+            value={announcementBody}
+            onChange={(e) => setAnnouncementBody(e.target.value)}
+            placeholder="Announcement body"
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select
+              value={announcementRole}
+              onChange={(e) => setAnnouncementRole(e.target.value as any)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="all">All users</option>
+              <option value="student">Students</option>
+              <option value="alumni">Alumni</option>
+              <option value="company">Companies</option>
+              <option value="individual">Individuals</option>
+            </select>
+            <Button onClick={() => publishAnnouncement.mutate()} disabled={publishAnnouncement.isPending}>
+              {publishAnnouncement.isPending ? "Publishing..." : "Publish"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent announcements</p>
+          {(data?.announcements ?? []).length === 0 && (
+            <p className="text-sm text-muted-foreground">No announcements yet.</p>
+          )}
+          {(data?.announcements ?? []).map((ann: any) => (
+            <div key={ann.id} className="rounded-lg border border-border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{ann.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Target: {ann.target_role ?? "all"} · {ann.is_active ? "active" : "inactive"}</p>
+                  <p className="mt-1 text-sm text-foreground">{ann.body}</p>
+                </div>
+                <p className="text-xs text-muted-foreground">{new Date(ann.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <History className="size-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-foreground">Audit trail</h3>
+        </div>
+
+        <div className="mb-3">
+          <Button variant="outline" size="sm" onClick={exportAuditCsv}>
+            Export filtered CSV
+          </Button>
+        </div>
+
+        <div className="mb-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
+          <input
+            value={actionFilter}
+            onChange={(e) => setActionFilter(e.target.value)}
+            placeholder="Filter by action, target, admin"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          />
+
+          <select
+            value={targetFilter}
+            onChange={(e) => setTargetFilter(e.target.value as any)}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="all">All targets</option>
+            <option value="settings">Settings</option>
+            <option value="user">Users</option>
+            <option value="task">Tasks</option>
+            <option value="dispute">Disputes</option>
+            <option value="announcement">Announcements</option>
+          </select>
+
+          <select
+            value={periodFilter}
+            onChange={(e) => setPeriodFilter(e.target.value as any)}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="all">All time</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="90d">Last 90 days</option>
+          </select>
+        </div>
+
+        <div className="max-h-[460px] space-y-2 overflow-auto pr-1">
+          {filteredLogs.length === 0 && <p className="text-sm text-muted-foreground">No audit events match this filter.</p>}
+          {filteredLogs.map((log: any) => (
+            <div key={log.id} className="rounded-lg border border-border p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{log.action}</p>
+                  <p className="text-xs text-muted-foreground">{log.target_type}{log.target_id ? ` · ${log.target_id}` : ""}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">By {log.admin?.full_name ?? "Unknown"}{log.admin?.email ? ` (${log.admin.email})` : ""}</p>
+                </div>
+                <p className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString("en-NG")}</p>
+              </div>
+              <pre className="mt-2 max-h-32 overflow-auto rounded-md bg-muted/50 p-2 text-[11px] text-foreground">{JSON.stringify(log.details ?? {}, null, 2)}</pre>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
