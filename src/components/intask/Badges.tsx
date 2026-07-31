@@ -3,6 +3,20 @@ import { CheckCircle2, Building2, GraduationCap, Clock } from "lucide-react";
 
 export function VerifiedBadge({ role, verified, isPro }: { role?: "student" | "alumni" | "company" | "individual" | null; verified?: boolean; isPro?: boolean }) {
   if (role === "company") {
+    if (verified === true) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
+          <CheckCircle2 className="size-3" /> Verified Business
+        </span>
+      );
+    }
+    if (verified === false) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">
+          <Clock className="size-3" /> Verification pending
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
         <Building2 className="size-3" /> Business
@@ -24,6 +38,21 @@ export function VerifiedBadge({ role, verified, isPro }: { role?: "student" | "a
     );
   }
   if (role === "individual") {
+    if (verified === true) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
+          <CheckCircle2 className="size-3" /> Verified Individual
+        </span>
+      );
+    }
+    if (verified === false) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+          Individual
+        </span>
+      );
+    }
+    // Default: show as Individual (unverified) when verified prop is not passed
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
         Individual

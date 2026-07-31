@@ -36,18 +36,22 @@ function Dashboard() {
     queryKey: ["profile-details", user?.id],
     enabled: !!user && !!role,
     queryFn: async () => {
-      if (!user || !role) return { student: null, company: null };
+      if (!user || !role) return { student: null, company: null, individual: null };
       if (role === "student" || role === "alumni") {
         const { data, error } = await supabase.from("student_profiles").select("*").eq("user_id", user.id).maybeSingle();
         if (error) throw error;
-        return { student: data as any, company: null };
+        return { student: data as any, company: null, individual: null };
       }
       if (role === "company") {
         const { data, error } = await supabase.from("company_profiles").select("*").eq("user_id", user.id).maybeSingle();
         if (error) throw error;
-        return { student: null, company: data as any };
+        return { student: null, company: data as any, individual: null };
       }
-      return { student: null, company: null };
+      if (role === "individual") {
+        const { data, error } = await supabase.from("individual_profiles").select("*").eq("user_id", user.id).maybeSingle();
+        if (!error) return { student: null, company: null, individual: data as any };
+      }
+      return { student: null, company: null, individual: null };
     },
   });
 
@@ -94,7 +98,8 @@ function Dashboard() {
             )}
             {role === "student" && <VerifiedBadge role="student" verified={verified} />}
             {role === "alumni" && <VerifiedBadge role="alumni" isPro={!!alumniProSub} />}
-            {(role === "company" || role === "individual") && <VerifiedBadge role={role} />}
+            {role === "company" && <VerifiedBadge role="company" verified={accountDetails?.company?.verified} />}
+            {role === "individual" && <VerifiedBadge role="individual" verified={accountDetails?.individual?.verified} />}
           </div>
         </div>
         <Link to="/app/profile/$userId" params={{ userId: "me" }}>

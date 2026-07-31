@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { SKILLS, NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY } from "@/lib/constants";
-import { ArrowLeft, LogOut, Star, Briefcase, Edit3, Save, Plus, ExternalLink, Trash2, FolderGit2, GraduationCap, Mail, Phone, Building2, MapPin, Globe, ImagePlus, Loader2 } from "lucide-react";
+import { ArrowLeft, LogOut, Star, Briefcase, Edit3, Save, Plus, ExternalLink, Trash2, FolderGit2, GraduationCap, Mail, Phone, Building2, MapPin, Globe, ImagePlus, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 const SUPABASE_BASE_URL = import.meta.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
@@ -76,6 +76,7 @@ function ProfilePage() {
 
       let student = null;
       let company = null;
+      let individual = null;
       if (profile?.role === "student" || profile?.role === "alumni") {
         const { data, error } = await supabase
           .from("student_profiles")
@@ -94,6 +95,14 @@ function ProfilePage() {
         if (error) throw error;
         company = data as any;
       }
+      if (profile?.role === "individual") {
+        const { data, error } = await supabase
+          .from("individual_profiles")
+          .select("*")
+          .eq("user_id", targetId!)
+          .maybeSingle();
+        if (!error) individual = data as any;
+      }
 
       const { data: reviews } = await supabase
         .from("reviews")
@@ -102,7 +111,7 @@ function ProfilePage() {
         .order("created_at", { ascending: false })
         .limit(20);
 
-      return { profile: profile as any, student, company, reviews: reviews ?? [] };
+      return { profile: profile as any, student, company, individual, reviews: reviews ?? [] };
     },
   });
   const { data: postedTasks } = useQuery({
@@ -153,7 +162,7 @@ function ProfilePage() {
     updated_at: null,
   };
   const resolved = data ?? { profile: fallbackProfile, student: null, company: null, reviews: [] };
-  const { profile, student, company, reviews } = resolved;
+  const { profile, student, company, individual, reviews } = resolved as any;
   const isStudent = profile.role === "student";
   const isAlumni = profile.role === "alumni";
   const isStudentOrAlumni = isStudent || isAlumni;
@@ -212,12 +221,27 @@ function ProfilePage() {
             {isCompany && company?.company_name && (
               <p className="truncate text-sm text-muted-foreground">{company.company_name}</p>
             )}
-            <div className="mt-1.5"><VerifiedBadge role={profile.role} verified={student?.verified} isPro={!!alumniProSub} /></div>
+            <div className="mt-1.5"><VerifiedBadge role={profile.role} verified={isCompany ? company?.verified : isIndividual ? individual?.verified : student?.verified} isPro={!!alumniProSub} /></div>
             {isOwn && profile.role === "student" && !student?.verified && student?.verification_method === "id_upload" && (
               <ReuploadIDSection userId={profile.id} />
             )}
             {isOwn && profile.role === "student" && !student?.verified && student?.verification_method === "email" && (
               <EmailVerificationSection userId={profile.id} universityEmail={student?.university_email} />
+            )}
+            {isOwn && isCompany && !company?.verified && company?.verification_method === "email" && (
+              <CompanyEmailVerificationSection userId={profile.id} companyEmail={company?.company_email} />
+            )}
+            {isOwn && isCompany && !company?.verified && company?.verification_method === "cac_number" && (
+              <CompanyDocVerificationSection userId={profile.id} />
+            )}
+            {isOwn && isIndividual && individual?.verification_status === "pending_review" && (
+              <div className="it-note-warning mt-3 rounded-xl border p-4">
+                <p className="text-sm font-medium text-warning">ID verification pending</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Your government ID is under review. We will notify you once verified.</p>
+              </div>
+            )}
+            {isOwn && isIndividual && (!individual || individual.verification_status === "rejected") && (
+              <IndividualIdVerificationSection userId={profile.id} />
             )}
           </div>
           </div>
@@ -240,6 +264,9 @@ function ProfilePage() {
           <div className="mt-4 space-y-2 rounded-2xl border border-border/80 bg-card/90 p-3 text-sm shadow-sm">
             {isCompany && company?.company_name && (
               <Row icon={<Building2 className="size-4" />} label="Business" value={company.company_name} />
+            )}
+            {isCompany && company?.cac_number && (
+              <Row icon={<Building2 className="size-4" />} label="CAC No." value={company.cac_number} />
             )}
             {isCompany && company?.industry && (
               <Row icon={<Briefcase className="size-4" />} label="Industry" value={company.industry} />
@@ -1005,6 +1032,280 @@ function ReuploadIDSection({ userId }: { userId: string }) {
        >
          {uploading ? "Uploading..." : "Submit for review"}
        </Button>
+    </div>
+  );
+}
+
+function CompanyEmailVerificationSection({ userId, companyEmail }: { userId: string; companyEmail?: string | null }) {
+  const qc = useQueryClient();
+  const [code, setCode] = useState("");
+
+  const sendCode = useMutation({
+    mutationFn: async () => {
+      if (!companyEmail?.trim()) throw new Error("Add a company email in your profile first.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("You are signed out. Please log in again.");
+
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/send-company-verification-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ company_email: companyEmail.trim() }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        if (data?.code === "EMAIL_VERIFICATION_NOT_CONFIGURED") {
+          throw new Error("Company email verification is temporarily unavailable. Use CAC number verification from your profile.");
+        }
+        throw new Error(data?.error ?? "Could not send code");
+      }
+    },
+    onSuccess: () => toast.success("Verification code sent."),
+    onError: (e: any) => toast.error(e?.message ?? "Could not send code"),
+  });
+
+  const confirmCode = useMutation({
+    mutationFn: async () => {
+      if (!/^\d{6}$/.test(code.trim())) throw new Error("Enter the 6-digit code sent to your company email.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("You are signed out. Please log in again.");
+
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/confirm-company-verification-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ code: code.trim() }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) throw new Error(data?.error ?? "Could not verify code");
+    },
+    onSuccess: () => {
+      toast.success("Company email verified successfully.");
+      setCode("");
+      qc.invalidateQueries({ queryKey: ["profile", userId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not verify code"),
+  });
+
+  return (
+    <div className="it-note-warning mt-3 rounded-xl border p-4 space-y-3">
+      <div>
+        <p className="text-sm font-medium text-warning">Email verification pending</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Confirm the 6-digit code sent to {companyEmail || "your company email"}.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">Verification code</label>
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+          placeholder="Enter 6-digit code"
+          inputMode="numeric"
+          maxLength={6}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          variant="outline"
+          disabled={sendCode.isPending || !companyEmail?.trim()}
+          onClick={() => sendCode.mutate()}
+        >
+          {sendCode.isPending ? "Sending..." : "Resend code"}
+        </Button>
+        <Button
+          disabled={confirmCode.isPending || code.length !== 6}
+          onClick={() => confirmCode.mutate()}
+        >
+          {confirmCode.isPending ? "Verifying..." : "Verify"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CompanyDocVerificationSection({ userId }: { userId: string }) {
+  const qc = useQueryClient();
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleUpload() {
+    if (!docFile) return;
+    setUploading(true);
+    const fileExt = docFile.name.split(".").pop();
+    const filePath = `${userId}/cac-cert.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from("company-docs")
+      .upload(filePath, docFile, { upsert: true });
+    if (uploadError) {
+      toast.error("Upload failed. Please try again.");
+      setUploading(false);
+      return;
+    }
+    const { error: updateError } = await supabase
+      .from("company_profiles")
+      .update({
+        verification_doc_url: filePath,
+        verification_status: "pending",
+      } as any)
+      .eq("user_id", userId);
+    if (updateError) {
+      toast.error("Could not submit for review. Please try again.");
+      setUploading(false);
+      return;
+    }
+    toast.success("Document re-submitted for review. We will notify you once verified.");
+    setDocFile(null);
+    setUploading(false);
+    qc.invalidateQueries({ queryKey: ["profile", userId] });
+  }
+
+  return (
+    <div className="it-note-warning mt-3 rounded-xl border p-4 space-y-3">
+      <div>
+        <p className="text-sm font-medium text-warning">Verification pending</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Your CAC certificate is under review. If it was rejected, upload a clearer copy below.
+        </p>
+      </div>
+      <div
+        className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-warning/30 bg-background p-4 text-center cursor-pointer hover:border-warning/60 transition-colors"
+        onClick={() => document.getElementById("company-doc-reupload-input")?.click()}
+      >
+        {docFile ? (
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-success">✓ {docFile.name}</p>
+            <p className="text-xs text-muted-foreground">Tap to change</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">Tap to upload a new document</p>
+            <p className="text-xs text-muted-foreground">JPG, PNG or PDF · Max 5MB</p>
+          </div>
+        )}
+      </div>
+      <input
+        id="company-doc-reupload-input"
+        type="file"
+        accept="image/jpeg,image/png,application/pdf"
+        className="hidden"
+        onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
+      />
+      <Button
+        className="w-full"
+        disabled={!docFile || uploading}
+        onClick={handleUpload}
+      >
+        {uploading ? "Uploading..." : "Submit for review"}
+      </Button>
+    </div>
+  );
+}
+
+function IndividualIdVerificationSection({ userId }: { userId: string }) {
+  const qc = useQueryClient();
+  const [idType, setIdType] = useState<"" | "NIN" | "voter_card" | "drivers_license" | "passport">("");
+  const [idFile, setIdFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleSubmit() {
+    if (!idFile || !idType) return;
+    setUploading(true);
+    const fileExt = idFile.name.split(".").pop();
+    const filePath = `${userId}/gov-id.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from("individual-docs")
+      .upload(filePath, idFile, { upsert: true });
+    if (uploadError) {
+      toast.error("Upload failed. Please try again.");
+      setUploading(false);
+      return;
+    }
+    const { error: updateError } = await supabase
+      .from("individual_profiles")
+      .upsert({
+        user_id: userId,
+        verification_method: "id_upload",
+        id_type: idType,
+        id_upload_path: filePath,
+        verification_status: "pending_review",
+      }, { onConflict: "user_id" });
+    if (updateError) {
+      toast.error("Could not submit for review. Please try again.");
+      setUploading(false);
+      return;
+    }
+    toast.success("ID submitted for review. We will notify you once verified.");
+    setIdFile(null);
+    setIdType("");
+    setUploading(false);
+    qc.invalidateQueries({ queryKey: ["profile", userId] });
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm">
+      <div>
+        <p className="text-sm font-medium text-foreground">Upgrade to Verified Individual</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Upload a government-issued ID to earn a Verified badge. Accepted: NIN slip, voter's card, driver's license, or international passport.
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground">ID type</Label>
+        <select
+          value={idType}
+          onChange={(e) => setIdType(e.target.value as any)}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">Select ID type</option>
+          <option value="NIN">NIN slip</option>
+          <option value="voter_card">Voter's card</option>
+          <option value="drivers_license">Driver's license</option>
+          <option value="passport">International passport</option>
+        </select>
+      </div>
+      <div
+        className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+        onClick={() => document.getElementById("individual-id-upload-input")?.click()}
+      >
+        {idFile ? (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-success">✓ {idFile.name}</p>
+            <p className="text-xs text-muted-foreground">Tap to change</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Upload className="size-8 text-muted-foreground mx-auto" />
+            <p className="text-sm text-muted-foreground">Tap to upload your government ID</p>
+            <p className="text-xs text-muted-foreground">JPG, PNG or PDF · Max 5MB</p>
+          </div>
+        )}
+      </div>
+      <input
+        id="individual-id-upload-input"
+        type="file"
+        accept="image/jpeg,image/png,application/pdf"
+        className="hidden"
+        onChange={(e) => setIdFile(e.target.files?.[0] ?? null)}
+      />
+      <Button
+        className="w-full"
+        disabled={!idFile || !idType || uploading}
+        onClick={handleSubmit}
+      >
+        {uploading ? "Uploading..." : "Submit for review"}
+      </Button>
+      <p className="text-center text-xs text-muted-foreground">Your ID is stored securely and only used for verification.</p>
     </div>
   );
 }

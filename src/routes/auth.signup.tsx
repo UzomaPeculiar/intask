@@ -40,6 +40,10 @@ interface SignupState {
   industry: string;
   city: string;
   website: string;
+  company_verification_method: "email" | "cac_number" | null;
+  company_email: string;
+  cac_number: string;
+  company_doc_file: File | null;
 }
 
 function Stepper({ current, total }: { current: number; total: number }) {
@@ -84,6 +88,10 @@ function SignupPage() {
     industry: "",
     city: "",
     website: "",
+    company_verification_method: null,
+    company_email: "",
+    cac_number: "",
+    company_doc_file: null,
   });
 
   const isStudent = s.role === "student";
@@ -104,7 +112,11 @@ function SignupPage() {
       return { current: step - 1, total: 4 };
     }
     if (s.role === "individual") return { current: step, total: 2 };
-    if (s.role === "company") return { current: step, total: 3 };
+    if (s.role === "company") {
+      // 1=role(hide), 2=account, 3=business, 4=verify, 5=finish(hide)
+      if (step === 1 || step === 5) return { current: null, total: 3 };
+      return { current: step - 1, total: 3 };
+    }
     return { current: null, total: 1 };
   }
   const sinfo = stepInfo();
@@ -219,7 +231,28 @@ function SignupPage() {
         rating_count: 0,
         tasks_completed: 0,
       });
+    } else if (isIndividual) {
+      await supabase.from("individual_profiles").upsert({
+        user_id: user.id,
+        verified: true,
+        verification_method: "auto",
+        verification_status: "auto_verified",
+        verified_at: new Date().toISOString(),
+      });
     } else if (isCompany) {
+      let docUploadPath = null;
+
+      if (s.company_verification_method === "cac_number" && s.company_doc_file) {
+        const fileExt = s.company_doc_file.name.split(".").pop();
+        const filePath = `${user.id}/cac-cert.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from("company-docs")
+          .upload(filePath, s.company_doc_file, { upsert: true });
+        if (!uploadError) {
+          docUploadPath = filePath;
+        }
+      }
+
       await supabase.from("company_profiles").upsert({
         user_id: user.id,
         company_name: s.company_name || s.full_name,
@@ -227,7 +260,39 @@ function SignupPage() {
         location: s.city || null,
         website: s.website || null,
         verified: false,
+        verification_method: s.company_verification_method ?? null,
+        company_email: s.company_email || null,
+        cac_number: s.cac_number || null,
+        verification_doc_url: docUploadPath,
+        verification_status: "pending",
       });
+
+      // Send verification email if email method selected
+      if (s.company_verification_method === "email" && s.company_email.trim()) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (accessToken && SUPABASE_FUNCTIONS_URL) {
+          const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/send-company-verification-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ company_email: s.company_email.trim() }),
+          });
+
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || result?.success === false) {
+            if (result?.code === "EMAIL_VERIFICATION_NOT_CONFIGURED") {
+              toast.error("Company email verification is temporarily unavailable. Your account is active, and you can complete verification from your profile.");
+            } else {
+              toast.error(result?.error ?? "Could not send verification code. You can retry from your profile.");
+            }
+          } else {
+            toast.success("Verification code sent to your company email.");
+          }
+        }
+      }
     }
   }
 
@@ -266,8 +331,14 @@ function SignupPage() {
     setLoading(true);
     await finalizeProfile();
     setLoading(false);
-    toast.success("Account created — verification pending");
-    nav({ to: "/app" });
+    next(); // go to welcome
+  }
+
+  async function handleCompanyVerify() {
+    setLoading(true);
+    await finalizeProfile();
+    setLoading(false);
+    next(); // go to welcome
   }
 
   return (
@@ -482,15 +553,79 @@ function SignupPage() {
                 <Input id="web" value={s.website} onChange={(e) => set("website", e.target.value)} placeholder="https://yourcompany.com" />
               </div>
               <Button size="lg" className="w-full" disabled={loading || !s.industry.trim() || !s.city.trim()} onClick={handleCompanyFinish}>
-                {loading ? "Saving..." : "Finish setup"}
+                {loading ? "Saving..." : "Continue"} <ArrowRight className="size-4" />
               </Button>
-              <p className="text-center text-xs text-muted-foreground">Your account will show a "Verification pending" badge until reviewed.</p>
             </div>
           </div>
         )}
 
-        {/* WELCOME — student (step 6) & alumni (step 5) */}
-        {((step === 6 && isStudent) || (step === 5 && isAlumni)) && (
+        {/* COMPANY — step 4 verification */}
+        {step === 4 && isCompany && (
+          <div>
+            <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
+              <h1 className="text-2xl font-semibold tracking-tight">Verify your business</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Choose how you'd like to verify your company.</p>
+            </div>
+            <div className="mt-6 space-y-3">
+              <RoleCard icon={CheckCircle2} title="Company email" desc="We'll send a 6-digit code to your business email address." selected={s.company_verification_method === "email"} onClick={() => set("company_verification_method", "email")} />
+              <RoleCard icon={Upload} title="CAC registration" desc="Upload your CAC certificate — reviewed within 24 hours." selected={s.company_verification_method === "cac_number"} onClick={() => set("company_verification_method", "cac_number")} />
+            </div>
+
+            {s.company_verification_method === "email" && (
+              <div className="mt-4 space-y-3 rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cemail">Company email address</Label>
+                  <Input id="cemail" type="email" value={s.company_email} onChange={(e) => set("company_email", e.target.value)} placeholder="hr@yourcompany.com" />
+                </div>
+                <p className="text-xs text-muted-foreground">Use an email address at your company domain (e.g. name@yourcompany.com).</p>
+              </div>
+            )}
+
+            {s.company_verification_method === "cac_number" && (
+              <div className="mt-4 space-y-3 rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cac">CAC Registration Number</Label>
+                  <Input id="cac" value={s.cac_number} onChange={(e) => set("cac_number", e.target.value)} placeholder="e.g. RC1234567" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Upload CAC Certificate</Label>
+                  <div
+                    className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => document.getElementById("cac-upload-input")?.click()}
+                  >
+                    {s.company_doc_file ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-success">✓ {s.company_doc_file.name}</p>
+                        <p className="text-xs text-muted-foreground">Tap to change</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Upload className="size-8 text-muted-foreground mx-auto" />
+                        <p className="text-sm text-muted-foreground">Tap to upload your CAC certificate</p>
+                        <p className="text-xs text-muted-foreground">JPG, PNG or PDF · Max 5MB</p>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    id="cac-upload-input"
+                    type="file"
+                    accept="image/jpeg,image/png,application/pdf"
+                    className="hidden"
+                    onChange={(e) => set("company_doc_file", e.target.files?.[0] ?? null)}
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button size="lg" className="mt-6 w-full" disabled={!s.company_verification_method || loading || (s.company_verification_method === "email" && !s.company_email.trim()) || (s.company_verification_method === "cac_number" && (!s.cac_number.trim() || !s.company_doc_file))} onClick={handleCompanyVerify}>
+              {loading ? "Saving..." : "Finish setup"} <ArrowRight className="size-4" />
+            </Button>
+            <p className="mt-3 text-center text-xs text-muted-foreground">Your documents are stored securely and only used for verification.</p>
+          </div>
+        )}
+
+        {/* WELCOME — student (step 6), alumni (step 5), company (step 5) */}
+        {((step === 6 && isStudent) || (step === 5 && isAlumni) || (step === 5 && isCompany)) && (
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">You're all set 🎉</h1>
             <p className="mt-1 text-sm text-muted-foreground">Welcome to InTask, {s.full_name.split(" ")[0]}.</p>
@@ -520,6 +655,11 @@ function SignupPage() {
               {isAlumni && (
                 <p className="mt-4 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
                   Alumni status unverified — we'll confirm this shortly.
+                </p>
+              )}
+              {isCompany && (
+                <p className="mt-4 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
+                  Business verification pending — we'll review your submission shortly.
                 </p>
               )}
             </div>
