@@ -105,7 +105,7 @@ function SubscriptionPage() {
             status: "active",
             started_at: new Date().toISOString(),
             expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          });
+          }, { onConflict: "company_id" });
         if (error) throw error;
         return { free: true };
       }
@@ -133,7 +133,7 @@ function SubscriptionPage() {
                 started_at: new Date().toISOString(),
                 expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
                 paystack_reference: response.reference,
-              }, { onConflict: ["company_id"] })
+              }, { onConflict: "company_id" })
               .then(({ error }: any) => {
                 if (error) reject(error);
                 else resolve(response);
@@ -241,10 +241,22 @@ function SubscriptionPage() {
                     {plan.featured_posts} featured listing{plan.featured_posts === 1 ? "" : "s"} per month
                   </li>
                 )}
-                {plan.can_search_talent && (
+                {plan.name?.toLowerCase().includes("growth") && (
+                  <>
+                    <li className="flex items-center gap-2 text-sm text-foreground">
+                      <CheckCircle2 className="size-4 text-success shrink-0" />
+                      20 talent profile views per month
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-foreground">
+                      <CheckCircle2 className="size-4 text-success shrink-0" />
+                      2 direct task offers per month
+                    </li>
+                  </>
+                )}
+                {plan.name?.toLowerCase().includes("pro") && (
                   <li className="flex items-center gap-2 text-sm text-foreground">
                     <CheckCircle2 className="size-4 text-success shrink-0" />
-                    Direct talent search
+                    Unlimited talent search and direct offers
                   </li>
                 )}
                 {plan.priority_support && (
@@ -252,6 +264,18 @@ function SubscriptionPage() {
                     <CheckCircle2 className="size-4 text-success shrink-0" />
                     Priority support
                   </li>
+                )}
+                {plan.name?.toLowerCase().includes("pro") && (
+                  <>
+                    <li className="flex items-center gap-2 text-sm text-foreground">
+                      <CheckCircle2 className="size-4 text-success shrink-0" />
+                      Verified company badge
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-foreground">
+                      <CheckCircle2 className="size-4 text-success shrink-0" />
+                      Unlimited saved task templates
+                    </li>
+                  </>
                 )}
                 <li className="flex items-center gap-2 text-sm text-foreground">
                   <CheckCircle2 className="size-4 text-success shrink-0" />

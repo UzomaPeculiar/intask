@@ -215,6 +215,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
     queryKey: ["feed", filter],
     queryFn: async () => {
       let q = supabase.from("tasks").select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, role)").eq("status", "open").order("featured", { ascending: false }).order("created_at", { ascending: false }).limit(40);
+      if (userId) q = q.neq("poster_id", userId);
       if (filter !== "All") q = q.ilike("category", `%${filter}%`);
       const { data, error } = await q;
       if (error) throw error;
@@ -421,6 +422,51 @@ function PostWorkView({ userId }: { userId?: string }) {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [togglingFeaturedTaskId, setTogglingFeaturedTaskId] = useState<string | null>(null);
+
+  async function fetchFeaturedQuota(companyId: string) {
+    const { data: subData } = await (supabase as any)
+      .from("company_subscriptions")
+      .select("plan:subscription_plans(name, featured_posts)")
+      .eq("company_id", companyId)
+      .eq("status", "active")
+      .maybeSingle();
+
+    const plan = subData?.plan;
+    const planName = plan?.name ?? null;
+    const planNameLower = String(planName ?? "").toLowerCase();
+    const mappedCap = planNameLower.includes("pro") ? 5 : planNameLower.includes("growth") ? 2 : 0;
+    const explicitPlanCap = Number(plan?.featured_posts ?? 0);
+    const cap = explicitPlanCap > 0 ? explicitPlanCap : mappedCap;
+
+    if (!cap || cap <= 0) {
+      return { planName, cap: 0, used: 0, remaining: 0 };
+    }
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+    const monthlyCount = await (supabase as any)
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("poster_id", companyId)
+      .gte("featured_set_at", monthStart)
+      .lt("featured_set_at", nextMonthStart);
+
+    let used = monthlyCount.count ?? 0;
+
+    if (monthlyCount.error) {
+      const { count: fallbackCount } = await (supabase as any)
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("poster_id", companyId)
+        .eq("featured", true);
+      used = fallbackCount ?? 0;
+    }
+
+    return { planName, cap, used, remaining: Math.max(cap - used, 0) };
+  }
+
   const { data: mine, isLoading } = useQuery({
     queryKey: ["my-tasks", userId],
     enabled: !!userId,
@@ -446,45 +492,8 @@ function PostWorkView({ userId }: { userId?: string }) {
     queryKey: ["featured-quota", userId],
     enabled: !!userId,
     queryFn: async () => {
-      if (!userId) {
-        return { planName: null as string | null, cap: 0, used: 0, remaining: 0 };
-      }
-
-      const { data: subData } = await (supabase as any)
-        .from("company_subscriptions")
-        .select("plan:subscription_plans(name, featured_posts)")
-        .eq("company_id", userId)
-        .eq("status", "active")
-        .maybeSingle();
-
-      const plan = subData?.plan;
-      const planName = plan?.name ?? null;
-      const fallbackCap =
-        typeof planName === "string" && planName.toLowerCase().includes("pro")
-          ? 5
-          : typeof planName === "string" && planName.toLowerCase().includes("growth")
-            ? 2
-            : 0;
-      const cap = Number(plan?.featured_posts ?? fallbackCap);
-      if (!cap || cap <= 0) {
-        return { planName, cap: 0, used: 0, remaining: 0 };
-      }
-
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
-
-      const { count, error } = await (supabase as any)
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("poster_id", userId)
-        .gte("featured_set_at", monthStart)
-        .lt("featured_set_at", nextMonthStart);
-
-      if (error) throw error;
-
-      const used = count ?? 0;
-      return { planName, cap, used, remaining: Math.max(cap - used, 0) };
+      if (!userId) return { planName: null as string | null, cap: 0, used: 0, remaining: 0 };
+      return fetchFeaturedQuota(userId);
     },
   });
 
@@ -498,8 +507,9 @@ function PostWorkView({ userId }: { userId?: string }) {
     }
 
     if (!isCurrentlyFeatured) {
-      const cap = featuredQuota?.cap ?? 0;
-      const remaining = featuredQuota?.remaining ?? 0;
+      const liveQuota = featuredQuota ?? (await fetchFeaturedQuota(userId));
+      const cap = liveQuota.cap ?? 0;
+      const remaining = liveQuota.remaining ?? 0;
       if (cap <= 0) {
         toast.error("Your current plan has no featured listings. Upgrade to unlock this feature.");
         return;
@@ -518,11 +528,25 @@ function PostWorkView({ userId }: { userId?: string }) {
         ? { featured: false, featured_until: null }
         : { featured: true, featured_until: featuredUntil, featured_set_at: nowIso };
 
-      const { error } = await (supabase as any)
+      let { error } = await (supabase as any)
         .from("tasks")
         .update(payload)
         .eq("id", task.id)
         .eq("poster_id", userId);
+
+      // Backward-compatible fallback for databases that have not run the featured_set_at migration yet.
+      if (
+        error &&
+        !isCurrentlyFeatured &&
+        String(error.message ?? "").toLowerCase().includes("featured_set_at")
+      ) {
+        const retry = await (supabase as any)
+          .from("tasks")
+          .update({ featured: true, featured_until: featuredUntil })
+          .eq("id", task.id)
+          .eq("poster_id", userId);
+        error = retry.error;
+      }
 
       if (error) throw error;
 
@@ -610,8 +634,6 @@ function PostWorkView({ userId }: { userId?: string }) {
                 task={t}
                 onToggleFeatured={toggleFeaturedTask}
                 togglingFeatured={togglingFeaturedTaskId === t.id}
-                canFeature={(featuredQuota?.cap ?? 0) > 0}
-                hasFeaturedSlots={(featuredQuota?.remaining ?? 0) > 0}
               />
             ))}
           </div>
@@ -634,14 +656,10 @@ function PosterTaskRow({
   task,
   onToggleFeatured,
   togglingFeatured,
-  canFeature,
-  hasFeaturedSlots,
 }: {
   task: any;
   onToggleFeatured?: (task: any) => void;
   togglingFeatured?: boolean;
-  canFeature?: boolean;
-  hasFeaturedSlots?: boolean;
 }) {
   const nav = useNavigate();
   const count = useApplicantCount(task.id, task.applicants_count ?? 0);
@@ -649,7 +667,7 @@ function PosterTaskRow({
   const isMatched = taskStatus === "matched" || taskStatus === "in_progress";
   const isReview = taskStatus === "in_review";
   const isOpen = taskStatus === "open";
-  const featureButtonDisabled = togglingFeatured || (!task.featured && (!canFeature || !hasFeaturedSlots || !isOpen));
+  const featureButtonDisabled = togglingFeatured || (!task.featured && !isOpen);
   return (
     <div
       onClick={() => nav({ to: isReview ? "/app/tasks/$taskId/review" : "/app/tasks/$taskId/applicants", params: { taskId: task.id } })}
