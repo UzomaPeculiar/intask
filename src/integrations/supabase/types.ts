@@ -1762,6 +1762,7 @@ export type Database = {
           delivery_url: string | null
           description: string
           featured: boolean | null
+          featured_set_at: string | null
           featured_until: string | null
           id: string
           is_team_task: boolean | null
@@ -1790,6 +1791,7 @@ export type Database = {
           delivery_url?: string | null
           description: string
           featured?: boolean | null
+          featured_set_at?: string | null
           featured_until?: string | null
           id?: string
           is_team_task?: boolean | null
@@ -1818,6 +1820,7 @@ export type Database = {
           delivery_url?: string | null
           description?: string
           featured?: boolean | null
+          featured_set_at?: string | null
           featured_until?: string | null
           id?: string
           is_team_task?: boolean | null

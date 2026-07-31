@@ -420,6 +420,7 @@ function ActiveTasksSection({ userId }: { userId?: string }) {
 function PostWorkView({ userId }: { userId?: string }) {
   const nav = useNavigate();
   const qc = useQueryClient();
+  const [togglingFeaturedTaskId, setTogglingFeaturedTaskId] = useState<string | null>(null);
   const { data: mine, isLoading } = useQuery({
     queryKey: ["my-tasks", userId],
     enabled: !!userId,
@@ -440,6 +441,104 @@ function PostWorkView({ userId }: { userId?: string }) {
       return (tasks ?? []).map((t) => ({ ...t, applicants_count: counts[t.id] ?? 0 }));
     },
   });
+
+  const { data: featuredQuota, isLoading: featuredQuotaLoading } = useQuery({
+    queryKey: ["featured-quota", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) {
+        return { planName: null as string | null, cap: 0, used: 0, remaining: 0 };
+      }
+
+      const { data: subData } = await (supabase as any)
+        .from("company_subscriptions")
+        .select("plan:subscription_plans(name, featured_posts)")
+        .eq("company_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+
+      const plan = subData?.plan;
+      const planName = plan?.name ?? null;
+      const fallbackCap =
+        typeof planName === "string" && planName.toLowerCase().includes("pro")
+          ? 5
+          : typeof planName === "string" && planName.toLowerCase().includes("growth")
+            ? 2
+            : 0;
+      const cap = Number(plan?.featured_posts ?? fallbackCap);
+      if (!cap || cap <= 0) {
+        return { planName, cap: 0, used: 0, remaining: 0 };
+      }
+
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+      const { count, error } = await (supabase as any)
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("poster_id", userId)
+        .gte("featured_set_at", monthStart)
+        .lt("featured_set_at", nextMonthStart);
+
+      if (error) throw error;
+
+      const used = count ?? 0;
+      return { planName, cap, used, remaining: Math.max(cap - used, 0) };
+    },
+  });
+
+  async function toggleFeaturedTask(task: any) {
+    if (!userId) return;
+
+    const isCurrentlyFeatured = !!task.featured;
+    if (!isCurrentlyFeatured && task.status !== "open") {
+      toast.error("Only open tasks can be featured.");
+      return;
+    }
+
+    if (!isCurrentlyFeatured) {
+      const cap = featuredQuota?.cap ?? 0;
+      const remaining = featuredQuota?.remaining ?? 0;
+      if (cap <= 0) {
+        toast.error("Your current plan has no featured listings. Upgrade to unlock this feature.");
+        return;
+      }
+      if (remaining <= 0) {
+        toast.error(`You've reached your monthly featured limit (${cap}). Try again next month or upgrade your plan.`);
+        return;
+      }
+    }
+
+    setTogglingFeaturedTaskId(task.id);
+    try {
+      const nowIso = new Date().toISOString();
+      const featuredUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const payload = isCurrentlyFeatured
+        ? { featured: false, featured_until: null }
+        : { featured: true, featured_until: featuredUntil, featured_set_at: nowIso };
+
+      const { error } = await (supabase as any)
+        .from("tasks")
+        .update(payload)
+        .eq("id", task.id)
+        .eq("poster_id", userId);
+
+      if (error) throw error;
+
+      toast.success(isCurrentlyFeatured ? "Task removed from featured listings." : "Task is now featured.");
+
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["my-tasks", userId] }),
+        qc.invalidateQueries({ queryKey: ["feed"] }),
+        qc.invalidateQueries({ queryKey: ["featured-quota", userId] }),
+      ]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not update featured status");
+    } finally {
+      setTogglingFeaturedTaskId(null);
+    }
+  }
 
   const taskIdsKey = (mine ?? []).map((t) => t.id).sort().join(",");
   useEffect(() => {
@@ -481,6 +580,17 @@ function PostWorkView({ userId }: { userId?: string }) {
 
       <SubscriptionBanner userId={userId} />
 
+      <div className="rounded-xl border border-border bg-card p-3 shadow-card">
+        <p className="text-sm font-medium text-foreground">Featured listings this month</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {featuredQuotaLoading
+            ? "Loading your featured slots..."
+            : (featuredQuota?.cap ?? 0) > 0
+              ? `${featuredQuota?.used ?? 0} of ${featuredQuota?.cap ?? 0} used · ${featuredQuota?.remaining ?? 0} remaining`
+              : "No featured slots on your current plan"}
+        </p>
+      </div>
+
       {isLoading && <SkeletonList />}
 
       {!isLoading && (mine?.length ?? 0) === 0 && (
@@ -495,7 +605,14 @@ function PostWorkView({ userId }: { userId?: string }) {
           </h2>
           <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             {groups[k].map((t) => (
-              <PosterTaskRow key={t.id} task={t} />
+              <PosterTaskRow
+                key={t.id}
+                task={t}
+                onToggleFeatured={toggleFeaturedTask}
+                togglingFeatured={togglingFeaturedTaskId === t.id}
+                canFeature={(featuredQuota?.cap ?? 0) > 0}
+                hasFeaturedSlots={(featuredQuota?.remaining ?? 0) > 0}
+              />
             ))}
           </div>
         </section>
@@ -513,12 +630,26 @@ function StatCard({ label, value, icon }: { label: string; value: number | strin
   );
 }
 
-function PosterTaskRow({ task }: { task: any }) {
+function PosterTaskRow({
+  task,
+  onToggleFeatured,
+  togglingFeatured,
+  canFeature,
+  hasFeaturedSlots,
+}: {
+  task: any;
+  onToggleFeatured?: (task: any) => void;
+  togglingFeatured?: boolean;
+  canFeature?: boolean;
+  hasFeaturedSlots?: boolean;
+}) {
   const nav = useNavigate();
   const count = useApplicantCount(task.id, task.applicants_count ?? 0);
   const taskStatus = task.status as string;
   const isMatched = taskStatus === "matched" || taskStatus === "in_progress";
   const isReview = taskStatus === "in_review";
+  const isOpen = taskStatus === "open";
+  const featureButtonDisabled = togglingFeatured || (!task.featured && (!canFeature || !hasFeaturedSlots || !isOpen));
   return (
     <div
       onClick={() => nav({ to: isReview ? "/app/tasks/$taskId/review" : "/app/tasks/$taskId/applicants", params: { taskId: task.id } })}
@@ -552,6 +683,16 @@ function PosterTaskRow({ task }: { task: any }) {
               className="flex-1"
             />
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 shrink-0"
+            disabled={featureButtonDisabled}
+            onClick={() => onToggleFeatured?.(task)}
+          >
+            <Star className="size-3.5" />
+            {togglingFeatured ? "Saving..." : task.featured ? "Unfeature" : "Feature"}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -698,7 +839,7 @@ function SubscriptionBanner({ userId }: { userId?: string }) {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("company_subscriptions")
-        .select("*, plan:subscription_plans(name, max_active_posts, can_search_talent)")
+        .select("*, plan:subscription_plans(name, max_active_posts, featured_posts, can_search_talent)")
         .eq("company_id", userId!)
         .eq("status", "active")
         .maybeSingle();
@@ -714,6 +855,9 @@ function SubscriptionBanner({ userId }: { userId?: string }) {
           <p className="text-sm font-medium text-success">{sub.plan?.name} plan</p>
           <p className="text-xs text-muted-foreground">
             {sub.plan?.max_active_posts === 999 ? "Unlimited posts" : `${sub.plan?.max_active_posts} active posts`}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {sub.plan?.featured_posts ? `${sub.plan.featured_posts} featured listing${sub.plan.featured_posts === 1 ? "" : "s"} / month` : "No featured listings"}
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={() => nav({ to: "/app/subscription" as any })}>
