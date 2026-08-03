@@ -177,12 +177,12 @@ function DesktopLanding() {
             <Link to="/contact" className="hover:text-[#1A1E16]">Contact us</Link>
           </nav>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <Link to="/auth/login">
-              <button className="rounded-lg border border-[#C4DEB8] px-[18px] py-2 text-sm font-medium text-[#1A1E16]">Log in</button>
+              <Button variant="ghost">Log in</Button>
             </Link>
             <Link to="/auth/signup">
-              <button className="rounded-lg bg-[#3DCB6C] px-[18px] py-2 text-sm font-semibold text-white">Sign up →</button>
+              <Button>Sign up free</Button>
             </Link>
           </div>
         </div>
@@ -192,15 +192,15 @@ function DesktopLanding() {
         <div>
           <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[#D8F5E4] px-3 py-[5px] text-xs font-semibold text-[#1A7A42]">
             <span className="size-1.5 rounded-full bg-[#3DCB6C]" />
-            Built for Nigerian university students
+            Built for students
           </div>
 
           <h1 className="mb-5 text-[52px] font-bold leading-[1.1] text-[#111811]" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>
-            A platform where <span className="text-[#3DCB6C]">Clients</span> meet <span className="text-[#3DCB6C]">Freelancers</span>
+            Get paid for your skills. <span className="text-[#3DCB6C]">No experience needed</span>
           </h1>
 
           <p className="mb-8 max-w-[480px] text-base leading-[1.7] text-[#4A5A44]">
-            Connect with talented students and alumni across Nigerian universities. Post tasks, hire fast, and pay securely through escrow.
+            InTask connects university students with real paid tasks — web design, content writing, research, tutoring, and more. Safe payments. Verified talent.
           </p>
 
           <div className="mb-6 flex items-center gap-2 rounded-xl border border-[#C4DEB8] bg-white p-1.5 pl-4">
@@ -227,66 +227,48 @@ function DesktopLanding() {
             ))}
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-7 flex flex-wrap gap-3">
             <Link to="/auth/signup">
-              <button className="rounded-lg bg-[#3DCB6C] px-5 py-2.5 text-sm font-semibold text-white">Find work</button>
+              <Button size="lg" className="gap-2">
+                Find work <ArrowRight className="size-4" />
+              </Button>
             </Link>
             <Link to="/auth/signup">
-              <button className="rounded-lg border border-[#C4DEB8] bg-white px-5 py-2.5 text-sm font-medium text-[#1A1E16]">Post a task</button>
-            </Link>
+              <Button size="lg" variant="outline">Post a task</Button>
+             </Link>
           </div>
 
-          <p className="mt-3 text-xs text-[#6A8064]">Free to sign up · Payments secured by Paystack escrow · Verified students only</p>
+          <p className="mt-3 text-xs text-[#6A8064]">Free to sign up · Payments secured by Paystack · Verified students only</p>
         </div>
 
         <div className="relative">
-          <div className="absolute -right-3 -top-5 rounded-xl border border-[#C4DEB8] bg-white px-3.5 py-2.5">
-            <div className="text-lg font-bold leading-none" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>2,400+</div>
-            <div className="mt-1 text-[11px] text-[#6A8064]">Active freelancers</div>
-          </div>
-
-          <div className="rounded-2xl border border-[#C4DEB8] bg-[linear-gradient(145deg,#F4FBF0,#EAF3F8)] p-5">
-            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.5px] text-[#6A8064]">Top freelancer this month</p>
-
-            <div className="mb-3.5 flex items-center gap-2.5">
-              <div className="grid size-[52px] place-items-center rounded-full bg-[#C8EED8] text-lg font-bold text-[#1A7A42]" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>TW</div>
-              <div>
-                <div className="text-[15px] font-semibold text-[#1A1E16]">Thomas White <span className="ml-1 rounded-full bg-[#D8F5E4] px-2 py-0.5 text-[11px] font-semibold text-[#1A7A42]">Verified</span></div>
-                <div className="text-xs text-[#6A8064]">University of Lagos · 4 years experience</div>
+          <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-tr from-primary/15 via-accent to-success/10 blur-2xl" />
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-[0_18px_48px_-24px_rgba(37,99,235,0.38)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">Web Design · Remote</p>
+                  <h3 className="mt-1 truncate text-base font-semibold text-foreground">Landing page for fashion brand</h3>
+                </div>
+                <span className="shrink-0 rounded-md bg-success/15 px-2 py-1 text-sm font-semibold text-success">{naira(35000)}</span>
               </div>
-            </div>
-
-            <div className="mb-3 flex items-center gap-1 text-[13px] text-[#1A1E16]">
-              <span className="text-[#F5A623]">★★★★★</span>
-              <span className="font-medium">4.9</span>
-              <span className="text-[#6A8064]">(127 reviews)</span>
-            </div>
-
-            <div className="mb-3.5 flex flex-wrap gap-1.5">
-              {[
-                "Video editing",
-                "Motion graphics",
-                "After Effects",
-              ].map((skill) => (
-                <span key={skill} className="rounded-md bg-[rgba(61,203,108,0.12)] px-2.5 py-1 text-xs text-[#1A6A38]">
-                  {skill}
-                </span>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between border-t border-[#C4DEB8] pt-3">
-              <p className="text-lg font-bold" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>
-                ₦15,000 <span className="text-xs font-normal text-[#6A8064]" style={{ fontFamily: 'Inter, sans-serif' }}>starting price</span>
+              <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
+                Need a clean, mobile-first landing page with hero section, product showcase, and contact form. Figma mockup available.
               </p>
-              <button className="rounded-lg bg-[#3DCB6C] px-4 py-2 text-[13px] font-semibold text-white">View profile</button>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                <div className="flex items-center gap-2">
+                  <InitialsAvatar name="KE Styles" size={28} />
+                  <div className="text-xs">
+                    <div className="font-medium text-foreground">KE Styles</div>
+                    <div className="text-muted-foreground">5 applicants</div>
+                  </div>
+                </div>
+                <Link to="/auth/signup"><Button size="sm" variant="secondary">Apply</Button></Link>
+              </div>
+              <p className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground">
+                <ShieldCheck className="size-3 text-success" /> Payment held safely until work is approved
+              </p>
             </div>
           </div>
-
-          <div className="absolute -bottom-5 -left-3 rounded-xl border border-[#C4DEB8] bg-white px-3.5 py-2.5">
-            <div className="text-lg font-bold leading-none" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>₦0</div>
-            <div className="mt-1 text-[11px] text-[#6A8064]">Fee to post a task</div>
-          </div>
-        </div>
       </section>
 
       <section className="flex items-center justify-center gap-10 border-y border-[#D4E8CC] bg-white px-12 py-[18px]">
@@ -442,14 +424,14 @@ function DesktopLanding() {
       <section className="mx-auto w-full max-w-[1200px] px-12 pb-[72px]">
         <div className="grid grid-cols-[1fr_auto] items-center gap-10 rounded-[20px] bg-[#3DCB6C] px-16 py-14">
           <div>
-            <h2 className="mb-2 text-[34px] font-bold text-white" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>Want to work as a freelancer?</h2>
-            <p className="text-base text-white/85">Join thousands of students earning on their own schedule. Sign up free, get verified, and start applying to tasks today.</p>
+            <h2 className="mb-2 text-[34px] font-bold text-white" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>Ready to start earning?</h2>
+            <p className="text-base text-white/85">Join thousands of students already using InTask to earn, learn, and grow.</p>
           </div>
           <div className="flex flex-col items-end gap-3">
             <Link to="/auth/signup">
-              <button className="rounded-[10px] bg-white px-7 py-3.5 text-[15px] font-bold text-[#1A7A42]" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>
-                Become a freelancer →
-              </button>
+              <Button className="gap-2" variant="secondary" style={{ fontFamily: '"Space Grotesk", "Inter", sans-serif' }}>
+                Create free account →
+              </Button>
             </Link>
             <p className="text-xs text-white/75">Free to join. No monthly fees.</p>
           </div>
@@ -463,7 +445,7 @@ function DesktopLanding() {
               In<span className="text-[#3DCB6C]">Task</span>
             </p>
             <p className="mb-5 max-w-[240px] text-[13px] leading-[1.7] text-[#5A7A5E]">
-              The marketplace where Nigerian university students exchange skills, complete tasks, and grow their careers.
+              Work, collaborate, and grow — built for students.
             </p>
             <div className="flex gap-2.5">
               <span className="grid size-[34px] place-items-center rounded-lg bg-[#243826] text-[#8EC49A]"><Twitter className="size-4" /></span>
@@ -585,7 +567,7 @@ function MobileLanding() {
                 <Button size="lg" variant="outline">Post a task</Button>
               </Link>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">Free to sign up · Payments secured by Paystack escrow · Verified students only</p>
+            <p className="mt-4 text-xs text-muted-foreground">Free to sign up · Payments secured by Paystack · Verified students only</p>
           </div>
 
           <div className="relative">
@@ -723,7 +705,7 @@ function MobileLanding() {
         </div>
       </section>
 
-      <section className="border-t border-border bg-card">
+      <section className="hidden border-t border-border bg-card md:block">
         <div className="mx-auto max-w-6xl px-4 py-14">
           <div className="grid items-center gap-8 md:grid-cols-2">
             <div>
