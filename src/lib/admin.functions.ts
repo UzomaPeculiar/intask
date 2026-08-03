@@ -84,6 +84,194 @@ export const assertAdminAccess = createServerFn({ method: "GET" })
     return { ok: true };
   });
 
+export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const matchedCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const reviewCutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+
+    const [profilesRes, tasksRes, transactionsRes, disputesRes, reportsRes, withdrawalsRes, studentRes, companyRes, individualRes, fundingRes] = await Promise.all([
+      db.from("profiles").select("id, role, created_at"),
+      db.from("tasks").select("id, title, status, created_at, updated_at"),
+      db.from("transactions").select("id, task_id, status, amount, platform_fee, created_at, updated_at"),
+      db.from("disputes").select("id, status"),
+      db.from("reports").select("id, status"),
+      db.from("withdrawal_requests").select("id, status, created_at, webhook_processed"),
+      db.from("student_profiles").select("user_id, verified, verification_status, verification_method"),
+      db.from("company_profiles").select("user_id, verified, verification_status"),
+      db.from("individual_profiles").select("user_id, verification_status"),
+      db.from("wallet_funding").select("id, status, created_at, webhook_processed"),
+    ]);
+
+    if (profilesRes.error) throw profilesRes.error;
+    if (tasksRes.error) throw tasksRes.error;
+    if (transactionsRes.error) throw transactionsRes.error;
+    if (disputesRes.error) throw disputesRes.error;
+    if (reportsRes.error) throw reportsRes.error;
+    if (withdrawalsRes.error) throw withdrawalsRes.error;
+    if (studentRes.error) throw studentRes.error;
+    if (companyRes.error) throw companyRes.error;
+    if (individualRes.error) throw individualRes.error;
+    if (fundingRes.error) throw fundingRes.error;
+
+    const profiles = profilesRes.data ?? [];
+    const tasks = tasksRes.data ?? [];
+    const transactions = transactionsRes.data ?? [];
+    const disputes = disputesRes.data ?? [];
+    const reports = reportsRes.data ?? [];
+    const withdrawals = withdrawalsRes.data ?? [];
+    const students = studentRes.data ?? [];
+    const companies = companyRes.data ?? [];
+    const individuals = individualRes.data ?? [];
+    const funding = fundingRes.data ?? [];
+
+    const roleCounts = {
+      student: profiles.filter((p) => p.role === "student").length,
+      alumni: profiles.filter((p) => p.role === "alumni").length,
+      individual: profiles.filter((p) => p.role === "individual").length,
+      company: profiles.filter((p) => p.role === "company").length,
+    };
+
+    const taskStatusCounts = {
+      open: tasks.filter((t) => t.status === "open").length,
+      inProgress: tasks.filter((t) => t.status === "in_progress").length,
+      completed: tasks.filter((t) => t.status === "completed").length,
+      disputed: tasks.filter((t) => t.status === "disputed").length,
+      cancelled: tasks.filter((t) => t.status === "cancelled").length,
+      matched: tasks.filter((t) => t.status === "matched").length,
+      inReview: tasks.filter((t) => t.status === "in_review").length,
+    };
+
+    const escrowVolume = transactions
+      .filter((tx) => tx.status === "in_escrow" || tx.status === "disputed")
+      .reduce((sum, tx) => sum + Number(tx.amount ?? 0), 0);
+
+    const platformFeesEarned = transactions
+      .filter((tx) => tx.status === "released")
+      .reduce((sum, tx) => sum + Number(tx.platform_fee ?? 0), 0);
+
+    const signupsToday = profiles.filter((p) => p.created_at && new Date(p.created_at) >= today).length;
+    const tasksPostedToday = tasks.filter((t) => t.created_at && new Date(t.created_at) >= today).length;
+    const tasksCompletedToday = tasks.filter((t) => t.status === "completed" && t.updated_at && new Date(t.updated_at) >= today).length;
+    const paymentsProcessedToday = transactions.filter((tx) => tx.updated_at && new Date(tx.updated_at) >= today && ["in_escrow", "released", "refunded", "disputed"].includes(tx.status)).length;
+
+    const pendingStudent = students.filter((s) => !s.verified && (s.verification_method === "id_upload" || s.verification_status === "pending" || s.verification_status === "pending_review")).length;
+    const pendingCompany = companies.filter((c) => !c.verified && c.verification_status !== "rejected").length;
+    const pendingIndividual = individuals.filter((i) => i.verification_status === "pending_review").length;
+
+    const openDisputes = disputes.filter((d) => d.status === "open").length;
+    const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending").length;
+    const unresolvedReports = reports.filter((r) => r.status === "pending").length;
+
+    const failedWithdrawalPayments = withdrawals.filter((w) => ["failed", "reversed", "rejected"].includes(w.status)).length;
+    const failedWalletTopups = funding.filter((f) => f.status === "failed").length;
+    const webhookBacklog = withdrawals.filter((w) => w.status === "pending" && !w.webhook_processed).length + funding.filter((f) => f.status === "pending" && !f.webhook_processed).length;
+
+    const paidTaskIds = new Set(
+      transactions
+        .filter((tx) => ["in_escrow", "released", "disputed"].includes(tx.status))
+        .map((tx) => tx.task_id),
+    );
+
+    const matchedStuck = tasks
+      .filter((t) => t.status === "matched" && t.created_at && new Date(t.created_at).toISOString() <= matchedCutoff && !paidTaskIds.has(t.id))
+      .slice(0, 8)
+      .map((t) => ({ id: t.id, title: t.title, since: t.created_at }));
+
+    const inReviewStuck = tasks
+      .filter((t) => t.status === "in_review" && t.updated_at && new Date(t.updated_at).toISOString() <= reviewCutoff)
+      .slice(0, 8)
+      .map((t) => ({ id: t.id, title: t.title, since: t.updated_at }));
+
+    const releasedFees = transactions
+      .filter((tx) => tx.status === "released" && tx.created_at)
+      .map((tx) => ({ created_at: tx.created_at, fee: Number(tx.platform_fee ?? 0) }));
+
+    const weekKey = (dateStr) => {
+      const date = new Date(dateStr);
+      const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+      const day = d.getUTCDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      d.setUTCDate(d.getUTCDate() + diffToMonday);
+      return d.toISOString().slice(0, 10);
+    };
+
+    const monthKey = (dateStr) => {
+      const d = new Date(dateStr);
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    };
+
+    const formatWeekLabel = (key) => {
+      const d = new Date(`${key}T00:00:00Z`);
+      return d.toLocaleDateString("en-NG", { month: "short", day: "numeric" });
+    };
+
+    const formatMonthLabel = (key) => {
+      const [year, month] = key.split("-");
+      const d = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
+      return d.toLocaleDateString("en-NG", { month: "short", year: "2-digit" });
+    };
+
+    const weeklyMap = {};
+    const monthlyMap = {};
+
+    for (const row of releasedFees) {
+      const wk = weekKey(row.created_at);
+      const mk = monthKey(row.created_at);
+      weeklyMap[wk] = (weeklyMap[wk] ?? 0) + row.fee;
+      monthlyMap[mk] = (monthlyMap[mk] ?? 0) + row.fee;
+    }
+
+    const weeklyTrend = Object.keys(weeklyMap)
+      .sort()
+      .slice(-8)
+      .map((key) => ({ key, label: formatWeekLabel(key), amount: Math.round(weeklyMap[key]) }));
+
+    const monthlyTrend = Object.keys(monthlyMap)
+      .sort()
+      .slice(-6)
+      .map((key) => ({ key, label: formatMonthLabel(key), amount: Math.round(monthlyMap[key]) }));
+
+    return {
+      liveStats: {
+        totalUsers: profiles.length,
+        roleCounts,
+        totalTasks: tasks.length,
+        taskStatusCounts,
+        escrowVolume,
+        platformFeesEarned,
+      },
+      today: {
+        signupsToday,
+        tasksPostedToday,
+        tasksCompletedToday,
+        paymentsProcessedToday,
+      },
+      queue: {
+        pendingVerifications: pendingStudent + pendingCompany + pendingIndividual,
+        openDisputes,
+        pendingWithdrawals,
+        unresolvedReports,
+      },
+      health: {
+        failedPayments: failedWithdrawalPayments + failedWalletTopups,
+        webhookBacklog,
+        matchedStuck,
+        inReviewStuck,
+      },
+      revenueTrend: {
+        weekly: weeklyTrend,
+        monthly: monthlyTrend,
+      },
+    };
+  });
+
 export const adminProcessWithdrawal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { id: string; status: "completed" | "rejected"; notes?: string }) => input)

@@ -68,38 +68,55 @@ function ProfilePage() {
     staleTime: 0,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url, bio, role, email, phone, created_at, updated_at")
-        .eq("id", targetId!)
-        .maybeSingle();
+      const profileQuery = isOwn
+        ? supabase
+            .from("my_profile")
+            .select("id, full_name, avatar_url, bio, role, email, phone, created_at, updated_at")
+            .maybeSingle()
+        : supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url, bio, role, created_at, updated_at")
+            .eq("id", targetId!)
+            .maybeSingle();
+
+      const { data: profile, error: profileError } = await profileQuery;
       if (profileError) throw profileError;
 
       let student = null;
       let company = null;
       let individual = null;
       if (profile?.role === "student" || profile?.role === "alumni") {
-        const { data, error } = await supabase
-          .from("student_profiles")
-          .select("user_id, department, portfolio, rating_average, rating_count, skills, tasks_completed, university, university_email, verified, verification_status, year_of_study, verification_method, created_at, updated_at")
-          .eq("user_id", targetId!)
-          .maybeSingle();
+        const studentQuery = isOwn
+          ? supabase.from("my_student_profile").select("*").maybeSingle()
+          : supabase
+              .from("student_profiles")
+              .select("user_id, department, portfolio, rating_average, rating_count, skills, tasks_completed, university, verified, year_of_study, created_at, updated_at")
+              .eq("user_id", targetId!)
+              .maybeSingle();
+
+        const { data, error } = await studentQuery;
         if (error) throw error;
         student = data as any;
       }
       if (profile?.role === "company") {
+        const companySelect = isOwn
+          ? "*"
+          : "user_id, company_name, industry, location, website, verified, created_at, updated_at";
         const { data, error } = await supabase
           .from("company_profiles")
-          .select("*")
+          .select(companySelect)
           .eq("user_id", targetId!)
           .maybeSingle();
         if (error) throw error;
         company = data as any;
       }
       if (profile?.role === "individual") {
+        const individualSelect = isOwn
+          ? "*"
+          : "user_id, verified, created_at, updated_at";
         const { data, error } = await supabase
           .from("individual_profiles")
-          .select("*")
+          .select(individualSelect)
           .eq("user_id", targetId!)
           .maybeSingle();
         if (!error) individual = data as any;
@@ -253,7 +270,7 @@ function ProfilePage() {
             {isCompany && company?.company_name && (
               <Row icon={<Building2 className="size-4" />} label="Business" value={company.company_name} />
             )}
-            {isCompany && company?.cac_number && (
+            {isOwn && isCompany && company?.cac_number && (
               <Row icon={<Building2 className="size-4" />} label="CAC No." value={company.cac_number} />
             )}
             {isCompany && company?.industry && (

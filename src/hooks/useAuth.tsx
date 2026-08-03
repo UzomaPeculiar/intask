@@ -38,13 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfileReady(false);
       setProfileError(false);
       const { data, error } = await supabase
-        .from("profiles")
+        .from("my_profile")
         .select("id, full_name, role, avatar_url, email, phone, bio")
-        .eq("id", userId)
         .maybeSingle();
 
       if (!mounted) return;
-      if (!error && data) {
+      if (!error && data?.id === userId) {
         setProfile(data as AuthProfile);
       } else {
         setProfile(null);

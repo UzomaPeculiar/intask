@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,18 @@ const WITHDRAWAL_FEE = 50;
 function WalletPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
+  const setDefaultBankAccount = useServerFn(async ({ data }: { data: { bankAccountId: string } }) => {
+    const { data: result, error } = await supabase.rpc("set_default_bank_account", {
+      p_bank_account_id: data.bankAccountId,
+    });
+
+    if (error) throw error;
+    if (result?.success === false) {
+      throw new Error(result.error ?? "Could not update default bank account");
+    }
+
+    return result;
+  });
   const [fundAmount, setFundAmount] = useState("");
   const [fundOpen, setFundOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -232,8 +245,7 @@ function WalletPage() {
 
   const setDefaultBank = useMutation({
     mutationFn: async (id: string) => {
-      await (supabase as any).from("bank_accounts").update({ is_default: false }).eq("user_id", me!.id);
-      await (supabase as any).from("bank_accounts").update({ is_default: true }).eq("id", id);
+      await setDefaultBankAccount({ data: { bankAccountId: id } });
     },
     onSuccess: () => { toast.success("Default bank updated"); refetchBanks(); },
   });

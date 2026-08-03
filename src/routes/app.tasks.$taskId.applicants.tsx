@@ -1,6 +1,7 @@
 import { MessagePartyLink } from "@/components/intask/MessagePartyLink";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
@@ -12,6 +13,7 @@ import { naira } from "@/lib/format";
 import { ArrowLeft, Inbox, Star, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { acceptTaskApplicant } from "@/lib/task.functions";
 
 export const Route = createFileRoute("/app/tasks/$taskId/applicants")({
   head: () => ({ meta: [{ title: "Applicants — InTask" }] }),
@@ -22,6 +24,7 @@ function ApplicantsPage() {
   const { taskId } = Route.useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const acceptApplicant = useServerFn(acceptTaskApplicant);
   const [tab, setTab] = useState<"pending" | "accepted" | "rejected" | "all">("pending");
 
   const { data: me } = useQuery({
@@ -59,84 +62,17 @@ function ApplicantsPage() {
 
   const accept = useMutation({
     mutationFn: async ({ appId, studentId, agreedPrice }: { appId: string; studentId: string; agreedPrice?: number }) => {
-      const { error: ae } = await supabase.from("applications").update({ status: "accepted" }).eq("id", appId);
-      if (ae) throw ae; 
-
-      const isTeamTask = (task as any)?.is_team_task;
-      const teamSize = (task as any)?.team_size ?? 1;
-
-      if (isTeamTask) {
-        const { data: existingMembers } = await (supabase as any)
-          .from("task_team_members")
-          .select("id")
-          .eq("task_id", taskId);
-
-        const currentCount = existingMembers?.length ?? 0;
-        const paymentShare = agreedPrice
-          ? agreedPrice / teamSize
-          : (task?.budget ?? 0) / teamSize;
-
-        await (supabase as any).from("task_team_members").insert({
-          task_id: taskId,
-          student_id: studentId,
-          role: currentCount === 0 ? "lead" : "member",
-          payment_share: Math.floor(paymentShare),
-          status: "active",
-        });
-  
-        if (currentCount + 1 >= teamSize) {
-          const taskUpdate: any = { status: "matched", matched_student_id: studentId };
-          if (agreedPrice) taskUpdate.budget = agreedPrice;
-          await supabase.from("tasks").update(taskUpdate).eq("id", taskId);
-        }
-      } else {
-        const taskUpdate: any = { status: "matched", matched_student_id: studentId };
-        if (agreedPrice) taskUpdate.budget = agreedPrice;
-        await supabase.from("tasks").update(taskUpdate).eq("id", taskId);
-      }
+      return acceptApplicant({ data: { taskId, appId, studentId, agreedPrice } });
     },
-    onSuccess: async (_data, variables) => {
+    onSuccess: async (result) => {
       const isTeamTask = (task as any)?.is_team_task;
       const teamSize = (task as any)?.team_size ?? 1;
-      const acceptedStudentId = variables.studentId;
       toast.success(isTeamTask ? `Student added to team. ${teamSize} students needed total.` : "Student accepted. Fund escrow next.");
       qc.invalidateQueries({ queryKey: ["applicants", taskId] });
       qc.invalidateQueries({ queryKey: ["task", taskId] });
       qc.invalidateQueries({ queryKey: ["my-tasks"] });
-      if (!isTeamTask) nav({ to: "/app/payment/$taskId", params: { taskId } });
-      if ((task as any)?.is_team_task) {
-        const { data: existingRoom } = await (supabase as any)
-          .from("project_rooms")
-          .select("id")
-          .eq("task_id", taskId)
-          .maybeSingle();
-
-        if (!existingRoom) {
-          const { data: newRoom } = await (supabase as any)
-            .from("project_rooms")
-            .insert({
-              task_id: taskId,
-              name: task?.title ?? "Project Room",
-              description: task?.description,
-              created_by: me?.id,
-              status: "active",
-            })
-            .select("id")
-            .single();
-
-          if (newRoom) {
-            await (supabase as any).from("project_room_members").insert([
-              { room_id: newRoom.id, user_id: me?.id, role: "owner" },
-              { room_id: newRoom.id, user_id: acceptedStudentId, role: "member" },
-            ]);
-          }
-        } else {
-          await (supabase as any).from("project_room_members").insert({
-            room_id: existingRoom.id,
-            user_id: acceptedStudentId,
-            role: "member",
-          }).on("conflict", "do nothing");
-        }
+      if (!result?.isTeamTask) {
+        nav({ to: "/app/payment/$taskId", params: { taskId } });
       }
     },
     onError: (e: any) => toast.error(e.message ?? "Couldn't accept"),
