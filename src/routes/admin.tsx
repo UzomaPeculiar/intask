@@ -76,8 +76,8 @@ function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card px-6 py-4">
-        <div className="mx-auto max-w-5xl flex items-center justify-between">
+      <header className="border-b border-border bg-card px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <ShieldCheck className="size-5 text-primary" />
             <h1 className="text-lg font-semibold">InTask Admin</h1>
@@ -91,13 +91,14 @@ function AdminPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-6 py-6">
-        <div className="flex gap-2 mb-6">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+        <div className="mb-6 -mx-1 overflow-x-auto px-1">
+          <div className="flex min-w-max gap-2">
           {(["overview", "users", "tasks", "verifications", "communications", "settings", "moderation", "withdrawals"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 tab === t
                   ? "bg-primary text-primary-foreground"
                   : "bg-card border border-border text-foreground hover:bg-accent"
@@ -106,6 +107,7 @@ function AdminPage() {
               {t === "overview" ? "Overview" : t === "users" ? "Users" : t === "tasks" ? "Tasks" : t === "verifications" ? "Verifications" : t === "communications" ? "Communications" : t === "settings" ? "Settings" : t === "moderation" ? "Moderation" : "Financial"}
             </button>
           ))}
+          </div>
         </div>
 
         <Suspense fallback={<AdminTabSkeleton />}> 
@@ -184,8 +186,169 @@ function OverviewTab() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-command-center"],
     refetchInterval: 30000,
+    staleTime: 120000,
+    gcTime: 600000,
     refetchOnWindowFocus: true,
-    queryFn: () => getAdminCommandCenter(),
+    placeholderData: (previousData) => previousData,
+    queryFn: async () => {
+      try {
+        return await getAdminCommandCenter();
+      } catch {
+        const today = startOfToday();
+        const matchedCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
+        const reviewCutoff = new Date(Date.now() - 72 * 60 * 60 * 1000);
+
+        const [profilesRes, tasksRes, transactionsRes, disputesRes, reportsRes, withdrawalsRes, studentRes, companyRes, individualRes, fundingRes] = await Promise.all([
+          (supabase as any).from("profiles").select("id, role, created_at"),
+          (supabase as any).from("tasks").select("id, title, status, created_at, updated_at"),
+          (supabase as any).from("transactions").select("id, task_id, status, amount, platform_fee, created_at, updated_at"),
+          (supabase as any).from("disputes").select("id, status"),
+          (supabase as any).from("reports").select("id, status"),
+          (supabase as any).from("withdrawal_requests").select("id, status, created_at, webhook_processed"),
+          (supabase as any).from("student_profiles").select("user_id, verified, verification_status, verification_method"),
+          (supabase as any).from("company_profiles").select("user_id, verified, verification_status"),
+          (supabase as any).from("individual_profiles").select("user_id, verification_status"),
+          (supabase as any).from("wallet_funding").select("id, status, created_at, webhook_processed"),
+        ]);
+
+        if (profilesRes.error) throw profilesRes.error;
+        if (tasksRes.error) throw tasksRes.error;
+        if (transactionsRes.error) throw transactionsRes.error;
+        if (disputesRes.error) throw disputesRes.error;
+        if (reportsRes.error) throw reportsRes.error;
+        if (withdrawalsRes.error) throw withdrawalsRes.error;
+        if (studentRes.error) throw studentRes.error;
+        if (companyRes.error) throw companyRes.error;
+        if (individualRes.error) throw individualRes.error;
+        if (fundingRes.error) throw fundingRes.error;
+
+        const profiles = profilesRes.data ?? [];
+        const tasks = tasksRes.data ?? [];
+        const transactions = transactionsRes.data ?? [];
+        const disputes = disputesRes.data ?? [];
+        const reports = reportsRes.data ?? [];
+        const withdrawals = withdrawalsRes.data ?? [];
+        const students = studentRes.data ?? [];
+        const companies = companyRes.data ?? [];
+        const individuals = individualRes.data ?? [];
+        const funding = fundingRes.data ?? [];
+
+        const roleCounts = {
+          student: profiles.filter((p: any) => p.role === "student").length,
+          alumni: profiles.filter((p: any) => p.role === "alumni").length,
+          individual: profiles.filter((p: any) => p.role === "individual").length,
+          company: profiles.filter((p: any) => p.role === "company").length,
+        };
+
+        const taskStatusCounts = {
+          open: tasks.filter((t: any) => t.status === "open").length,
+          inProgress: tasks.filter((t: any) => t.status === "in_progress").length,
+          completed: tasks.filter((t: any) => t.status === "completed").length,
+          disputed: tasks.filter((t: any) => t.status === "disputed").length,
+          cancelled: tasks.filter((t: any) => t.status === "cancelled").length,
+          matched: tasks.filter((t: any) => t.status === "matched").length,
+          inReview: tasks.filter((t: any) => t.status === "in_review").length,
+        };
+
+        const escrowVolume = transactions
+          .filter((tx: any) => tx.status === "in_escrow" || tx.status === "disputed")
+          .reduce((sum: number, tx: any) => sum + Number(tx.amount ?? 0), 0);
+
+        const platformFeesEarned = transactions
+          .filter((tx: any) => tx.status === "released")
+          .reduce((sum: number, tx: any) => sum + Number(tx.platform_fee ?? 0), 0);
+
+        const signupsToday = profiles.filter((p: any) => p.created_at && new Date(p.created_at) >= today).length;
+        const tasksPostedToday = tasks.filter((t: any) => t.created_at && new Date(t.created_at) >= today).length;
+        const tasksCompletedToday = tasks.filter((t: any) => t.status === "completed" && t.updated_at && new Date(t.updated_at) >= today).length;
+        const paymentsProcessedToday = transactions.filter((tx: any) => tx.updated_at && new Date(tx.updated_at) >= today && ["in_escrow", "released", "refunded", "disputed"].includes(tx.status)).length;
+
+        const pendingStudent = students.filter((s: any) => !s.verified && (s.verification_method === "id_upload" || s.verification_status === "pending" || s.verification_status === "pending_review")).length;
+        const pendingCompany = companies.filter((c: any) => !c.verified && c.verification_status !== "rejected").length;
+        const pendingIndividual = individuals.filter((i: any) => i.verification_status === "pending_review").length;
+
+        const openDisputes = disputes.filter((d: any) => d.status === "open").length;
+        const pendingWithdrawals = withdrawals.filter((w: any) => w.status === "pending").length;
+        const unresolvedReports = reports.filter((r: any) => r.status === "pending").length;
+
+        const failedWithdrawalPayments = withdrawals.filter((w: any) => ["failed", "reversed", "rejected"].includes(w.status)).length;
+        const failedWalletTopups = funding.filter((f: any) => f.status === "failed").length;
+        const webhookBacklog = withdrawals.filter((w: any) => w.status === "pending" && !w.webhook_processed).length + funding.filter((f: any) => f.status === "pending" && !f.webhook_processed).length;
+
+        const paidTaskIds = new Set(
+          transactions
+            .filter((tx: any) => ["in_escrow", "released", "disputed"].includes(tx.status))
+            .map((tx: any) => tx.task_id),
+        );
+
+        const matchedStuck = tasks
+          .filter((t: any) => t.status === "matched" && t.created_at && new Date(t.created_at) <= matchedCutoff && !paidTaskIds.has(t.id))
+          .slice(0, 8)
+          .map((t: any) => ({ id: t.id, title: t.title, since: t.created_at }));
+
+        const inReviewStuck = tasks
+          .filter((t: any) => t.status === "in_review" && t.updated_at && new Date(t.updated_at) <= reviewCutoff)
+          .slice(0, 8)
+          .map((t: any) => ({ id: t.id, title: t.title, since: t.updated_at }));
+
+        const releasedFees = transactions
+          .filter((tx: any) => tx.status === "released" && tx.created_at)
+          .map((tx: any) => ({ created_at: tx.created_at, fee: Number(tx.platform_fee ?? 0) }));
+
+        const weeklyMap: Record<string, number> = {};
+        const monthlyMap: Record<string, number> = {};
+
+        for (const row of releasedFees) {
+          const wk = weekKey(row.created_at);
+          const mk = monthKey(row.created_at);
+          weeklyMap[wk] = (weeklyMap[wk] ?? 0) + row.fee;
+          monthlyMap[mk] = (monthlyMap[mk] ?? 0) + row.fee;
+        }
+
+        const weeklyTrend = Object.keys(weeklyMap)
+          .sort()
+          .slice(-8)
+          .map((key) => ({ key, label: formatWeekLabel(key), amount: Math.round(weeklyMap[key]) }));
+
+        const monthlyTrend = Object.keys(monthlyMap)
+          .sort()
+          .slice(-6)
+          .map((key) => ({ key, label: formatMonthLabel(key), amount: Math.round(monthlyMap[key]) }));
+
+        return {
+          liveStats: {
+            totalUsers: profiles.length,
+            roleCounts,
+            totalTasks: tasks.length,
+            taskStatusCounts,
+            escrowVolume,
+            platformFeesEarned,
+          },
+          today: {
+            signupsToday,
+            tasksPostedToday,
+            tasksCompletedToday,
+            paymentsProcessedToday,
+          },
+          queue: {
+            pendingVerifications: pendingStudent + pendingCompany + pendingIndividual,
+            openDisputes,
+            pendingWithdrawals,
+            unresolvedReports,
+          },
+          health: {
+            failedPayments: failedWithdrawalPayments + failedWalletTopups,
+            webhookBacklog,
+            matchedStuck,
+            inReviewStuck,
+          },
+          revenueTrend: {
+            weekly: weeklyTrend,
+            monthly: monthlyTrend,
+          },
+        };
+      }
+    },
   });
 
   const trendData = useMemo(() => {
@@ -285,7 +448,7 @@ function OverviewTab() {
 
       <section className="space-y-3">
         <h3 className="text-sm font-semibold text-foreground">Today at a glance</h3>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">New signups</p>
             <p className="mt-1 text-2xl font-semibold text-foreground">{data?.today.signupsToday ?? 0}</p>

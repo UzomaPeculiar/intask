@@ -86,7 +86,7 @@ export function VerificationsHubTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Avg verify time</p><p className="mt-1 text-xl font-semibold text-foreground">{isLoading ? "..." : data?.stats.avgHours == null ? "N/A" : `${Math.round(data.stats.avgHours)}h`}</p></div>
         <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Pending queue depth</p><p className="mt-1 text-xl font-semibold text-foreground">{data?.stats.queueDepth ?? 0}</p></div>
         <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Rejection rate</p><p className="mt-1 text-xl font-semibold text-foreground">{(data?.stats.rejectionRate ?? 0).toFixed(1)}%</p></div>

@@ -27,7 +27,7 @@ export function FinancialTab() {
     refetchInterval: 30000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const [withdrawalsRes, txRes, fundingRes, profilesRes] = await Promise.all([
+      const [withdrawalsRes, txRes, fundingRes, profilesRes, walletsRes] = await Promise.all([
         (supabase as any)
           .from("withdrawal_requests")
           .select("*, user:profiles!withdrawal_requests_user_id_fkey(id, full_name, email)")
@@ -45,18 +45,23 @@ export function FinancialTab() {
           .select("id, full_name, email")
           .order("created_at", { ascending: false })
           .limit(300),
+        (supabase as any)
+          .from("wallets")
+          .select("user_id, balance"),
       ]);
 
       if (withdrawalsRes.error) throw withdrawalsRes.error;
       if (txRes.error) throw txRes.error;
       if (fundingRes.error) throw fundingRes.error;
       if (profilesRes.error) throw profilesRes.error;
+      if (walletsRes.error) throw walletsRes.error;
 
       return {
         withdrawals: withdrawalsRes.data ?? [],
         transactions: txRes.data ?? [],
         funding: fundingRes.data ?? [],
         profiles: profilesRes.data ?? [],
+        wallets: walletsRes.data ?? [],
       };
     },
   });
@@ -92,6 +97,7 @@ export function FinancialTab() {
   const transactions = data?.transactions ?? [];
   const funding = data?.funding ?? [];
   const profiles = data?.profiles ?? [];
+  const wallets = data?.wallets ?? [];
 
   const filteredWithdrawals = useMemo(() => {
     return withdrawals.filter((w: any) => {
@@ -146,14 +152,18 @@ export function FinancialTab() {
       .filter((t: any) => t.status === "released")
       .reduce((sum: number, t: any) => sum + Number(t.platform_fee ?? 0), 0);
 
+    const totalWalletBalances = wallets
+      .reduce((sum: number, w: any) => sum + Number(w.balance ?? 0), 0);
+
     return {
       grossTaskValueProcessed,
       totalFeesEarned,
       totalWithdrawnByStudents,
       escrowHeld,
-      platformWalletBalanceEstimate: escrowHeld + feesAllTime,
+      platformWalletBalanceEstimate: totalWalletBalances,
+      platformFeesAllTime: feesAllTime,
     };
-  }, [transactions, withdrawals, monthStart]);
+  }, [transactions, withdrawals, wallets, monthStart]);
 
   if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading financial data...</div>;
 
@@ -171,7 +181,7 @@ export function FinancialTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Gross task value (month)</p>
           <p className="mt-1 text-xl font-semibold text-foreground">{money(monthlySummary.grossTaskValueProcessed)}</p>
