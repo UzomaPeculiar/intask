@@ -23,8 +23,15 @@ function NotificationsPage() {
 
   useEffect(() => {
     (async () => {
-      await supabase.from("notifications").update({ read: true }).eq("read", false);
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("user_id", auth.user.id)
+        .eq("read", false);
       qc.invalidateQueries({ queryKey: ["unread-count"] });
+      qc.invalidateQueries({ queryKey: ["desktop-unread-notifs"] });
     })();
   }, [qc]);
 
