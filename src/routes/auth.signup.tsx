@@ -143,7 +143,7 @@ function SignupPage() {
       password: s.password,
       options: {
         emailRedirectTo: `${window.location.origin}/app`,
-        data: { full_name: s.full_name },
+        data: { full_name: s.full_name, role: s.role ?? "student" },
       },
     });
     setLoading(false);
