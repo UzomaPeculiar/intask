@@ -323,24 +323,6 @@ export const releaseEscrow = createServerFn({ method: "POST" })
       recipients = [{ studentId: tx.student_id, amount: payout }];
     }
 
-    for (const recipient of recipients) {
-      const creditRes = await supabaseAdmin.rpc("credit_wallet", {
-        p_user_id: recipient.studentId,
-        p_amount: recipient.amount,
-        p_description: `Payment for task ${task.id}`,
-        p_reference: `ESCROW_RELEASE_${task.id}_${recipient.studentId}`,
-      });
-
-      if (creditRes.error) {
-        throw new Error(`Could not credit team member ${recipient.studentId}: ${creditRes.error.message ?? "unknown error"}`);
-      }
-
-      const creditPayload = normalizeCreditWalletResult(creditRes.data);
-      if (creditPayload?.success === false || creditPayload?.error) {
-        throw new Error(`Could not credit team member ${recipient.studentId}: ${creditPayload.error ?? "unknown error"}`);
-      }
-    }
-
     const { data: releaseClaimed } = await supabaseAdmin
       .from("transactions")
       .update({ status: "released" })
@@ -353,34 +335,61 @@ export const releaseEscrow = createServerFn({ method: "POST" })
       throw new Error("Escrow was already released or refunded");
     }
 
-    await supabaseAdmin
-      .from("tasks")
-      .update({ status: "completed", delivery_approved_at: new Date().toISOString() })
-      .eq("id", task.id);
+    try {
+      for (const recipient of recipients) {
+        const creditRes = await supabaseAdmin.rpc("credit_wallet", {
+          p_user_id: recipient.studentId,
+          p_amount: recipient.amount,
+          p_description: `Payment for task ${task.id}`,
+          p_reference: `ESCROW_RELEASE_${task.id}_${recipient.studentId}`,
+        });
 
-    // Bump tasks_completed counters for every credited recipient.
-    for (const recipient of recipients) {
-      const { data: sp } = await supabaseAdmin
-        .from("student_profiles")
-        .select("tasks_completed")
-        .eq("user_id", recipient.studentId)
-        .maybeSingle();
-      if (sp) {
-        await supabaseAdmin
-          .from("student_profiles")
-          .update({ tasks_completed: (sp.tasks_completed ?? 0) + 1 })
-          .eq("user_id", recipient.studentId);
+        if (creditRes.error) {
+          throw new Error(`Could not credit team member ${recipient.studentId}: ${creditRes.error.message ?? "unknown error"}`);
+        }
+
+        const creditPayload = normalizeCreditWalletResult(creditRes.data);
+        if (creditPayload?.success === false || creditPayload?.error) {
+          throw new Error(`Could not credit team member ${recipient.studentId}: ${creditPayload.error ?? "unknown error"}`);
+        }
       }
-    }
 
-    await supabaseAdmin.from("notifications").insert(
-      recipients.map((recipient) => ({
-        user_id: recipient.studentId,
-        type: "payment_released",
-        message: `Payment released. ₦${recipient.amount.toLocaleString("en-NG")} is on the way.`,
-        link: `/app/tasks/${task.id}`,
-      })),
-    );
+      await supabaseAdmin
+        .from("tasks")
+        .update({ status: "completed", delivery_approved_at: new Date().toISOString() })
+        .eq("id", task.id);
+
+      // Bump tasks_completed counters for every credited recipient.
+      for (const recipient of recipients) {
+        const { data: sp } = await supabaseAdmin
+          .from("student_profiles")
+          .select("tasks_completed")
+          .eq("user_id", recipient.studentId)
+          .maybeSingle();
+        if (sp) {
+          await supabaseAdmin
+            .from("student_profiles")
+            .update({ tasks_completed: (sp.tasks_completed ?? 0) + 1 })
+            .eq("user_id", recipient.studentId);
+        }
+      }
+
+      await supabaseAdmin.from("notifications").insert(
+        recipients.map((recipient) => ({
+          user_id: recipient.studentId,
+          type: "payment_released",
+          message: `Payment released. ₦${recipient.amount.toLocaleString("en-NG")} is on the way.`,
+          link: `/app/tasks/${task.id}`,
+        })),
+      );
+    } catch (error) {
+      await supabaseAdmin
+        .from("transactions")
+        .update({ status: "in_escrow" })
+        .eq("id", tx.id)
+        .eq("status", "released");
+      throw error;
+    }
 
     return { ok: true, payout };
   });

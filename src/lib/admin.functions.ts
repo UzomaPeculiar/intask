@@ -437,44 +437,64 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
         recipients = [{ studentId: tx.student_id, amount: payout }];
       }
 
-      for (const recipient of recipients) {
-        const creditRes = await db.rpc("credit_wallet", {
-          p_user_id: recipient.studentId,
-          p_amount: recipient.amount,
-          p_description: `Dispute resolved in your favor for task ${task.id}`,
-          p_reference: `DISPUTE_RELEASE_${task.id}_${recipient.studentId}`,
-        });
+      const { data: releaseClaimed } = await db
+        .from("transactions")
+        .update({ status: "released" })
+        .eq("id", tx.id)
+        .eq("status", "in_escrow")
+        .select("id")
+        .maybeSingle();
 
-        if (creditRes.error) {
-          throw new Error(`Could not credit team member ${recipient.studentId}: ${creditRes.error.message ?? "unknown error"}`);
-        }
-
-        const creditPayload = normalizeCreditWalletResult(creditRes.data);
-        if (creditPayload?.success === false || creditPayload?.error) {
-          throw new Error(`Could not credit team member ${recipient.studentId}: ${creditPayload.error ?? "unknown error"}`);
-        }
+      if (!releaseClaimed) {
+        throw new Error("Escrow was already released or refunded");
       }
 
-      await db.from("transactions").update({ status: "released" }).eq("id", tx.id);
-      await db
-        .from("tasks")
-        .update({ status: "completed", delivery_approved_at: new Date().toISOString() })
-        .eq("id", task.id);
+      try {
+        for (const recipient of recipients) {
+          const creditRes = await db.rpc("credit_wallet", {
+            p_user_id: recipient.studentId,
+            p_amount: recipient.amount,
+            p_description: `Dispute resolved in your favor for task ${task.id}`,
+            p_reference: `DISPUTE_RELEASE_${task.id}_${recipient.studentId}`,
+          });
 
-      await db.from("notifications").insert([
-        ...recipients.map((recipient) => ({
-          user_id: recipient.studentId,
-          type: "dispute_resolved",
-          message: `Dispute resolved in your favor. ₦${recipient.amount.toLocaleString("en-NG")} has been released to your wallet.`,
-          link: `/app/tasks/${task.id}`,
-        })),
-        {
-          user_id: tx.poster_id,
-          type: "dispute_resolved",
-          message: "Dispute resolved. Escrow has been released to the student team.",
-          link: `/app/tasks/${task.id}`,
-        },
-      ]);
+          if (creditRes.error) {
+            throw new Error(`Could not credit team member ${recipient.studentId}: ${creditRes.error.message ?? "unknown error"}`);
+          }
+
+          const creditPayload = normalizeCreditWalletResult(creditRes.data);
+          if (creditPayload?.success === false || creditPayload?.error) {
+            throw new Error(`Could not credit team member ${recipient.studentId}: ${creditPayload.error ?? "unknown error"}`);
+          }
+        }
+
+        await db
+          .from("tasks")
+          .update({ status: "completed", delivery_approved_at: new Date().toISOString() })
+          .eq("id", task.id);
+
+        await db.from("notifications").insert([
+          ...recipients.map((recipient) => ({
+            user_id: recipient.studentId,
+            type: "dispute_resolved",
+            message: `Dispute resolved in your favor. ₦${recipient.amount.toLocaleString("en-NG")} has been released to your wallet.`,
+            link: `/app/tasks/${task.id}`,
+          })),
+          {
+            user_id: tx.poster_id,
+            type: "dispute_resolved",
+            message: "Dispute resolved. Escrow has been released to the student team.",
+            link: `/app/tasks/${task.id}`,
+          },
+        ]);
+      } catch (error) {
+        await db
+          .from("transactions")
+          .update({ status: "in_escrow" })
+          .eq("id", tx.id)
+          .eq("status", "released");
+        throw error;
+      }
     } else {
       await db.from("transactions").update({ status: "refunded" }).eq("id", tx.id);
       await db.from("tasks").update({ status: "cancelled" }).eq("id", task.id);
@@ -569,21 +589,40 @@ export const adminForceCancelTask = createServerFn({ method: "POST" })
         const payout = Number(tx.amount) - Number(tx.platform_fee ?? 0);
         if (!Number.isFinite(payout) || payout <= 0) throw new Error("Invalid payout calculation");
 
-        const creditRes = await db.rpc("credit_wallet", {
-          p_user_id: tx.student_id,
-          p_amount: payout,
-          p_description: `Admin force-cancel payout for task ${task.id}`,
-          p_reference: `ADMIN_FORCE_CANCEL_RELEASE_${task.id}`,
-        });
+        const { data: releaseClaimed } = await db
+          .from("transactions")
+          .update({ status: "released" })
+          .eq("id", tx.id)
+          .eq("status", tx.status)
+          .select("id")
+          .maybeSingle();
 
-        if (creditRes.error) throw new Error(creditRes.error.message ?? "Could not credit student wallet");
-
-        const creditPayload = normalizeCreditWalletResult(creditRes.data);
-        if (creditPayload?.success === false || creditPayload?.error) {
-          throw new Error(creditPayload.error ?? "Could not credit student wallet");
+        if (!releaseClaimed) {
+          throw new Error("Escrow was already released or refunded");
         }
 
-        await db.from("transactions").update({ status: "released" }).eq("id", tx.id);
+        try {
+          const creditRes = await db.rpc("credit_wallet", {
+            p_user_id: tx.student_id,
+            p_amount: payout,
+            p_description: `Admin force-cancel payout for task ${task.id}`,
+            p_reference: `ADMIN_FORCE_CANCEL_RELEASE_${task.id}`,
+          });
+
+          if (creditRes.error) throw new Error(creditRes.error.message ?? "Could not credit student wallet");
+
+          const creditPayload = normalizeCreditWalletResult(creditRes.data);
+          if (creditPayload?.success === false || creditPayload?.error) {
+            throw new Error(creditPayload.error ?? "Could not credit student wallet");
+          }
+        } catch (error) {
+          await db
+            .from("transactions")
+            .update({ status: tx.status })
+            .eq("id", tx.id)
+            .eq("status", "released");
+          throw error;
+        }
       } else {
         await db.from("transactions").update({ status: "refunded" }).eq("id", tx.id);
       }
