@@ -599,11 +599,47 @@ function PostWorkView({ userId }: { userId?: string }) {
     expired: mine?.filter((t) => (t.status as string) === "expired") ?? [],
   };
 
+  const firstReviewTask = groups.in_review[0];
+  const pipeline = {
+    open: groups.open.length,
+    inProgress: groups.in_progress.length,
+    review: groups.in_review.length,
+    completed: groups.completed.length,
+  };
+
   return (
     <div className="space-y-5 pt-5">
       <Button size="lg" className="w-full gap-2" onClick={() => nav({ to: "/app/tasks/create" })}>
         <Plus className="size-4" /> Post a new task
       </Button>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Overview</h2>
+          <span className="text-xs text-muted-foreground">Live status for your work pipeline</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+          <StatCard label="Open" value={pipeline.open} />
+          <StatCard label="In progress" value={pipeline.inProgress} />
+          <StatCard label="Review needed" value={pipeline.review} icon={pipeline.review > 0 ? <AlertTriangle className="size-3.5 text-warning" /> : undefined} />
+          <StatCard label="Completed" value={pipeline.completed} />
+        </div>
+        <WalletBalanceCard userId={userId} />
+      </section>
+
+      {pipeline.review > 0 && firstReviewTask && (
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          onClick={() => nav({ to: "/app/tasks/$taskId/review", params: { taskId: firstReviewTask.id } })}
+        >
+          <span className="inline-flex items-center gap-2">
+            <AlertTriangle className="size-4 text-warning" />
+            Review submissions
+          </span>
+          <span className="text-xs text-muted-foreground">{pipeline.review} pending</span>
+        </Button>
+      )}
 
       {MVP_FEATURES.featuredTasks && <SubscriptionBanner userId={userId} />}
 
@@ -931,7 +967,7 @@ function WalletBalanceCard({ userId }: { userId?: string }) {
     },
   });
 
-  if (!wallet) return null;
+  const balance = Number(wallet?.balance ?? 0);
 
   return (
     <div
@@ -942,10 +978,11 @@ function WalletBalanceCard({ userId }: { userId?: string }) {
         <Wallet className="size-4 text-success" />
         <div>
           <p className="text-xs text-muted-foreground">Wallet balance</p>
-          <p className="text-sm font-semibold text-success">₦{Number(wallet.balance ?? 0).toLocaleString("en-NG")}</p>
+          <p className="text-sm font-semibold text-success">₦{balance.toLocaleString("en-NG")}</p>
         </div>
       </div>
       <span className="text-xs text-success font-medium">View →</span>
     </div>
   );
 }
+

@@ -84,6 +84,67 @@ export const assertAdminAccess = createServerFn({ method: "GET" })
     return { ok: true };
   });
 
+export const adminSaveModerationRules = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { words: string[] }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    const normalized = Array.from(
+      new Set(
+        (data.words ?? [])
+          .map((w) => String(w ?? "").trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+
+    if (normalized.length === 0) {
+      throw new Error("Add at least one keyword");
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const { data: updatedRows, error: updateErr } = await db
+      .from("platform_settings")
+      .update({
+        value: normalized,
+        description: "Keywords used for automatic moderation flagging",
+        updated_by: userId,
+        updated_at: nowIso,
+      })
+      .eq("key", "banned_words_rules")
+      .select("key");
+
+    if (updateErr) throw updateErr;
+
+    if (!updatedRows || updatedRows.length === 0) {
+      const { error: insertErr } = await db
+        .from("platform_settings")
+        .insert({
+          key: "banned_words_rules",
+          value: normalized,
+          description: "Keywords used for automatic moderation flagging",
+          updated_by: userId,
+          updated_at: nowIso,
+        });
+      if (insertErr) throw insertErr;
+    }
+
+    await db.from("audit_log").insert({
+      admin_user_id: userId,
+      action: "settings.update",
+      target_type: "settings",
+      target_id: "banned_words_rules",
+      details: {
+        key: "banned_words_rules",
+        wordsCount: normalized.length,
+      },
+    });
+
+    return { ok: true, words: normalized };
+  });
+
 export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {

@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { adminSaveModerationRules } from "@/lib/admin.functions";
 import { toast } from "sonner";
 
 export function ModerationTab() {
   const [keywordsInput, setKeywordsInput] = useState("");
+  const saveModerationRules = useServerFn(adminSaveModerationRules);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin-moderation"],
@@ -80,16 +83,7 @@ export function ModerationTab() {
       const unique = Array.from(new Set(parsed));
       if (unique.length === 0) throw new Error("Add at least one keyword");
 
-      const { error } = await (supabase as any)
-        .from("platform_settings")
-        .upsert({
-          key: "banned_words_rules",
-          value: unique,
-          description: "Keywords used for automatic moderation flagging",
-          updated_at: new Date().toISOString(),
-        });
-
-      if (error) throw error;
+      await saveModerationRules({ data: { words: unique } });
     },
     onSuccess: () => {
       toast.success("Banned words rules updated");
