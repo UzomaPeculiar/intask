@@ -3,6 +3,83 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const FEE_RATE = 0.08;
 
+type EscrowTx = {
+  id: string;
+  task_id: string;
+  poster_id: string;
+  student_id: string;
+  status: string;
+};
+
+async function ensureEscrowActivated(
+  supabaseAdmin: any,
+  tx: EscrowTx,
+  walletContribution: number,
+) {
+  const walletPart = Number(walletContribution || 0);
+  if (walletPart > 0) {
+    const debitRef = `ESCROW_WALLET_DEBIT_${tx.task_id}`;
+    const debitRes = await supabaseAdmin.rpc("debit_wallet_atomic", {
+      p_user_id: tx.poster_id,
+      p_amount: walletPart,
+      p_description: `Wallet contribution for escrow on task ${tx.task_id}`,
+      p_reference: debitRef,
+    });
+
+    const debitFailed = !!debitRes.error || (debitRes.data && debitRes.data.success === false);
+    if (debitFailed) {
+      throw new Error(debitRes.error?.message ?? debitRes.data?.error ?? "Could not debit wallet contribution");
+    }
+  }
+
+  const { data: claimedTx } = await supabaseAdmin
+    .from("transactions")
+    .update({ status: "in_escrow" })
+    .eq("id", tx.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (!claimedTx) {
+    const { data: latestTx } = await supabaseAdmin
+      .from("transactions")
+      .select("status")
+      .eq("id", tx.id)
+      .maybeSingle();
+
+    if (!latestTx || (latestTx.status !== "in_escrow" && latestTx.status !== "released")) {
+      throw new Error("Escrow could not be activated for this transaction");
+    }
+  }
+
+  await supabaseAdmin
+    .from("tasks")
+    .update({ status: "in_progress" })
+    .eq("id", tx.task_id);
+
+  await supabaseAdmin
+    .from("applications")
+    .update({ status: "accepted" })
+    .eq("task_id", tx.task_id)
+    .eq("student_id", tx.student_id);
+
+  const { data: existingConvRows } = await supabaseAdmin
+    .from("conversations")
+    .select("id")
+    .eq("task_id", tx.task_id)
+    .eq("student_id", tx.student_id)
+    .limit(1);
+  const existingConv = existingConvRows?.[0] ?? null;
+
+  if (!existingConv) {
+    await supabaseAdmin.from("conversations").insert({
+      task_id: tx.task_id,
+      student_id: tx.student_id,
+      poster_id: tx.poster_id,
+    });
+  }
+}
+
 function normalizeCreditWalletResult(data: any) {
   if (Array.isArray(data)) return data[0] ?? null;
   return data ?? null;
@@ -60,9 +137,10 @@ export const getPaystackPublicKey = createServerFn({ method: "GET" }).handler(as
 
 export const initEscrow = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { taskId: string }) => input)
+  .validator((input: { taskId: string; mode?: "paystack_only" | "wallet_only" | "wallet_plus_paystack" }) => input)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const mode = data.mode ?? "paystack_only";
 
     const { data: task, error: tErr } = await supabase
       .from("tasks")
@@ -70,11 +148,13 @@ export const initEscrow = createServerFn({ method: "POST" })
       .eq("id", data.taskId)
       .single();
 
-    const { data: existingTransaction, error: existingTxError } = await supabase
+    const { data: existingTxRows, error: existingTxError } = await supabase
       .from("transactions")
       .select("id, status, paystack_reference")
       .eq("task_id", task?.id)
-      .maybeSingle();
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const existingTransaction = existingTxRows?.[0] ?? null;
 
     if (tErr || !task) throw new Error("Task not found");
     if (task.poster_id !== userId) {
@@ -89,6 +169,18 @@ export const initEscrow = createServerFn({ method: "POST" })
     if (!task.budget || Number(task.budget) <= 0) {
       throw new Error("Task budget is not set");
     }
+
+    const taskAmount = Number(task.budget);
+    const { data: walletRows } = await supabase
+      .from("wallets")
+      .select("balance")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const walletBalance = Number(walletRows?.[0]?.balance ?? 0);
+
+    const walletContribution = mode === "paystack_only" ? 0 : Math.min(walletBalance, taskAmount);
+    const paystackContribution = Math.max(0, taskAmount - walletContribution);
 
     const { data: userRes } = await supabase.auth.getUser();
     const email = userRes.user?.email;
@@ -153,12 +245,13 @@ export const initEscrow = createServerFn({ method: "POST" })
           .eq("student_id", task.matched_student_id);
 
         // Make sure a conversation exists for the task.
-        const { data: existingConv } = await supabase
+        const { data: existingConvRows } = await supabase
           .from("conversations")
           .select("id")
           .eq("task_id", task.id)
           .eq("student_id", task.matched_student_id)
-          .maybeSingle();
+          .limit(1);
+        const existingConv = existingConvRows?.[0] ?? null;
 
         if (!existingConv) {
           await supabase.from("conversations").insert({
@@ -176,25 +269,79 @@ export const initEscrow = createServerFn({ method: "POST" })
 
     const reference = existingTransaction?.paystack_reference ?? `intask_${task.id}_escrow`;
 
-    const { data: tx, error: txErr } = await supabase
-      .from("transactions")
-      .upsert({
-        task_id: task.id,
-        poster_id: task.poster_id,
-        student_id: task.matched_student_id,
-        amount: task.budget,
-        platform_fee: Number(task.budget) * FEE_RATE,
-        status: "pending",
-        paystack_reference: reference,
-      }, { onConflict: "task_id" })
+    const transactionPayload = {
+      task_id: task.id,
+      poster_id: task.poster_id,
+      student_id: task.matched_student_id,
+      amount: task.budget,
+      platform_fee: Number(task.budget) * FEE_RATE,
+      status: "pending",
+      paystack_reference: reference,
+    };
+
+    const txQuery = existingTransaction?.id
+      ? supabase
+          .from("transactions")
+          .update(transactionPayload as any)
+          .eq("id", existingTransaction.id)
+      : supabase.from("transactions").insert(transactionPayload as any);
+
+    const { data: txRows, error: txErr } = await txQuery
       .select("id, paystack_reference")
-      .single();
-  
+      .limit(1);
+
+    const tx = txRows?.[0]
+      ? txRows[0]
+      : existingTransaction?.id
+        ? { id: existingTransaction.id, paystack_reference: reference }
+        : null;
+
     if (txErr || !tx) {
       throw txErr ?? new Error("Could not create transaction");
     }
     
-    const amountKobo = Math.round(Number(task.budget) * 100);
+    if (mode === "wallet_only") {
+      if (walletContribution < taskAmount) {
+        throw new Error("Insufficient wallet balance for instant escrow funding");
+      }
+
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await ensureEscrowActivated(
+        supabaseAdmin,
+        {
+          id: tx.id,
+          task_id: task.id,
+          poster_id: task.poster_id,
+          student_id: task.matched_student_id,
+          status: "pending",
+        },
+        walletContribution,
+      );
+
+      await supabaseAdmin.from("notifications").insert([
+        {
+          user_id: task.matched_student_id,
+          type: "task_funded",
+          message: "Escrow funded. You can start the work.",
+          link: `/app/tasks/${task.id}`,
+        },
+        {
+          user_id: task.poster_id,
+          type: "task_funded",
+          message: "Payment received and held in escrow.",
+          link: `/app/tasks/${task.id}`,
+        },
+      ]);
+
+      return {
+        fundedInstantly: true,
+        amount: taskAmount,
+        walletContribution,
+        paystackAmount: 0,
+      };
+    }
+
+    const amountKobo = Math.round(paystackContribution * 100);
     const res = await fetch(
       "https://api.paystack.co/transaction/initialize", 
       {
@@ -209,17 +356,25 @@ export const initEscrow = createServerFn({ method: "POST" })
         reference,
         metadata: { 
           task_id: task.id, 
-          transaction_id: tx.id },
+          transaction_id: tx.id,
+          escrow_mode: mode,
+          escrow_wallet_amount: walletContribution,
+          escrow_paystack_amount: paystackContribution,
+          poster_id: task.poster_id,
+        },
       }),
     });
     const json = (await res.json()) as any;
     if (!res.ok || !json?.status) throw new Error(json?.message ?? "Paystack init failed");
 
     return {
+      fundedInstantly: false,
       reference,
       accessCode: json.data.access_code as string,
       authorizationUrl: json.data.authorization_url as string,
-      amount: Number(task.budget),
+      amount: taskAmount,
+      walletContribution,
+      paystackAmount: paystackContribution,
     };
   });
 
@@ -247,27 +402,35 @@ export const verifyEscrow = createServerFn({ method: "POST" })
     if (tx.poster_id !== userId) throw new Error("Not allowed");
 
     if (tx.status !== "in_escrow" && tx.status !== "released") {
-      await supabaseAdmin.from("transactions").update({ status: "in_escrow" }).eq("id", tx.id);
-      await supabaseAdmin.from("tasks").update({ status: "in_progress" }).eq("id", tx.task_id);
-      await supabaseAdmin
-        .from("applications")
-        .update({ status: "accepted" })
-        .eq("task_id", tx.task_id)
-        .eq("student_id", tx.student_id);
+      const metadata = json?.data?.metadata ?? {};
+      const walletContribution = Number(metadata?.escrow_wallet_amount ?? 0);
 
-      const { data: existingConv } = await supabaseAdmin
-        .from("conversations")
-        .select("id")
-        .eq("task_id", tx.task_id)
-        .eq("student_id", tx.student_id)
-        .maybeSingle();
-      if (!existingConv) {
-        await supabaseAdmin.from("conversations").insert({
+      await ensureEscrowActivated(
+        supabaseAdmin,
+        {
+          id: tx.id,
           task_id: tx.task_id,
-          student_id: tx.student_id,
           poster_id: tx.poster_id,
-        });
-      }
+          student_id: tx.student_id,
+          status: tx.status,
+        },
+        walletContribution,
+      );
+
+      await supabaseAdmin.from("notifications").insert([
+        {
+          user_id: tx.student_id,
+          type: "task_funded",
+          message: "Escrow funded. You can start the work.",
+          link: `/app/tasks/${tx.task_id}`,
+        },
+        {
+          user_id: tx.poster_id,
+          type: "task_funded",
+          message: "Payment received and held in escrow.",
+          link: `/app/tasks/${tx.task_id}`,
+        },
+      ]);
     }
 
     return { ok: true, taskId: tx.task_id };

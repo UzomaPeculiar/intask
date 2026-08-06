@@ -567,7 +567,16 @@ function SignupPage() {
               <p className="mt-1 text-sm text-muted-foreground">Choose how you'd like to verify your company.</p>
             </div>
             <div className="mt-6 space-y-3">
-              <RoleCard icon={CheckCircle2} title="Company email" desc="We'll send a 6-digit code to your business email address." selected={s.company_verification_method === "email"} onClick={() => set("company_verification_method", "email")} />
+              <RoleCard
+                icon={CheckCircle2}
+                title="Company email"
+                desc="We'll send a 6-digit code to your business email address."
+                selected={s.company_verification_method === "email"}
+                onClick={() => {
+                  set("company_verification_method", "email");
+                  if (!s.company_email.trim() && s.email.trim()) set("company_email", s.email.trim());
+                }}
+              />
               <RoleCard icon={Upload} title="CAC registration" desc="Upload your CAC certificate — reviewed within 24 hours." selected={s.company_verification_method === "cac_number"} onClick={() => set("company_verification_method", "cac_number")} />
             </div>
 
@@ -617,7 +626,7 @@ function SignupPage() {
               </div>
             )}
 
-            <Button size="lg" className="mt-6 w-full" disabled={!s.company_verification_method || loading || (s.company_verification_method === "email" && !s.company_email.trim()) || (s.company_verification_method === "cac_number" && (!s.cac_number.trim() || !s.company_doc_file))} onClick={handleCompanyVerify}>
+            <Button size="lg" className="mt-6 w-full" disabled={!s.company_verification_method || loading || (s.company_verification_method === "email" && !(s.company_email || s.email).trim()) || (s.company_verification_method === "cac_number" && (!s.cac_number.trim() || !s.company_doc_file))} onClick={handleCompanyVerify}>
               {loading ? "Saving..." : "Finish setup"} <ArrowRight className="size-4" />
             </Button>
             <p className="mt-3 text-center text-xs text-muted-foreground">Your documents are stored securely and only used for verification.</p>

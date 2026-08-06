@@ -37,6 +37,22 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
           return new Response("already processed");
         }
 
+        const walletContribution = Number(evt?.data?.metadata?.escrow_wallet_amount ?? 0);
+        if (walletContribution > 0) {
+          const debitRef = `ESCROW_WALLET_DEBIT_${tx.task_id}`;
+          const debitRes = await supabaseAdmin.rpc("debit_wallet_atomic", {
+            p_user_id: tx.poster_id,
+            p_amount: walletContribution,
+            p_description: `Wallet contribution for escrow on task ${tx.task_id}`,
+            p_reference: debitRef,
+          });
+
+          const debitFailed = !!debitRes.error || (debitRes.data && debitRes.data.success === false);
+          if (debitFailed) {
+            return new Response(debitRes.error?.message ?? debitRes.data?.error ?? "wallet debit failed", { status: 409 });
+          }
+        }
+
         const { data: claimedTx } = await supabaseAdmin
           .from("transactions")
           .update({ status: "in_escrow" })

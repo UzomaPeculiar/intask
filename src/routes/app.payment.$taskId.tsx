@@ -34,6 +34,7 @@ function PaymentPage() {
   const verify = useServerFn(verifyEscrow);
   const getKey = useServerFn(getPaystackPublicKey);
   const [busy, setBusy] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"wallet" | "paystack">("wallet");
 
   // Handle Paystack redirect back with ?reference=... (redirect flow)
   useEffect(() => {
@@ -68,7 +69,19 @@ function PaymentPage() {
   const [paystackReady, setPaystackReady] = useState(false);
   const isAccepted = task?.status === "matched" && !!task?.matched_student_id;
   const payReady = !!keyData?.publicKey && paystackReady;
-  const disabled = busy || !user || !isAccepted || !payReady;
+
+  const { data: wallet } = useQuery({
+    queryKey: ["wallet-balance", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("wallets")
+        .select("balance")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -101,19 +114,34 @@ function PaymentPage() {
     document.body.appendChild(s);
   }, []);
 
-  const fee = task ? Number(task.budget) * 0.08 : 0;
   const total = task ? Number(task.budget) : 0;
+  const walletBalance = Number(wallet?.balance ?? 0);
+  const walletContribution = Math.min(walletBalance, total);
+  const shortfall = Math.max(0, total - walletContribution);
 
-  async function pay() {
-    if (!task || !keyData?.publicKey) return;
+  async function pay(mode: "paystack_only" | "wallet_only" | "wallet_plus_paystack") {
+    if (!task) return;
     setBusy(true);
     try {
-      const { reference } = await init({ data: { taskId } });
+      const result = await init({ data: { taskId, mode } });
+
+      if (result?.fundedInstantly) {
+        toast.success("Escrow funded instantly");
+        nav({ to: "/app/tasks/$taskId", params: { taskId } });
+        return;
+      }
+
+      if (!keyData?.publicKey) {
+        throw new Error("Paystack is not configured");
+      }
+
+      const reference = result.reference;
+      const paystackAmount = Number(result?.paystackAmount ?? total);
       const paystack = getPaystack();
       const popup = paystack.setup({
         key: keyData.publicKey,
         email: user?.email ?? (await supabase.auth.getUser()).data.user?.email ?? "",
-        amount: Math.round(total * 100),
+        amount: Math.round(paystackAmount * 100),
         currency: "NGN",
         reference,
         onSuccess: async (trx: any) => {
@@ -155,15 +183,46 @@ function PaymentPage() {
         <p className="mt-1 text-sm text-muted-foreground">Pay safely to lock in this student. Money is only released after you approve the work.</p>
 
         <div className="mt-6 rounded-3xl border border-border/80 bg-card/90 p-5 shadow-[0_18px_50px_-24px_rgba(37,99,235,0.32)]">
-          <p className="text-xs font-medium text-muted-foreground">Task</p>
-          <p className="mt-0.5 font-medium">{task.title}</p>
-          <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
-            <Row label="Task amount" value={naira(total)} />
-            <Row label="Platform fee (8%)" value={`-${naira(fee)}`} sub="Deducted from student payout" />
-            <div className="my-2 h-px bg-border" />
-            <Row label="You pay today" value={naira(total)} bold />
-            <Row label="Student receives on approval" value={naira(total - fee)} sub="After your approval, paid to their Paystack-linked account" />
+          <p className="text-xs font-medium text-muted-foreground">Task amount</p>
+          <p className="mt-1 text-2xl font-semibold">{naira(total)}</p>
+
+          <div className="my-5 h-px bg-border" />
+
+          <p className="text-xs font-medium text-muted-foreground">Wallet</p>
+          <p className="mt-1 text-sm">Balance: <span className="font-semibold">{naira(walletBalance)}</span></p>
+
+          <div className="mt-4 space-y-3">
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("wallet")}
+              className="flex w-full items-center gap-2 text-left text-sm"
+            >
+              <span className={`grid size-4 place-items-center rounded-full border ${paymentMethod === "wallet" ? "border-primary" : "border-muted-foreground"}`}>
+                {paymentMethod === "wallet" ? <span className="size-2 rounded-full bg-primary" /> : null}
+              </span>
+              Use Wallet
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("paystack")}
+              className="flex w-full items-center gap-2 text-left text-sm"
+            >
+              <span className={`grid size-4 place-items-center rounded-full border ${paymentMethod === "paystack" ? "border-primary" : "border-muted-foreground"}`}>
+                {paymentMethod === "paystack" ? <span className="size-2 rounded-full bg-primary" /> : null}
+              </span>
+              Pay with Card/Bank (Paystack)
+            </button>
           </div>
+
+          {paymentMethod === "wallet" && (
+            <div className="mt-5">
+              <div className="my-4 h-px bg-border" />
+              <div className="space-y-2 text-sm">
+                <Row label="Wallet Balance" value={naira(walletContribution)} />
+                <Row label="Need" value={naira(shortfall)} bold />
+              </div>
+            </div>
+          )}
         </div>
 
         <p className="mt-4 flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
@@ -174,9 +233,47 @@ function PaymentPage() {
 
       <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto max-w-md">
-          <Button size="lg" className="w-full" disabled={disabled} onClick={pay}>
-            {busy ? "Opening Paystack…" : `Pay ${naira(total)} into escrow`}
-          </Button>
+          {paymentMethod === "wallet" ? (
+            shortfall <= 0 ? (
+              <Button
+                size="lg"
+                className="w-full"
+                disabled={busy || !user || !isAccepted}
+                onClick={() => pay("wallet_only")}
+              >
+                {busy ? "Funding escrow..." : "Fund Escrow Instantly"}
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full"
+                  disabled={busy || !user || !isAccepted}
+                  onClick={() => nav({ to: "/app/wallet" as any })}
+                >
+                  Top Up &amp; Fund Escrow
+                </Button>
+                <Button
+                  size="lg"
+                  className="w-full"
+                  disabled={busy || !user || !isAccepted || !payReady}
+                  onClick={() => pay("wallet_plus_paystack")}
+                >
+                  {busy ? "Opening Paystack..." : `Use Wallet + Pay ${naira(shortfall)}`}
+                </Button>
+              </div>
+            )
+          ) : (
+            <Button
+              size="lg"
+              className="w-full"
+              disabled={busy || !user || !isAccepted || !payReady}
+              onClick={() => pay("paystack_only")}
+            >
+              {busy ? "Opening Paystack..." : `Pay ${naira(total)} with Paystack`}
+            </Button>
+          )}
         </div>
       </div>
     </div>
