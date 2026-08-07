@@ -6,6 +6,7 @@ import { BarChart2 } from "lucide-react";
 import { SaveTaskButton } from "@/components/intask/SaveTaskButton";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +22,9 @@ import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle
 import { useApplicantCount, applicantLabel } from "@/hooks/useApplicantCount";
 import { MessagePartyLink } from "@/components/intask/MessagePartyLink";
 import { MVP_FEATURES } from "@/lib/mvp-features";
+import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
+import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
+import { getStudentActiveTasks, getProjectRoomForTask } from "@/lib/task.functions";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({ meta: [{ title: "Dashboard — InTask" }] }),
@@ -194,6 +198,8 @@ function greeting() {
 
 function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: string; filter: string; onFilter: (f: string) => void; onSwitchToPost: () => void }) {
   const nav = useNavigate();
+  const loadStudentActiveTasks = useServerFn(getStudentActiveTasks);
+  const loadProjectRoomForTask = useServerFn(getProjectRoomForTask);
   const [showQuickLinks, setShowQuickLinks] = useState(false);
   const [showAllFilters, setShowAllFilters] = useState(false);
   const { data: stats } = useQuery({
@@ -201,14 +207,13 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
     enabled: !!userId,
     queryFn: async () => {
       if (!userId) return null;
-      const [apps, active, studentProfile] = await Promise.all([
+      const [apps, activeTasks, studentProfile] = await Promise.all([
         supabase.from("applications").select("id", { count: "exact", head: true }).eq("student_id", userId),
-        supabase.from("tasks").select("id", { count: "exact", head: true }).eq("matched_student_id", userId).in("status", ["matched", "in_progress", "in_review"]),
+        loadStudentActiveTasks(),
         supabase.from("student_profiles").select("rating_average, rating_count, tasks_completed").eq("user_id", userId).maybeSingle(),
       ]);
       const avg = (studentProfile.data?.rating_count ?? 0) > 0 ? studentProfile.data?.rating_average : null;
-      return { applied: apps.count ?? 0, active: active.count ?? 0, rating: avg };
-      <WalletBalanceCard userId={userId} />
+      return { applied: apps.count ?? 0, active: (activeTasks ?? []).length, rating: avg };
     },
   });
 
@@ -367,18 +372,14 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
 
 function ActiveTasksSection({ userId }: { userId?: string }) {
   const nav = useNavigate();
+  const loadStudentActiveTasks = useServerFn(getStudentActiveTasks);
+  const loadProjectRoomForTask = useServerFn(getProjectRoomForTask);
   const { data: active } = useQuery({
     queryKey: ["student-active", userId],
     enabled: !!userId,
     queryFn: async () => {
       if (!userId) return [];
-      const { data } = await supabase
-        .from("tasks")
-        .select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, role)")
-        .eq("matched_student_id", userId)
-        .in("status", ["matched", "in_progress", "in_review"])
-        .order("updated_at", { ascending: false });
-      return data ?? [];
+      return await loadStudentActiveTasks();
     },
   });
   if (!active || active.length === 0) return null;
@@ -401,15 +402,33 @@ function ActiveTasksSection({ userId }: { userId?: string }) {
               </span>
             </div>
             <div className="mt-3 space-y-2">
-              <div className="grid grid-cols-2 gap-2">
+              <div className={`grid gap-2 ${t.is_team_task ? "grid-cols-1" : "grid-cols-2"}`}>
                 <MessagePartyLink taskId={t.id} studentId={t.matched_student_id} posterId={t.poster_id} label="Message poster" />
-                <Button
-                  onClick={() => nav({ to: "/app/tasks/$taskId/deliver", params: { taskId: t.id } })}
-                  disabled={t.status !== "in_progress"}
-                >
-                  Submit my work
-                </Button>
+                {!t.is_team_task && (
+                  <Button
+                    onClick={() => nav({ to: "/app/tasks/$taskId/deliver", params: { taskId: t.id } })}
+                    disabled={t.status !== "in_progress"}
+                  >
+                    Submit my work
+                  </Button>
+                )}
               </div>
+              <Button
+                variant="outline"
+                className="w-full gap-1"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const room = t.room_id
+                    ? { roomId: t.room_id }
+                    : await loadProjectRoomForTask({ data: { taskId: t.id } }).catch(() => null);
+                  const roomId = (room as any)?.roomId ?? (room as any)?.room_id;
+                  if (roomId) nav({ to: "/app/rooms/$roomId", params: { roomId } });
+                  else toast.error("Project room not found");
+                }}
+              >
+                <Users className="size-3.5" /> Open project room
+              </Button>
               {t.status === "in_progress" && (
                 <DisputeButton taskId={t.id} taskTitle={t.title} />
               )}
@@ -424,6 +443,7 @@ function ActiveTasksSection({ userId }: { userId?: string }) {
 function PostWorkView({ userId }: { userId?: string }) {
   const nav = useNavigate();
   const qc = useQueryClient();
+  const loadProjectRoomForTask = useServerFn(getProjectRoomForTask);
   const [togglingFeaturedTaskId, setTogglingFeaturedTaskId] = useState<string | null>(null);
 
   async function fetchFeaturedQuota(companyId: string) {
@@ -701,15 +721,19 @@ function PosterTaskRow({
   togglingFeatured?: boolean;
 }) {
   const nav = useNavigate();
+  const loadProjectRoomForTask = useServerFn(getProjectRoomForTask);
   const count = useApplicantCount(task.id, task.applicants_count ?? 0);
   const taskStatus = task.status as string;
+  const isTeamTask = Boolean(task.is_team_task);
   const isMatched = taskStatus === "matched" || taskStatus === "in_progress";
   const isReview = taskStatus === "in_review";
   const isOpen = taskStatus === "open";
+  const canOpenTask = isMatched || isReview || taskStatus === "completed";
+  const canOpenRoom = canOpenTask && !!(task.is_team_task || task.matched_student_id);
   const featureButtonDisabled = togglingFeatured || (!task.featured && !isOpen);
   return (
     <div
-      onClick={() => nav({ to: isReview ? "/app/tasks/$taskId/review" : "/app/tasks/$taskId/applicants", params: { taskId: task.id } })}
+      onClick={() => nav({ to: canOpenTask ? "/app/tasks/$taskId" : "/app/tasks/$taskId/applicants", params: { taskId: task.id } })}
       className="block cursor-pointer rounded-xl border border-border bg-card p-4 shadow-card"
     >
       <div className="flex items-start gap-2">
@@ -731,7 +755,7 @@ function PosterTaskRow({
       </div>
       <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
         <div className="flex gap-2">
-          {isMatched && task.matched_student_id && (
+          {!isTeamTask && isMatched && task.matched_student_id && (
             <MessagePartyLink
               taskId={task.id}
               studentId={task.matched_student_id}
@@ -740,7 +764,22 @@ function PosterTaskRow({
               className="flex-1"
             />
           )}
-          {MVP_FEATURES.featuredTasks && (
+          {canOpenRoom && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={isTeamTask ? "w-full gap-1" : "gap-1 shrink-0"}
+              onClick={async () => {
+                const room = await loadProjectRoomForTask({ data: { taskId: task.id } }).catch(() => null);
+                const roomId = (room as any)?.roomId ?? (room as any)?.room_id;
+                if (roomId) nav({ to: "/app/rooms/$roomId", params: { roomId } });
+                else toast.error("Project room not found");
+              }}
+            >
+              <Users className="size-3.5" /> Room
+            </Button>
+          )}
+          {!isTeamTask && MVP_FEATURES.featuredTasks && (
             <Button
               variant="outline"
               size="sm"
@@ -752,7 +791,7 @@ function PosterTaskRow({
               {togglingFeatured ? "Saving..." : task.featured ? "Unfeature" : "Feature"}
             </Button>
           )}
-          {MVP_FEATURES.advancedAnalytics && (
+          {!isTeamTask && MVP_FEATURES.advancedAnalytics && (
             <Button
               variant="outline"
               size="sm"
@@ -806,6 +845,17 @@ function useCategoryBudgetStats(categories: string[]) {
 
 export function TaskCard({ task, currentUserId, categoryBudgetStats = {} }: { task: any; currentUserId?: string; categoryBudgetStats?: Record<string, { sum: number; count: number }> }) {
   const nav = useNavigate();
+  const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
+  const { data: platformFeePercentSetting } = useQuery({
+    queryKey: ["runtime-platform-settings"],
+    queryFn: async () => await loadRuntimePlatformSettings(),
+    staleTime: 30_000,
+  });
+  const platformFeePercent = Math.min(
+    100,
+    Math.max(0, Number(platformFeePercentSetting?.platform_fee_percent ?? PLATFORM_SETTING_DEFAULTS.platform_fee_percent)),
+  );
+  const payoutRate = 1 - platformFeePercent / 100;
   const count = useApplicantCount(task.id, task.applicants_count ?? 0);
   const stats = categoryBudgetStats[task.category];
   const budgetValue = Number(task.budget ?? 0);
@@ -836,7 +886,7 @@ export function TaskCard({ task, currentUserId, categoryBudgetStats = {} }: { ta
           <span className="rounded-full bg-muted px-2 py-0.5">{task.category}</span>
           {(task as any).is_team_task && (
             <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
-              👥 Team · {(task as any).team_size} students · ₦{task.budget ? Math.floor((task.budget * 0.92) / (task as any).team_size).toLocaleString("en-NG") : "0"} each
+              👥 Team · {(task as any).team_size} students · ₦{task.budget ? Math.floor((task.budget * payoutRate) / (task as any).team_size).toLocaleString("en-NG") : "0"} each
             </span>
           )}
           {task.deadline && <span>Due {new Date(task.deadline).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}</span>}
@@ -852,27 +902,6 @@ export function TaskCard({ task, currentUserId, categoryBudgetStats = {} }: { ta
             <SaveTaskButton taskId={task.id} userId={currentUserId} />
           </div>
         </div>
-        {(task as any).is_team_task && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-2 w-full gap-1"
-            onClick={async () => {
-              const { data: room } = await (supabase as any)
-                .from("project_rooms")
-                .select("id")
-                .eq("task_id", task.id)
-                .maybeSingle();
-              if (room) {
-                nav({ to: "/app/rooms/$roomId" as any, params: { roomId: room.id } } as any);
-              } else {
-                toast.error("Project room not found");
-              }
-            }}
-          >
-            <Users className="size-3.5" /> Open project room
-          </Button>
-        )}
         <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
           <ShieldCheck className="size-3 text-success" /> Payment held safely until work is approved
         </p>

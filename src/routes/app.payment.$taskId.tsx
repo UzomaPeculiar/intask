@@ -173,7 +173,10 @@ function PaymentPage() {
   return (
     <div className="mx-auto max-w-md pb-32">
       <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => nav({ to: "/app/tasks/$taskId", params: { taskId } })} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
+        <button onClick={() => {
+          if (window.history.length > 1) window.history.back();
+          else nav({ to: "/app/tasks/$taskId", params: { taskId } });
+        }} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
           <ArrowLeft className="size-4" />
         </button>
       </header>

@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-const FEE_RATE = 0.08;
+import { getNumericPlatformSetting, PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
 
 type EscrowTx = {
   id: string;
@@ -140,7 +139,15 @@ export const initEscrow = createServerFn({ method: "POST" })
   .validator((input: { taskId: string; mode?: "paystack_only" | "wallet_only" | "wallet_plus_paystack" }) => input)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const settingsDb = supabaseAdmin as any;
     const mode = data.mode ?? "paystack_only";
+    const platformFeePercent = await getNumericPlatformSetting(
+      settingsDb,
+      "platform_fee_percent",
+      PLATFORM_SETTING_DEFAULTS.platform_fee_percent,
+    );
+    const feeRate = Math.min(Math.max(Number(platformFeePercent), 0), 100) / 100;
 
     const { data: task, error: tErr } = await supabase
       .from("tasks")
@@ -274,7 +281,7 @@ export const initEscrow = createServerFn({ method: "POST" })
       poster_id: task.poster_id,
       student_id: task.matched_student_id,
       amount: task.budget,
-      platform_fee: Number(task.budget) * FEE_RATE,
+      platform_fee: Number(task.budget) * feeRate,
       status: "pending",
       paystack_reference: reference,
     };
@@ -469,13 +476,16 @@ export const releaseEscrow = createServerFn({ method: "POST" })
     if (task.is_team_task) {
       const { data: teamMembers, error: tmErr } = await supabaseAdmin
         .from("task_team_members")
-        .select("student_id, payment_share, status")
+        .select("student_id, payment_share, status, delivery_submitted_at")
         .eq("task_id", task.id)
         .eq("status", "active");
 
       if (tmErr) throw new Error(tmErr.message);
 
       const members = (teamMembers ?? []).filter((m: any) => !!m.student_id);
+      if (members.some((member: any) => !member.delivery_submitted_at)) {
+        throw new Error("All team members must submit their work before payment can be released");
+      }
       if (members.length > 0) {
         recipients = computePayoutSplits(payout, members);
       }
@@ -564,7 +574,7 @@ export const requestRevision = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: task } = await supabase
       .from("tasks")
-      .select("id, poster_id, matched_student_id, status")
+      .select("id, poster_id, matched_student_id, status, is_team_task")
       .eq("id", data.taskId)
       .single();
     if (!task || task.poster_id !== userId) throw new Error("Not allowed");
@@ -572,15 +582,49 @@ export const requestRevision = createServerFn({ method: "POST" })
 
     await supabase
       .from("tasks")
-      .update({ status: "in_progress", revision_notes: data.notes })
+      .update({ status: "in_progress", revision_notes: data.notes, delivery_submitted_at: null })
       .eq("id", task.id);
 
-    await supabase.from("notifications").insert({
-      user_id: task.matched_student_id!,
-      type: "revision_requested",
-      message: "Poster requested a revision.",
-      link: `/app/tasks/${task.id}`,
-    });
+    if (task.is_team_task) {
+      await supabase
+        .from("task_team_members")
+        .update({
+          delivery_submitted_at: null,
+          delivery_title: null,
+          delivery_message: null,
+          delivery_url: null,
+          delivery_file_url: null,
+          delivery_file_name: null,
+        })
+        .eq("task_id", task.id)
+        .eq("status", "active");
+
+      const { data: teamMembers } = await supabase
+        .from("task_team_members")
+        .select("student_id")
+        .eq("task_id", task.id)
+        .eq("status", "active");
+
+      const notifications = (teamMembers ?? [])
+        .filter((member: any) => !!member.student_id)
+        .map((member: any) => ({
+          user_id: member.student_id,
+          type: "revision_requested",
+          message: "Poster requested a revision.",
+          link: `/app/tasks/${task.id}`,
+        }));
+
+      if (notifications.length > 0) {
+        await supabase.from("notifications").insert(notifications as any);
+      }
+    } else {
+      await supabase.from("notifications").insert({
+        user_id: task.matched_student_id!,
+        type: "revision_requested",
+        message: "Poster requested a revision.",
+        link: `/app/tasks/${task.id}`,
+      });
+    }
 
     return { ok: true };
   });

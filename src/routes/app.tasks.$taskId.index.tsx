@@ -1,6 +1,7 @@
 import { ReportButton } from "@/components/intask/ReportButton";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,10 +11,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { naira, shortDate } from "@/lib/format";
-import { ArrowLeft, ShieldCheck, MapPin, Calendar as CalIcon, Loader2 } from "lucide-react";
+import { ArrowLeft, ShieldCheck, MapPin, Calendar as CalIcon, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useApplicantCount, applicantLabel } from "@/hooks/useApplicantCount";
 import { Input } from "@/components/ui/input";
+import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
+import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
+import { getProjectRoomForTask, getTaskForViewer } from "@/lib/task.functions";
 
 export const Route = createFileRoute("/app/tasks/$taskId/")({
   head: () => ({ meta: [{ title: "Task — InTask" }] }),
@@ -22,6 +26,9 @@ export const Route = createFileRoute("/app/tasks/$taskId/")({
 
 function TaskDetail() {
   const { taskId } = Route.useParams();
+  const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
+  const loadProjectRoomForTask = useServerFn(getProjectRoomForTask);
+  const loadTaskForViewer = useServerFn(getTaskForViewer);
   useEffect(() => {
     if (!taskId) return;
     (supabase as any).rpc("increment_task_views", { task_uuid: taskId });
@@ -30,16 +37,8 @@ function TaskDetail() {
   const nav = useNavigate();
 
   const { data: task, isLoading } = useQuery({
-    queryKey: ["task", taskId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, role)")
-        .eq("id", taskId)
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    queryKey: ["task-viewer", taskId],
+    queryFn: async () => await loadTaskForViewer({ data: { taskId } }),
   });
 
   const { data: me } = useQuery({
@@ -72,11 +71,66 @@ function TaskDetail() {
     },
   });
 
+  const { data: teamMembership } = useQuery({
+    queryKey: ["task-team-membership", taskId, me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      if (!me?.id) return null;
+      const { data } = await supabase
+        .from("task_team_members")
+        .select("id, status")
+        .eq("task_id", taskId)
+        .eq("student_id", me.id)
+        .eq("status", "active")
+        .maybeSingle();
+      return data;
+    },
+  });
+
   const { data: myProfile } = useQuery({
     queryKey: ["my-role", me?.id],
     enabled: !!me?.id,
     queryFn: async () => (await supabase.from("profiles").select("role").eq("id", me!.id).maybeSingle()).data,
   });
+
+  const { data: myTaskReviews } = useQuery({
+    queryKey: ["my-task-reviews", taskId, me?.id],
+    enabled: !!taskId && !!me?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("reviewee_id")
+        .eq("task_id", taskId)
+        .eq("reviewer_id", me!.id);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: completedTeamMembers } = useQuery({
+    queryKey: ["completed-team-members", taskId],
+    enabled: !!task?.is_team_task && task?.status === "completed" && !!me?.id && me.id === task.poster_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_team_members")
+        .select("student_id")
+        .eq("task_id", taskId)
+        .eq("status", "active");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: platformFeePercentSetting } = useQuery({
+    queryKey: ["runtime-platform-settings"],
+    queryFn: async () => await loadRuntimePlatformSettings(),
+    staleTime: 30_000,
+  });
+  const platformFeePercent = Math.min(
+    100,
+    Math.max(0, Number(platformFeePercentSetting?.platform_fee_percent ?? PLATFORM_SETTING_DEFAULTS.platform_fee_percent)),
+  );
+  const payoutRate = 1 - platformFeePercent / 100;
 
   const myRole = (myProfile?.role ?? "student") as "student" | "alumni" | "company" | "individual";
   const canApply = myRole === "student" || myRole === "alumni";
@@ -89,11 +143,36 @@ function TaskDetail() {
   if (!task) return <div className="px-4 pt-10 text-center text-muted-foreground">Task not found.</div>;
 
   const isOwn = me?.id === task.poster_id;
-  const isAssignedStudent = !isOwn && task.matched_student_id === me?.id;
+  const isAssignedStudent = !isOwn && (task.matched_student_id === me?.id || !!teamMembership);
   const isTaskEditable = (task.status === "open" || task.status === "matched") && !["pending", "in_escrow", "released", "refunded"].includes(escrowTx?.status ?? "");
+  const reviewedIds = new Set((myTaskReviews ?? []).map((review: any) => review.reviewee_id).filter(Boolean));
+  const ownerExpectedReviewees = task.is_team_task
+    ? (completedTeamMembers ?? []).map((member: any) => member.student_id).filter(Boolean)
+    : [task.matched_student_id].filter(Boolean);
+  const ownerCanLeaveReview = task.status === "completed" && ownerExpectedReviewees.some((revieweeId: string) => !reviewedIds.has(revieweeId));
+  const studentExpectedReviewees = [task.poster_id].filter(Boolean);
+  const studentCanLeaveReview = task.status === "completed" && studentExpectedReviewees.some((revieweeId: string) => !reviewedIds.has(revieweeId));
 
   const ownerActions = (
     <>
+      {task.status !== "open" && !!(task.is_team_task || task.matched_student_id) && (
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-full gap-1"
+          onClick={async () => {
+            const room = await loadProjectRoomForTask({ data: { taskId: task.id } }).catch(() => null);
+            const roomId = (room as any)?.roomId ?? (room as any)?.room_id;
+            if (roomId) {
+              nav({ to: "/app/rooms/$roomId", params: { roomId } });
+            } else {
+              toast.error("Project room not found");
+            }
+          }}
+        >
+          <Users className="size-4" /> Open project room
+        </Button>
+      )}
       {isTaskEditable && (
         <Link to="/app/tasks/$taskId/edit" params={{ taskId: task.id }}>
           <Button size="lg" variant="outline" className="w-full">Edit task</Button>
@@ -115,7 +194,7 @@ function TaskDetail() {
           <Button size="lg" className="w-full bg-success text-success-foreground hover:bg-success/90">Review delivery</Button>
         </Link>
       )}
-      {task.status === "completed" && (
+      {ownerCanLeaveReview && (
         <Link to="/app/tasks/$taskId/rate" params={{ taskId: task.id }}>
           <Button size="lg" variant="outline" className="w-full">Leave a review</Button>
         </Link>
@@ -125,13 +204,29 @@ function TaskDetail() {
 
   const assignedStudentActions = (
     <>
+      <Button
+        variant="outline"
+        size="lg"
+        className="w-full gap-1"
+        onClick={async () => {
+          const room = await loadProjectRoomForTask({ data: { taskId: task.id } }).catch(() => null);
+          const roomId = (room as any)?.roomId ?? (room as any)?.room_id;
+          if (roomId) {
+            nav({ to: "/app/rooms/$roomId", params: { roomId } });
+          } else {
+            toast.error("Project room not found");
+          }
+        }}
+      >
+        <Users className="size-4" /> Open project room
+      </Button>
       {task.status === "in_progress" && (
         <Link to="/app/tasks/$taskId/deliver" params={{ taskId: task.id }}>
           <Button size="lg" className="w-full">Submit delivery</Button>
         </Link>
       )}
       {task.status === "in_review" && <Button disabled size="lg" className="w-full">Awaiting poster review</Button>}
-      {task.status === "completed" && (
+      {studentCanLeaveReview && (
         <Link to="/app/tasks/$taskId/rate" params={{ taskId: task.id }}>
           <Button size="lg" variant="outline" className="w-full">Leave a review</Button>
         </Link>
@@ -233,7 +328,7 @@ function TaskDetail() {
             <div className="it-note-accent rounded-2xl border px-3 py-3 shadow-sm">
               <p className="text-sm font-medium">👥 Team task — {(task as any).team_size} students needed</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Total budget: ₦{task.budget ? Number(task.budget).toLocaleString("en-NG") : "0"} · Each student receives ₦{task.budget ? Math.floor((task.budget * 0.92) / (task as any).team_size).toLocaleString("en-NG") : "0"} after platform fee
+                Total budget: ₦{task.budget ? Number(task.budget).toLocaleString("en-NG") : "0"} · Each student receives ₦{task.budget ? Math.floor((task.budget * payoutRate) / (task as any).team_size).toLocaleString("en-NG") : "0"} after platform fee
               </p>
             </div>
           )}

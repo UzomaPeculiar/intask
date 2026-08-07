@@ -456,7 +456,16 @@ function SignupPage() {
               <p className="mt-1 text-sm text-muted-foreground">Pick how you'd like to verify.</p>
             </div>
             <div className="mt-6 space-y-3">
-              <RoleCard icon={CheckCircle2} title="University email" desc="We'll send a 4-digit code to your .edu.ng address — faster." selected={s.verification_method === "email"} onClick={() => set("verification_method", "email")} />
+              <RoleCard
+                icon={CheckCircle2}
+                title="University email"
+                desc="We'll send a 4-digit code to your .edu.ng address — faster."
+                selected={s.verification_method === "email"}
+                onClick={() => {
+                  set("verification_method", "email");
+                  if (!s.university_email.trim() && s.email.trim()) set("university_email", s.email.trim());
+                }}
+              />
               <RoleCard icon={Upload} title="Upload student ID" desc="Photo of your valid student ID card — reviewed in 24 hours." selected={s.verification_method === "id_upload"} onClick={() => set("verification_method", "id_upload")} />
             </div>
 

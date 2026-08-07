@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { TASK_CATEGORIES, SKILLS } from "@/lib/constants";
 import { ArrowLeft, ShieldCheck, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
+import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app/tasks/$taskId/edit")({
   head: () => ({ meta: [{ title: "Edit task — InTask" }] }),
@@ -60,6 +64,16 @@ function EditTaskPage() {
   const [saving, setSaving] = useState(false);
   const [editable, setEditable] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
+  const { data: minTaskBudgetSetting } = useQuery({
+    queryKey: ["runtime-platform-settings"],
+    queryFn: async () => await loadRuntimePlatformSettings(),
+    staleTime: 30_000,
+  });
+  const minTaskBudget = Math.max(
+    0,
+    Number(minTaskBudgetSetting?.min_task_budget ?? PLATFORM_SETTING_DEFAULTS.min_task_budget),
+  );
 
   useEffect(() => {
     void loadTask();
@@ -131,9 +145,8 @@ function EditTaskPage() {
     if (!category) return toast.error("Pick a category");
     if (!description.trim()) return toast.error("Describe the task");
 
-    const minForCategory = CATEGORY_MINIMUMS[category] ?? 3000;
-    if (!negotiable && (!budget || Number(budget) < minForCategory)) {
-      return toast.error(`Minimum budget for ${category || "this category"} is ₦${minForCategory.toLocaleString("en-NG")}.`);
+    if (!negotiable && (!budget || Number(budget) < minTaskBudget)) {
+      return toast.error(`Minimum task budget is ₦${minTaskBudget.toLocaleString("en-NG")}.`);
     }
 
     setSaving(true);

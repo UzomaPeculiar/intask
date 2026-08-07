@@ -2,12 +2,12 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { adminManualRefund } from "@/lib/admin.functions";
+import { adminManualRefund, getAdminFinancialData } from "@/lib/admin.functions";
 
 export function FinancialTab() {
   const refundServer = useServerFn(adminManualRefund);
+  const loadFinancialData = useServerFn(getAdminFinancialData);
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
   const [withdrawalStatus, setWithdrawalStatus] = useState<"all" | "pending" | "completed" | "failed" | "reversed" | "rejected">("all");
@@ -22,47 +22,15 @@ export function FinancialTab() {
     return `₦${Math.round(value).toLocaleString("en-NG")}`;
   }
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-financial-management"],
     refetchInterval: 30000,
     refetchOnWindowFocus: true,
+    staleTime: 20000,
+    retry: 0,
+    placeholderData: (previousData) => previousData,
     queryFn: async () => {
-      const [withdrawalsRes, txRes, fundingRes, profilesRes, walletsRes] = await Promise.all([
-        (supabase as any)
-          .from("withdrawal_requests")
-          .select("*, user:profiles!withdrawal_requests_user_id_fkey(id, full_name, email)")
-          .order("created_at", { ascending: false }),
-        (supabase as any)
-          .from("transactions")
-          .select("id, task_id, poster_id, student_id, amount, platform_fee, status, created_at, updated_at, task:tasks(title), poster:profiles!transactions_poster_id_fkey(full_name, email), student:profiles!transactions_student_id_fkey(full_name, email)")
-          .order("created_at", { ascending: false }),
-        (supabase as any)
-          .from("wallet_funding")
-          .select("id, user_id, amount, paystack_reference, status, webhook_processed, created_at, updated_at, user:profiles!wallet_funding_user_id_fkey(full_name, email)")
-          .order("created_at", { ascending: false }),
-        (supabase as any)
-          .from("profiles")
-          .select("id, full_name, email")
-          .order("created_at", { ascending: false })
-          .limit(300),
-        (supabase as any)
-          .from("wallets")
-          .select("user_id, balance"),
-      ]);
-
-      if (withdrawalsRes.error) throw withdrawalsRes.error;
-      if (txRes.error) throw txRes.error;
-      if (fundingRes.error) throw fundingRes.error;
-      if (profilesRes.error) throw profilesRes.error;
-      if (walletsRes.error) throw walletsRes.error;
-
-      return {
-        withdrawals: withdrawalsRes.data ?? [],
-        transactions: txRes.data ?? [],
-        funding: fundingRes.data ?? [],
-        profiles: profilesRes.data ?? [],
-        wallets: walletsRes.data ?? [],
-      };
+      return await loadFinancialData();
     },
   });
 
@@ -98,6 +66,7 @@ export function FinancialTab() {
   const funding = data?.funding ?? [];
   const profiles = data?.profiles ?? [];
   const wallets = data?.wallets ?? [];
+  const sourceErrors: string[] = data?.sourceErrors ?? [];
 
   const filteredWithdrawals = useMemo(() => {
     return withdrawals.filter((w: any) => {
@@ -136,9 +105,23 @@ export function FinancialTab() {
       .filter((t: any) => new Date(t.created_at) >= monthStart && ["in_escrow", "released", "refunded", "disputed"].includes(t.status))
       .reduce((sum: number, t: any) => sum + Number(t.amount ?? 0), 0);
 
-    const totalFeesEarned = transactions
-      .filter((t: any) => new Date(t.created_at) >= monthStart && t.status === "released")
+    const taskFeesEarnedMonth = transactions
+      .filter((t: any) => {
+        if (t.status !== "released") return false;
+        const earnedAt = t.updated_at ?? t.created_at;
+        return earnedAt ? new Date(earnedAt) >= monthStart : false;
+      })
       .reduce((sum: number, t: any) => sum + Number(t.platform_fee ?? 0), 0);
+
+    const withdrawalFeesEarnedMonth = withdrawals
+      .filter((w: any) => {
+        if (w.status !== "completed") return false;
+        const earnedAt = w.processed_at ?? w.updated_at ?? w.created_at;
+        return earnedAt ? new Date(earnedAt) >= monthStart : false;
+      })
+      .reduce((sum: number, w: any) => sum + Number(w.fee ?? 0), 0);
+
+    const totalFeesEarned = taskFeesEarnedMonth + withdrawalFeesEarnedMonth;
 
     const totalWithdrawnByStudents = withdrawals
       .filter((w: any) => new Date(w.created_at) >= monthStart && w.status === "completed")
@@ -158,6 +141,8 @@ export function FinancialTab() {
     return {
       grossTaskValueProcessed,
       totalFeesEarned,
+      taskFeesEarnedMonth,
+      withdrawalFeesEarnedMonth,
       totalWithdrawnByStudents,
       escrowHeld,
       platformWalletBalanceEstimate: totalWalletBalances,
@@ -167,8 +152,23 @@ export function FinancialTab() {
 
   if (isLoading) return <div className="text-center text-muted-foreground py-10">Loading financial data...</div>;
 
+  if (isError) {
+    const message = (error as any)?.message ?? "Could not load financial data";
+    return (
+      <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+        {message}. Please refresh, and ensure this account has admin permissions.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {sourceErrors.length > 0 && (
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
+          Some financial sources could not be loaded: {sourceErrors.join(" | ")}
+        </div>
+      )}
+
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -187,8 +187,11 @@ export function FinancialTab() {
           <p className="mt-1 text-xl font-semibold text-foreground">{money(monthlySummary.grossTaskValueProcessed)}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Fees earned (month)</p>
+          <p className="text-xs text-muted-foreground">Platform fees earned (month)</p>
           <p className="mt-1 text-xl font-semibold text-foreground">{money(monthlySummary.totalFeesEarned)}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Task fees: {money(monthlySummary.taskFeesEarnedMonth)} · Withdrawal fees: {money(monthlySummary.withdrawalFeesEarnedMonth)}
+          </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Student withdrawals (month)</p>
@@ -272,9 +275,9 @@ export function FinancialTab() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Platform fees ledger</h3>
-          <p className="text-xs text-muted-foreground">Each fee captured from released tasks, with running totals.</p>
-          <p className="text-xs text-muted-foreground">Total fees earned: <span className="font-semibold text-foreground">{money(feeLedger.reduce((sum: number, t: any) => sum + Number(t.platform_fee ?? 0), 0))}</span></p>
+          <h3 className="text-sm font-semibold text-foreground">Task fees ledger</h3>
+          <p className="text-xs text-muted-foreground">Task fees captured from released tasks.</p>
+          <p className="text-xs text-muted-foreground">Total task fees earned: <span className="font-semibold text-foreground">{money(feeLedger.reduce((sum: number, t: any) => sum + Number(t.platform_fee ?? 0), 0))}</span></p>
           <div className="space-y-2 max-h-[360px] overflow-auto pr-1">
             {feeLedger.length === 0 && <p className="text-sm text-muted-foreground">No fee records yet.</p>}
             {feeLedger.map((t: any) => (

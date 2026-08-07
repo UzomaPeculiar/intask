@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
+import { addProjectRoomFile, getProjectRoomData, postProjectRoomMessage } from "@/lib/task.functions";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send, Paperclip, Users, CheckCircle2, FileText } from "lucide-react";
@@ -18,6 +20,9 @@ function ProjectRoomPage() {
   const { roomId } = Route.useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const loadProjectRoomData = useServerFn(getProjectRoomData);
+  const sendProjectRoomMessage = useServerFn(postProjectRoomMessage);
+  const saveProjectRoomFile = useServerFn(addProjectRoomFile);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "members" | "files">("chat");
@@ -28,62 +33,33 @@ function ProjectRoomPage() {
     queryFn: async () => (await supabase.auth.getUser()).data.user,
   });
 
-  const { data: room } = useQuery({
-    queryKey: ["project-room", roomId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("project_rooms")
-        .select("*, task:tasks(id, title, status, budget)")
-        .eq("id", roomId)
-        .single();
-      return data;
-    },
+  const { data: roomState, refetch: refetchRoomState, isLoading, error } = useQuery({
+    queryKey: ["project-room-data", roomId],
+    queryFn: async () => await loadProjectRoomData({ data: { roomId } }),
   });
 
-  const { data: members } = useQuery({
-    queryKey: ["room-members", roomId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("project_room_members")
-        .select("*, user:profiles!project_room_members_user_id_fkey(id, full_name, role)")
-        .eq("room_id", roomId);
-      return data ?? [];
-    },
-  });
-
-  const { data: messages, refetch: refetchMessages } = useQuery({
-    queryKey: ["room-messages", roomId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("project_room_messages")
-        .select("*, sender:profiles!project_room_messages_sender_id_fkey(id, full_name)")
-        .eq("room_id", roomId)
-        .order("created_at", { ascending: true });
-      return data ?? [];
-    },
-  });
-
-  const { data: files } = useQuery({
-    queryKey: ["room-files", roomId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("project_room_files")
-        .select("*, uploader:profiles!project_room_files_uploaded_by_fkey(full_name)")
-        .eq("room_id", roomId)
-        .order("created_at", { ascending: false });
-      return data ?? [];
-    },
-  });
+  const room = roomState?.room as any;
+  const members = roomState?.members as any[] | undefined;
+  const messages = roomState?.messages as any[] | undefined;
+  const files = roomState?.files as any[] | undefined;
+  const isPoster = !!me?.id && room?.task?.poster_id === me.id;
+  const canSubmitTeamDelivery = Boolean(
+    room?.task?.is_team_task &&
+    room?.task?.id &&
+    room?.task?.status === "in_progress" &&
+    me?.id &&
+    !isPoster,
+  );
 
   useEffect(() => {
     const channel = supabase
       .channel(`room-${roomId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "project_room_messages", filter: `room_id=eq.${roomId}` }, () => {
-        refetchMessages();
+        refetchRoomState();
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [roomId]);
+  }, [roomId, refetchRoomState]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -92,13 +68,11 @@ function ProjectRoomPage() {
   async function sendMessage() {
     if (!message.trim() || !me) return;
     setSending(true);
-    const { error } = await (supabase as any)
-      .from("project_room_messages")
-      .insert({ room_id: roomId, sender_id: me.id, content: message.trim() });
+    const error = await sendProjectRoomMessage({ data: { roomId, content: message.trim() } }).catch((e: any) => e);
     setSending(false);
-    if (error) { toast.error("Could not send message"); return; }
+    if (error instanceof Error) { toast.error(error.message || "Could not send message"); return; }
     setMessage("");
-    refetchMessages();
+    refetchRoomState();
   }
 
   async function uploadFile(file: File) {
@@ -112,15 +86,38 @@ function ProjectRoomPage() {
     const { data: urlData } = await supabase.storage
       .from("project-files")
       .createSignedUrl(filePath, 60 * 60 * 24 * 30);
-    await (supabase as any).from("project_room_files").insert({
-      room_id: roomId,
-      uploaded_by: me.id,
-      file_name: file.name,
-      file_url: urlData?.signedUrl ?? "",
-      file_type: file.type,
-    });
+    const fileUrl = urlData?.signedUrl ?? "";
+    const saveError = await saveProjectRoomFile({
+      data: {
+        roomId,
+        fileName: file.name,
+        fileUrl,
+        fileType: file.type || null,
+      },
+    }).catch((e: any) => e);
+    if (saveError instanceof Error) {
+      toast.error(saveError.message || "Could not save file");
+      return;
+    }
     toast.success("File uploaded");
-    qc.invalidateQueries({ queryKey: ["room-files", roomId] });
+    await qc.invalidateQueries({ queryKey: ["project-room-data", roomId] });
+    await refetchRoomState();
+  }
+
+  if (isLoading) {
+    return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading project room...</div>;
+  }
+
+  if (error || !room) {
+    return (
+      <div className="grid min-h-screen place-items-center px-4 text-center">
+        <div className="space-y-3">
+          <p className="text-base font-medium text-foreground">Project room not available</p>
+          <p className="text-sm text-muted-foreground">This room could not be opened right now.</p>
+          <Button variant="outline" onClick={() => nav({ to: "/app" as any })}>Back to dashboard</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -140,6 +137,17 @@ function ProjectRoomPage() {
           <span>{members?.length ?? 0}</span>
         </div>
       </header>
+
+      {canSubmitTeamDelivery && (
+        <div className="border-b border-border bg-card/90 px-4 py-3 shrink-0">
+          <Button
+            className="w-full"
+            onClick={() => nav({ to: "/app/tasks/$taskId/deliver", params: { taskId: room.task.id } })}
+          >
+            Submit team delivery
+          </Button>
+        </div>
+      )}
 
       <div className="flex border-b border-border shrink-0">
         {(["chat", "members", "files"] as const).map((t) => (

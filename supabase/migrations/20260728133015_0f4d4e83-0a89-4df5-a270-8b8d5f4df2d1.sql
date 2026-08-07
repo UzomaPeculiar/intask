@@ -442,20 +442,46 @@ ALTER TABLE public.project_room_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_room_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_room_files ENABLE ROW LEVEL SECURITY;
 
+CREATE OR REPLACE FUNCTION public.is_project_room_member(_room_id uuid, _user_id uuid DEFAULT auth.uid())
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.project_room_members prm
+    WHERE prm.room_id = _room_id
+      AND prm.user_id = _user_id
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.can_manage_project_room(_room_id uuid, _user_id uuid DEFAULT auth.uid())
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.is_admin_user(_user_id)
+    OR EXISTS (
+      SELECT 1
+      FROM public.project_rooms pr
+      JOIN public.tasks t ON t.id = pr.task_id
+      WHERE pr.id = _room_id
+        AND t.poster_id = _user_id
+    );
+$$;
+
 DROP POLICY IF EXISTS "project rooms participant read" ON public.project_rooms;
 CREATE POLICY "project rooms participant read" ON public.project_rooms
 FOR SELECT TO authenticated
 USING (
   public.is_admin_user(auth.uid())
   OR auth.uid() = created_by
-  OR EXISTS (
-    SELECT 1 FROM public.project_room_members prm
-    WHERE prm.room_id = id AND prm.user_id = auth.uid()
-  )
-  OR EXISTS (
-    SELECT 1 FROM public.tasks t
-    WHERE t.id = task_id AND t.poster_id = auth.uid()
-  )
+  OR public.is_project_room_member(id)
+  OR public.can_manage_project_room(id)
 );
 
 DROP POLICY IF EXISTS "project rooms owner write" ON public.project_rooms;
@@ -464,16 +490,12 @@ FOR ALL TO authenticated
 USING (
   public.is_admin_user(auth.uid())
   OR auth.uid() = created_by
-  OR EXISTS (
-    SELECT 1 FROM public.tasks t WHERE t.id = task_id AND t.poster_id = auth.uid()
-  )
+  OR public.can_manage_project_room(id)
 )
 WITH CHECK (
   public.is_admin_user(auth.uid())
   OR auth.uid() = created_by
-  OR EXISTS (
-    SELECT 1 FROM public.tasks t WHERE t.id = task_id AND t.poster_id = auth.uid()
-  )
+  OR public.can_manage_project_room(id)
 );
 
 DROP POLICY IF EXISTS "project room members participant read" ON public.project_room_members;
@@ -482,15 +504,8 @@ FOR SELECT TO authenticated
 USING (
   public.is_admin_user(auth.uid())
   OR user_id = auth.uid()
-  OR EXISTS (
-    SELECT 1 FROM public.project_room_members me
-    WHERE me.room_id = public.project_room_members.room_id AND me.user_id = auth.uid()
-  )
-  OR EXISTS (
-    SELECT 1 FROM public.project_rooms pr
-    JOIN public.tasks t ON t.id = pr.task_id
-    WHERE pr.id = public.project_room_members.room_id AND t.poster_id = auth.uid()
-  )
+  OR public.is_project_room_member(room_id)
+  OR public.can_manage_project_room(room_id)
 );
 
 DROP POLICY IF EXISTS "project room members manage" ON public.project_room_members;
@@ -498,19 +513,11 @@ CREATE POLICY "project room members manage" ON public.project_room_members
 FOR ALL TO authenticated
 USING (
   public.is_admin_user(auth.uid())
-  OR EXISTS (
-    SELECT 1 FROM public.project_rooms pr
-    JOIN public.tasks t ON t.id = pr.task_id
-    WHERE pr.id = public.project_room_members.room_id AND t.poster_id = auth.uid()
-  )
+  OR public.can_manage_project_room(room_id)
 )
 WITH CHECK (
   public.is_admin_user(auth.uid())
-  OR EXISTS (
-    SELECT 1 FROM public.project_rooms pr
-    JOIN public.tasks t ON t.id = pr.task_id
-    WHERE pr.id = public.project_room_members.room_id AND t.poster_id = auth.uid()
-  )
+  OR public.can_manage_project_room(room_id)
 );
 
 DROP POLICY IF EXISTS "project room messages participant read" ON public.project_room_messages;

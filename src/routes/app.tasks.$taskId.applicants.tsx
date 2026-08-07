@@ -13,7 +13,9 @@ import { naira } from "@/lib/format";
 import { ArrowLeft, Inbox, Star, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
-import { acceptTaskApplicant } from "@/lib/task.functions";
+import { acceptTaskApplicant, removeAcceptedTaskApplicant } from "@/lib/task.functions";
+import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
+import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app/tasks/$taskId/applicants")({
   head: () => ({ meta: [{ title: "Applicants — InTask" }] }),
@@ -25,6 +27,8 @@ function ApplicantsPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const acceptApplicant = useServerFn(acceptTaskApplicant);
+  const removeAcceptedApplicant = useServerFn(removeAcceptedTaskApplicant);
+  const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
   const [tab, setTab] = useState<"pending" | "accepted" | "rejected" | "all">("pending");
 
   const { data: me } = useQuery({
@@ -36,6 +40,15 @@ function ApplicantsPage() {
     queryKey: ["task", taskId],
     queryFn: async () => (await supabase.from("tasks").select("*").eq("id", taskId).single()).data,
   });
+  const { data: platformFeePercentSetting } = useQuery({
+    queryKey: ["runtime-platform-settings"],
+    queryFn: async () => await loadRuntimePlatformSettings(),
+    staleTime: 30_000,
+  });
+  const platformFeePercent = Math.min(
+    100,
+    Math.max(0, Number(platformFeePercentSetting?.platform_fee_percent ?? PLATFORM_SETTING_DEFAULTS.platform_fee_percent)),
+  );
 
   const isOwner = !!me?.id && !!task?.poster_id && me.id === task.poster_id;
 
@@ -98,6 +111,19 @@ function ApplicantsPage() {
       qc.invalidateQueries({ queryKey: ["my-tasks"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Couldn't dismiss"),
+  });
+
+  const removeAccepted = useMutation({
+    mutationFn: async ({ appId, studentId }: { appId: string; studentId: string }) => {
+      return removeAcceptedApplicant({ data: { taskId, appId, studentId } });
+    },
+    onSuccess: () => {
+      toast.success("Accepted student removed. You can now accept another applicant.");
+      qc.invalidateQueries({ queryKey: ["applicants", taskId] });
+      qc.invalidateQueries({ queryKey: ["task", taskId] });
+      qc.invalidateQueries({ queryKey: ["my-tasks"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Couldn't remove accepted student"),
   });
   const pendingApps = (apps ?? []).filter((a: any) => a.status === "pending");
   const acceptedApps = (apps ?? []).filter((a: any) => a.status === "accepted");
@@ -205,6 +231,7 @@ function ApplicantsPage() {
                         budget={task?.budget ?? 0}
                         negotiable={task?.budget_negotiable}
                         taskId={taskId}
+                        platformFeePercent={platformFeePercent}
                         onConfirm={(agreedPrice) => accept.mutate({ appId: a.id, studentId: a.student_id, agreedPrice })}
                         pending={accept.isPending}
                       />
@@ -236,6 +263,20 @@ function ApplicantsPage() {
                     {dismiss.isPending ? "Dismissing…" : "Dismiss applicant"}
                   </Button>
                 )}
+                {a.status === "accepted" && ["open", "matched"].includes(String(task?.status)) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground hover:text-destructive"
+                    disabled={removeAccepted.isPending}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeAccepted.mutate({ appId: a.id, studentId: a.student_id });
+                    }}
+                  >
+                    {removeAccepted.isPending ? "Removing…" : "Remove accepted student"}
+                  </Button>
+                )}
               </div>
             </li>
                   ))}
@@ -250,17 +291,19 @@ function ApplicantsPage() {
   );
 }
 
-function AcceptSheet({ studentName, budget, negotiable, taskId, onConfirm, pending }: { 
+function AcceptSheet({ studentName, budget, negotiable, taskId, platformFeePercent, onConfirm, pending }: { 
   studentName: string; 
   budget: number; 
   negotiable?: boolean;
   taskId: string;
+  platformFeePercent: number;
   onConfirm: (agreedPrice?: number) => void; 
   pending: boolean; 
 }) {
   const [open, setOpen] = useState(false);
   const [agreedPrice, setAgreedPrice] = useState("");
   const finalAmount = negotiable && agreedPrice ? Number(agreedPrice) : budget;
+  const payoutRate = 1 - platformFeePercent / 100;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -297,8 +340,8 @@ function AcceptSheet({ studentName, budget, negotiable, taskId, onConfirm, pendi
                 <span className="font-semibold text-foreground">{naira(finalAmount)}</span>
               </div>
               <div className="flex justify-between mt-1">
-                <span className="text-muted-foreground">Student receives (after 8% fee)</span>
-                <span className="font-medium text-success">{naira(finalAmount * 0.92)}</span>
+                <span className="text-muted-foreground">Student receives (after {platformFeePercent}% fee)</span>
+                <span className="font-medium text-success">{naira(finalAmount * payoutRate)}</span>
               </div>
             </div>
           )}

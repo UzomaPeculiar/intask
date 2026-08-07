@@ -25,7 +25,7 @@ export const MVP_FEATURES = {
   alumniPro: false,
   partnerships: false,
   subscriptions: false,
-  rooms: false,
+  rooms: true,
   featuredTasks: false,
   advancedAnalytics: false,
   advancedTalentDiscovery: false,

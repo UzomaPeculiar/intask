@@ -13,13 +13,21 @@ import { adminForceCancelTask, adminManualRefund, getAdminCommandCenterStats } f
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 
-const CommunicationsTab = lazy(async () => import("@/components/intask/admin/CommunicationsTab").then((mod) => ({ default: mod.CommunicationsTab })));
-const SettingsTab = lazy(async () => import("@/components/intask/admin/SettingsTab").then((mod) => ({ default: mod.SettingsTab })));
-const ModerationTab = lazy(async () => import("@/components/intask/admin/ModerationTab").then((mod) => ({ default: mod.ModerationTab })));
-const WithdrawalsTab = lazy(async () => import("@/components/intask/admin/FinancialTab").then((mod) => ({ default: mod.FinancialTab })));
-const UserManagementTab = lazy(async () => import("@/components/intask/admin/UserManagementTab").then((mod) => ({ default: mod.UserManagementTab })));
-const TaskManagementTab = lazy(async () => import("@/components/intask/admin/TaskManagementTab").then((mod) => ({ default: mod.TaskManagementTab })));
-const VerificationsHubTab = lazy(async () => import("@/components/intask/admin/VerificationsHubTab").then((mod) => ({ default: mod.VerificationsHubTab })));
+const loadCommunicationsTab = () => import("@/components/intask/admin/CommunicationsTab");
+const loadSettingsTab = () => import("@/components/intask/admin/SettingsTab");
+const loadModerationTab = () => import("@/components/intask/admin/ModerationTab");
+const loadWithdrawalsTab = () => import("@/components/intask/admin/FinancialTab");
+const loadUserManagementTab = () => import("@/components/intask/admin/UserManagementTab");
+const loadTaskManagementTab = () => import("@/components/intask/admin/TaskManagementTab");
+const loadVerificationsHubTab = () => import("@/components/intask/admin/VerificationsHubTab");
+
+const CommunicationsTab = lazy(async () => loadCommunicationsTab().then((mod) => ({ default: mod.CommunicationsTab })));
+const SettingsTab = lazy(async () => loadSettingsTab().then((mod) => ({ default: mod.SettingsTab })));
+const ModerationTab = lazy(async () => loadModerationTab().then((mod) => ({ default: mod.ModerationTab })));
+const WithdrawalsTab = lazy(async () => loadWithdrawalsTab().then((mod) => ({ default: mod.FinancialTab })));
+const UserManagementTab = lazy(async () => loadUserManagementTab().then((mod) => ({ default: mod.UserManagementTab })));
+const TaskManagementTab = lazy(async () => loadTaskManagementTab().then((mod) => ({ default: mod.TaskManagementTab })));
+const VerificationsHubTab = lazy(async () => loadVerificationsHubTab().then((mod) => ({ default: mod.VerificationsHubTab })));
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — InTask" }] }),
@@ -30,6 +38,16 @@ function AdminPage() {
   const nav = useNavigate();
   const [tab, setTab] = useState<"overview" | "users" | "tasks" | "verifications" | "communications" | "settings" | "moderation" | "withdrawals">("overview");
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+  function prefetchTab(targetTab: "overview" | "users" | "tasks" | "verifications" | "communications" | "settings" | "moderation" | "withdrawals") {
+    if (targetTab === "users") void loadUserManagementTab();
+    if (targetTab === "tasks") void loadTaskManagementTab();
+    if (targetTab === "verifications") void loadVerificationsHubTab();
+    if (targetTab === "communications") void loadCommunicationsTab();
+    if (targetTab === "settings") void loadSettingsTab();
+    if (targetTab === "moderation") void loadModerationTab();
+    if (targetTab === "withdrawals") void loadWithdrawalsTab();
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -98,6 +116,8 @@ function AdminPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
+              onMouseEnter={() => prefetchTab(t)}
+              onFocus={() => prefetchTab(t)}
               className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 tab === t
                   ? "bg-primary text-primary-foreground"
@@ -183,172 +203,14 @@ function OverviewTab() {
     return d.toLocaleDateString("en-NG", { month: "short", year: "2-digit" });
   }
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["admin-command-center"],
     refetchInterval: 30000,
     staleTime: 120000,
     gcTime: 600000,
     refetchOnWindowFocus: true,
     placeholderData: (previousData) => previousData,
-    queryFn: async () => {
-      try {
-        return await getAdminCommandCenter();
-      } catch {
-        const today = startOfToday();
-        const matchedCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
-        const reviewCutoff = new Date(Date.now() - 72 * 60 * 60 * 1000);
-
-        const [profilesRes, tasksRes, transactionsRes, disputesRes, reportsRes, withdrawalsRes, studentRes, companyRes, individualRes, fundingRes] = await Promise.all([
-          (supabase as any).from("profiles").select("id, role, created_at"),
-          (supabase as any).from("tasks").select("id, title, status, created_at, updated_at"),
-          (supabase as any).from("transactions").select("id, task_id, status, amount, platform_fee, created_at, updated_at"),
-          (supabase as any).from("disputes").select("id, status"),
-          (supabase as any).from("reports").select("id, status"),
-          (supabase as any).from("withdrawal_requests").select("id, status, created_at, webhook_processed"),
-          (supabase as any).from("student_profiles").select("user_id, verified, verification_status, verification_method"),
-          (supabase as any).from("company_profiles").select("user_id, verified, verification_status"),
-          (supabase as any).from("individual_profiles").select("user_id, verification_status"),
-          (supabase as any).from("wallet_funding").select("id, status, created_at, webhook_processed"),
-        ]);
-
-        if (profilesRes.error) throw profilesRes.error;
-        if (tasksRes.error) throw tasksRes.error;
-        if (transactionsRes.error) throw transactionsRes.error;
-        if (disputesRes.error) throw disputesRes.error;
-        if (reportsRes.error) throw reportsRes.error;
-        if (withdrawalsRes.error) throw withdrawalsRes.error;
-        if (studentRes.error) throw studentRes.error;
-        if (companyRes.error) throw companyRes.error;
-        if (individualRes.error) throw individualRes.error;
-        if (fundingRes.error) throw fundingRes.error;
-
-        const profiles = profilesRes.data ?? [];
-        const tasks = tasksRes.data ?? [];
-        const transactions = transactionsRes.data ?? [];
-        const disputes = disputesRes.data ?? [];
-        const reports = reportsRes.data ?? [];
-        const withdrawals = withdrawalsRes.data ?? [];
-        const students = studentRes.data ?? [];
-        const companies = companyRes.data ?? [];
-        const individuals = individualRes.data ?? [];
-        const funding = fundingRes.data ?? [];
-
-        const roleCounts = {
-          student: profiles.filter((p: any) => p.role === "student").length,
-          alumni: profiles.filter((p: any) => p.role === "alumni").length,
-          individual: profiles.filter((p: any) => p.role === "individual").length,
-          company: profiles.filter((p: any) => p.role === "company").length,
-        };
-
-        const taskStatusCounts = {
-          open: tasks.filter((t: any) => t.status === "open").length,
-          inProgress: tasks.filter((t: any) => t.status === "in_progress").length,
-          completed: tasks.filter((t: any) => t.status === "completed").length,
-          disputed: tasks.filter((t: any) => t.status === "disputed").length,
-          cancelled: tasks.filter((t: any) => t.status === "cancelled").length,
-          matched: tasks.filter((t: any) => t.status === "matched").length,
-          inReview: tasks.filter((t: any) => t.status === "in_review").length,
-        };
-
-        const escrowVolume = transactions
-          .filter((tx: any) => tx.status === "in_escrow" || tx.status === "disputed")
-          .reduce((sum: number, tx: any) => sum + Number(tx.amount ?? 0), 0);
-
-        const platformFeesEarned = transactions
-          .filter((tx: any) => tx.status === "released")
-          .reduce((sum: number, tx: any) => sum + Number(tx.platform_fee ?? 0), 0);
-
-        const signupsToday = profiles.filter((p: any) => p.created_at && new Date(p.created_at) >= today).length;
-        const tasksPostedToday = tasks.filter((t: any) => t.created_at && new Date(t.created_at) >= today).length;
-        const tasksCompletedToday = tasks.filter((t: any) => t.status === "completed" && t.updated_at && new Date(t.updated_at) >= today).length;
-        const paymentsProcessedToday = transactions.filter((tx: any) => tx.updated_at && new Date(tx.updated_at) >= today && ["in_escrow", "released", "refunded", "disputed"].includes(tx.status)).length;
-
-        const pendingStudent = students.filter((s: any) => !s.verified && (s.verification_method === "id_upload" || s.verification_status === "pending" || s.verification_status === "pending_review")).length;
-        const pendingCompany = companies.filter((c: any) => !c.verified && c.verification_status !== "rejected").length;
-        const pendingIndividual = individuals.filter((i: any) => i.verification_status === "pending_review").length;
-
-        const openDisputes = disputes.filter((d: any) => d.status === "open").length;
-        const pendingWithdrawals = withdrawals.filter((w: any) => w.status === "pending").length;
-        const unresolvedReports = reports.filter((r: any) => r.status === "pending").length;
-
-        const failedWithdrawalPayments = withdrawals.filter((w: any) => ["failed", "reversed", "rejected"].includes(w.status)).length;
-        const failedWalletTopups = funding.filter((f: any) => f.status === "failed").length;
-        const webhookBacklog = withdrawals.filter((w: any) => w.status === "pending" && !w.webhook_processed).length + funding.filter((f: any) => f.status === "pending" && !f.webhook_processed).length;
-
-        const paidTaskIds = new Set(
-          transactions
-            .filter((tx: any) => ["in_escrow", "released", "disputed"].includes(tx.status))
-            .map((tx: any) => tx.task_id),
-        );
-
-        const matchedStuck = tasks
-          .filter((t: any) => t.status === "matched" && t.created_at && new Date(t.created_at) <= matchedCutoff && !paidTaskIds.has(t.id))
-          .slice(0, 8)
-          .map((t: any) => ({ id: t.id, title: t.title, since: t.created_at }));
-
-        const inReviewStuck = tasks
-          .filter((t: any) => t.status === "in_review" && t.updated_at && new Date(t.updated_at) <= reviewCutoff)
-          .slice(0, 8)
-          .map((t: any) => ({ id: t.id, title: t.title, since: t.updated_at }));
-
-        const releasedFees = transactions
-          .filter((tx: any) => tx.status === "released" && tx.created_at)
-          .map((tx: any) => ({ created_at: tx.created_at, fee: Number(tx.platform_fee ?? 0) }));
-
-        const weeklyMap: Record<string, number> = {};
-        const monthlyMap: Record<string, number> = {};
-
-        for (const row of releasedFees) {
-          const wk = weekKey(row.created_at);
-          const mk = monthKey(row.created_at);
-          weeklyMap[wk] = (weeklyMap[wk] ?? 0) + row.fee;
-          monthlyMap[mk] = (monthlyMap[mk] ?? 0) + row.fee;
-        }
-
-        const weeklyTrend = Object.keys(weeklyMap)
-          .sort()
-          .slice(-8)
-          .map((key) => ({ key, label: formatWeekLabel(key), amount: Math.round(weeklyMap[key]) }));
-
-        const monthlyTrend = Object.keys(monthlyMap)
-          .sort()
-          .slice(-6)
-          .map((key) => ({ key, label: formatMonthLabel(key), amount: Math.round(monthlyMap[key]) }));
-
-        return {
-          liveStats: {
-            totalUsers: profiles.length,
-            roleCounts,
-            totalTasks: tasks.length,
-            taskStatusCounts,
-            escrowVolume,
-            platformFeesEarned,
-          },
-          today: {
-            signupsToday,
-            tasksPostedToday,
-            tasksCompletedToday,
-            paymentsProcessedToday,
-          },
-          queue: {
-            pendingVerifications: pendingStudent + pendingCompany + pendingIndividual,
-            openDisputes,
-            pendingWithdrawals,
-            unresolvedReports,
-          },
-          health: {
-            failedPayments: failedWithdrawalPayments + failedWalletTopups,
-            webhookBacklog,
-            matchedStuck,
-            inReviewStuck,
-          },
-          revenueTrend: {
-            weekly: weeklyTrend,
-            monthly: monthlyTrend,
-          },
-        };
-      }
-    },
+    queryFn: async () => await getAdminCommandCenter(),
   });
 
   const trendData = useMemo(() => {
@@ -376,7 +238,7 @@ function OverviewTab() {
       tone: "text-warning bg-warning/15",
     },
     {
-      label: "Platform fees earned",
+      label: "Platform fees earned (total)",
       value: formatCurrency(data?.liveStats.platformFeesEarned ?? 0),
       icon: DollarSign,
       tone: "text-foreground bg-muted",
@@ -385,6 +247,24 @@ function OverviewTab() {
 
   if (isLoading && !data) {
     return <div className="text-center text-muted-foreground py-10">Loading command center...</div>;
+  }
+
+  if (isError && !data) {
+    const message = (error as any)?.message ?? "Could not load command center data";
+    return (
+      <div className="space-y-3">
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          {message}
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return <div className="text-center text-muted-foreground py-10">Preparing command center data...</div>;
   }
 
   return (
@@ -421,6 +301,17 @@ function OverviewTab() {
           })}
         </div>
 
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Task fees earned (released)</p>
+            <p className="mt-1 text-xl font-semibold text-foreground">{formatCurrency(data?.liveStats.taskFeesEarned ?? 0)}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Withdrawal processing fees earned</p>
+            <p className="mt-1 text-xl font-semibold text-foreground">{formatCurrency(data?.liveStats.withdrawalFeesEarned ?? 0)}</p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Users by role</p>
@@ -448,7 +339,7 @@ function OverviewTab() {
 
       <section className="space-y-3">
         <h3 className="text-sm font-semibold text-foreground">Today at a glance</h3>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">New signups</p>
             <p className="mt-1 text-2xl font-semibold text-foreground">{data?.today.signupsToday ?? 0}</p>
@@ -464,6 +355,10 @@ function OverviewTab() {
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">Payments processed</p>
             <p className="mt-1 text-2xl font-semibold text-foreground">{data?.today.paymentsProcessedToday ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Withdrawal fees (today)</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{formatCurrency(data?.today.withdrawalFeesToday ?? 0)}</p>
           </div>
         </div>
       </section>

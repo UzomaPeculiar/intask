@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
 import { AdminUserProfileSheet } from "@/components/intask/admin/shared";
+import { getAdminUsersManagementData } from "@/lib/admin.functions";
 
 export function UserManagementTab() {
   const qc = useQueryClient();
+  const loadAdminUsersManagementData = useServerFn(getAdminUsersManagementData);
   const [viewingProfile, setViewingProfile] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "student" | "alumni" | "individual" | "company">("all");
@@ -22,30 +25,10 @@ export function UserManagementTab() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin-users-management"],
     refetchInterval: 60000,
-    queryFn: async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      let profilesRes = await (supabase as any).from("profiles").select("id, full_name, email, role, created_at, last_active_at, account_status, account_status_reason, is_admin").order("created_at", { ascending: false });
-      if (profilesRes.error) {
-        const fallbackProfilesRes = await (supabase as any).from("profiles").select("id, full_name, email, role, created_at, is_admin").order("created_at", { ascending: false });
-        if (fallbackProfilesRes.error) throw fallbackProfilesRes.error;
-        profilesRes = { ...fallbackProfilesRes, data: (fallbackProfilesRes.data ?? []).map((p: any) => ({ ...p, last_active_at: null, account_status: "active", account_status_reason: null })) };
-      }
-      const [studentsRes, companiesRes, individualsRes, walletsRes, tasksRes, txRes] = await Promise.all([
-        (supabase as any).from("student_profiles").select("user_id, verified, tasks_completed"),
-        (supabase as any).from("company_profiles").select("user_id, verified"),
-        (supabase as any).from("individual_profiles").select("user_id, verified"),
-        (supabase as any).from("wallets").select("user_id, balance, total_earned, total_withdrawn"),
-        (supabase as any).from("tasks").select("id, poster_id, status"),
-        (supabase as any).from("transactions").select("poster_id, amount, status"),
-      ]);
-      if (profilesRes.error) throw profilesRes.error;
-      const profiles = profilesRes.data ?? []; const students = studentsRes.error ? [] : (studentsRes.data ?? []); const companies = companiesRes.error ? [] : (companiesRes.data ?? []); const individuals = individualsRes.error ? [] : (individualsRes.data ?? []); const wallets = walletsRes.error ? [] : (walletsRes.data ?? []); const tasks = tasksRes.error ? [] : (tasksRes.data ?? []); const transactions = txRes.error ? [] : (txRes.data ?? []);
-      const studentMap = new Map(students.map((s: any) => [s.user_id, s])); const companyMap = new Map(companies.map((c: any) => [c.user_id, c])); const individualMap = new Map(individuals.map((i: any) => [i.user_id, i])); const walletMap = new Map(wallets.map((w: any) => [w.user_id, w]));
-      const completedPostedByUser: Record<string, number> = {}; for (const task of tasks) { if (task?.poster_id && task?.status === "completed") completedPostedByUser[task.poster_id] = (completedPostedByUser[task.poster_id] ?? 0) + 1; }
-      const spentByPoster: Record<string, number> = {}; for (const tx of transactions) { if (!tx.poster_id || !["in_escrow", "released", "disputed", "refunded"].includes(tx.status)) continue; spentByPoster[tx.poster_id] = (spentByPoster[tx.poster_id] ?? 0) + Number(tx.amount ?? 0); }
-      const rows = profiles.map((profile: any) => { const student = studentMap.get(profile.id); const company = companyMap.get(profile.id); const individual = individualMap.get(profile.id); const wallet = walletMap.get(profile.id); const verified = profile.role === "company" ? !!company?.verified : profile.role === "individual" ? !!individual?.verified : !!student?.verified; const tasksCompleted = profile.role === "student" || profile.role === "alumni" ? Number(student?.tasks_completed ?? 0) : Number(completedPostedByUser[profile.id] ?? 0); const totalEarned = Number(wallet?.total_earned ?? 0); const totalSpent = Number(spentByPoster[profile.id] ?? 0); return { ...profile, verified, tasksCompleted, totalEarned, totalSpent, walletBalance: Number(wallet?.balance ?? 0), accountStatus: profile.account_status ?? "active" }; });
-      return { meId: auth.user?.id ?? null, rows };
-    },
+    retry: 0,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => await loadAdminUsersManagementData(),
   });
 
   const updateAccountStatus = useMutation({ mutationFn: async ({ userId, status, reason }: { userId: string; status: "active" | "suspended" | "banned"; reason: string }) => { const meId = data?.meId; if (!meId) throw new Error("Could not determine current admin user"); if (meId === userId) throw new Error("You cannot change your own admin account status from this panel"); const patch = status === "active" ? { account_status: "active", account_status_reason: null, suspended_at: null } : { account_status: status, account_status_reason: reason || null, suspended_at: new Date().toISOString() }; const { error } = await (supabase as any).from("profiles").update(patch).eq("id", userId); if (error) throw error; await (supabase as any).from("audit_log").insert({ admin_user_id: meId, action: status === "active" ? "user.reactivate" : status === "banned" ? "user.ban" : "user.suspend", target_type: "user", target_id: userId, details: { reason: reason || null, status } }); }, onSuccess: () => { toast.success("User status updated"); qc.invalidateQueries({ queryKey: ["admin-users-management"] }); qc.invalidateQueries({ queryKey: ["admin-user-profile"] }); }, onError: (e: any) => toast.error(e.message ?? "Could not update user status") });

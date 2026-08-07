@@ -18,12 +18,14 @@ export function SettingsTab() {
   const numericSettingRules: Record<string, { min: number; max: number; label: string }> = {
     platform_fee_percent: { min: 0, max: 30, label: "Platform fee (%)" },
     min_withdrawal_amount: { min: 100, max: 1000000, label: "Minimum withdrawal (NGN)" },
+    processing_fee_amount: { min: 0, max: 100000, label: "Withdrawal processing fee (NGN)" },
     min_task_budget: { min: 500, max: 10000000, label: "Minimum task budget (NGN)" },
   };
 
   const defaultSettingsSeed = [
     { key: "platform_fee_percent", value: 8, description: "Platform fee percentage charged on each completed task" },
     { key: "min_withdrawal_amount", value: 550, description: "Minimum withdrawal amount in Naira" },
+    { key: "processing_fee_amount", value: 50, description: "Flat fee charged on each withdrawal in Naira" },
     { key: "maintenance_mode", value: false, description: "When true, non-admin users see a maintenance page" },
     { key: "min_task_budget", value: 1000, description: "Minimum task budget in Naira" },
   ];
@@ -41,6 +43,9 @@ export function SettingsTab() {
     }
     if (key === "min_withdrawal_amount" && !isEqualValue(newValue, currentValue)) {
       return "Changing minimum withdrawal directly affects cashout eligibility.";
+    }
+    if (key === "processing_fee_amount" && !isEqualValue(newValue, currentValue)) {
+      return "Changing withdrawal processing fee affects net payout users receive on future cashouts.";
     }
     if (key === "min_task_budget" && !isEqualValue(newValue, currentValue)) {
       return "Changing minimum task budget affects future task posting validation.";

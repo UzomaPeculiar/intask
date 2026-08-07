@@ -227,11 +227,12 @@ function ProfilePage() {
               <p className="truncate text-sm text-muted-foreground">{company.company_name}</p>
             )}
             <div className="mt-1.5"><VerifiedBadge role={profile.role} verified={isCompany ? company?.verified : isIndividual ? individual?.verified : student?.verified} isPro={!!alumniProSub} /></div>
-            {isOwn && profile.role === "student" && !student?.verified && student?.verification_method === "id_upload" && (
-              <ReuploadIDSection userId={profile.id} />
-            )}
-            {isOwn && profile.role === "student" && !student?.verified && student?.verification_method === "email" && (
-              <EmailVerificationSection userId={profile.id} universityEmail={student?.university_email} />
+            {isOwn && profile.role === "student" && !student?.verified && (
+              <StudentVerificationSection
+                userId={profile.id}
+                verificationMethod={student?.verification_method}
+                universityEmail={student?.university_email}
+              />
             )}
             {isOwn && isCompany && !company?.verified && company?.verification_method === "email" && (
               <CompanyEmailVerificationSection userId={profile.id} companyEmail={company?.company_email} />
@@ -461,6 +462,7 @@ function EditPanel({ profile, student, company, onDone }: any) {
   const [university, setUniversity] = useState(student?.university ?? "");
   const [year, setYear] = useState(student?.year_of_study ?? "");
   const [department, setDepartment] = useState(student?.department ?? "");
+  const [universityEmail, setUniversityEmail] = useState(student?.university_email ?? "");
 
   const [companyName, setCompanyName] = useState(company?.company_name ?? "");
   const [industry, setIndustry] = useState(company?.industry ?? "");
@@ -481,9 +483,14 @@ function EditPanel({ profile, student, company, onDone }: any) {
     if (pErr) { toast.error(pErr.message); setSaving(false); return; }
 
     if (isStudentOrAlumni) {
-      await supabase.from("student_profiles").update({
-        skills, university: university || null, year_of_study: year || null, department: department || null,
+      const { error: sErr } = await supabase.from("student_profiles").update({
+        skills,
+        university: university || null,
+        year_of_study: year || null,
+        department: department || null,
+        university_email: universityEmail.trim() || null,
       }).eq("user_id", profile.id);
+      if (sErr) { toast.error(sErr.message); setSaving(false); return; }
     }
     if (isCompany) {
       await supabase.from("company_profiles").upsert({
@@ -579,6 +586,17 @@ function EditPanel({ profile, student, company, onDone }: any) {
               <Input value={department} onChange={(e) => setDepartment(e.target.value)} />
             </div>
           </div>
+          {profile.role === "student" && !student?.verified && (
+            <div className="space-y-1.5">
+              <Label>University email</Label>
+              <Input
+                type="email"
+                value={universityEmail}
+                onChange={(e) => setUniversityEmail(e.target.value)}
+                placeholder="yourname@students.youruni.edu.ng"
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Skills</Label>
             <div className="flex flex-wrap gap-1.5">
@@ -1022,6 +1040,80 @@ function ReuploadIDSection({ userId }: { userId: string }) {
        >
          {uploading ? "Uploading..." : "Submit for review"}
        </Button>
+    </div>
+  );
+}
+
+function StudentVerificationSection({
+  userId,
+  verificationMethod,
+  universityEmail,
+}: {
+  userId: string;
+  verificationMethod?: string | null;
+  universityEmail?: string | null;
+}) {
+  const qc = useQueryClient();
+
+  const switchVerificationMethod = useMutation({
+    mutationFn: async (nextMethod: "email" | "id_upload") => {
+      const { error } = await supabase
+        .from("student_profiles")
+        .update({
+          verification_method: nextMethod,
+          verification_status: "pending",
+        } as any)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_data, nextMethod) => {
+      toast.success(nextMethod === "email" ? "Switched to university email verification." : "Switched to student ID verification.");
+      qc.invalidateQueries({ queryKey: ["profile", userId] });
+    },
+    onError: (error: any) => toast.error(error?.message ?? "Could not switch verification method"),
+  });
+
+  const canUseEmail = !!universityEmail?.trim();
+
+  return (
+    <div className="space-y-3">
+      {verificationMethod === "email" ? (
+        <EmailVerificationSection userId={userId} universityEmail={universityEmail} />
+      ) : (
+        <ReuploadIDSection userId={userId} />
+      )}
+
+      <div className="rounded-xl border border-border bg-card/80 p-3 text-sm shadow-sm">
+        <p className="font-medium text-foreground">Need a different option?</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          You can switch between university email and student ID verification any time before approval.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {verificationMethod !== "email" && canUseEmail && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={switchVerificationMethod.isPending}
+              onClick={() => switchVerificationMethod.mutate("email")}
+            >
+              Use university email instead
+            </Button>
+          )}
+          {verificationMethod !== "id_upload" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={switchVerificationMethod.isPending}
+              onClick={() => switchVerificationMethod.mutate("id_upload")}
+            >
+              Use student ID instead
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

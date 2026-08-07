@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { TASK_CATEGORIES, SKILLS } from "@/lib/constants";
 import { ArrowLeft, ShieldCheck, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
+import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app/tasks/create")({
   head: () => ({ meta: [{ title: "Post a task — InTask" }] }),
@@ -53,16 +57,25 @@ function CreateTaskPage() {
   const [skills, setSkills] = useState<string[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [loading, setLoading] = useState(false);
+  const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
+  const { data: minTaskBudgetSetting } = useQuery({
+    queryKey: ["runtime-platform-settings"],
+    queryFn: async () => await loadRuntimePlatformSettings(),
+    staleTime: 30_000,
+  });
+  const minTaskBudget = Math.max(
+    0,
+    Number(minTaskBudgetSetting?.min_task_budget ?? PLATFORM_SETTING_DEFAULTS.min_task_budget),
+  );
 
   async function submit() {
     if (!title.trim()) return toast.error("Add a title");
     if (!category) return toast.error("Pick a category");
     if (!description.trim()) return toast.error("Describe the task");
 
-  const minForCategory = CATEGORY_MINIMUMS[category] ?? 3000;
-  if (!negotiable && (!budget || Number(budget) < minForCategory)) {
-    return toast.error(`Minimum budget for ${category || "this category"} is ₦${minForCategory.toLocaleString("en-NG")}. This ensures fair pay for students.`);
-  }
+    if (!negotiable && (!budget || Number(budget) < minTaskBudget)) {
+      return toast.error(`Minimum task budget is ₦${minTaskBudget.toLocaleString("en-NG")}.`);
+    }
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return toast.error("Not signed in"); }
@@ -157,10 +170,10 @@ function CreateTaskPage() {
               <>
                 <span className="font-medium text-foreground">Suggested range for {category}:</span>{" "}
                 ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")} – ₦{(CATEGORY_MINIMUMS[category] * 8).toLocaleString("en-NG")}
-                {" · "}Minimum: ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")}
+                {" · "}Platform minimum: ₦{minTaskBudget.toLocaleString("en-NG")}
               </>
             ) : (
-              <span>Set a fair budget — students depend on this income.</span>
+              <span>Set a fair budget — students depend on this income. Platform minimum: ₦{minTaskBudget.toLocaleString("en-NG")}.</span>
             )}
           </div>
         )}

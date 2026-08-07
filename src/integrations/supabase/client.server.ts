@@ -15,7 +15,10 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
 
+    // Always force service-role auth for server admin queries.
+    // This prevents inherited user JWTs from downgrading permissions.
     headers.set("apikey", supabaseKey);
+    headers.set("Authorization", `Bearer ${supabaseKey}`);
     return fetch(input, { ...init, headers });
   };
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { InitialsAvatar } from "@/components/intask/Avatar";
@@ -8,10 +9,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Building2, CheckCircle2, Clock, ExternalLink, Eye, Globe, GraduationCap, Mail, MapPin, Phone, XCircle } from "lucide-react";
+import { getAdminUserWalletData } from "@/lib/admin.functions";
 
 export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const isMobile = useIsMobile();
   const qc = useQueryClient();
+  const loadAdminUserWalletData = useServerFn(getAdminUserWalletData);
 
   const { data, isLoading } = useQuery<any | null>({
     queryKey: ["admin-user-profile", userId],
@@ -40,13 +43,20 @@ export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: 
 
       const { data: postedTasks } = await supabase.from("tasks").select("id, title, budget, status, created_at").eq("poster_id", userId).order("created_at", { ascending: false }).limit(10);
       const { data: appliedTasks } = await (supabase as any).from("applications").select("id, status, created_at, task:tasks(id, title, budget, status)").eq("student_id", userId).order("created_at", { ascending: false }).limit(10);
-      const { data: wallet } = await (supabase as any).from("wallets").select("balance, total_earned, total_withdrawn").eq("user_id", userId).maybeSingle();
-      const { data: walletTransactions } = await (supabase as any).from("wallet_transactions").select("id, transaction_type, amount, status, description, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(10);
       const { data: reviewsReceived } = await (supabase as any).from("reviews").select("id, rating, comment, created_at, reviewer:profiles!reviews_reviewer_id_fkey(full_name, email)").eq("reviewee_id", userId).order("created_at", { ascending: false }).limit(10);
       const { data: reportsAgainst } = await (supabase as any).from("reports").select("id, reason, details, status, created_at, reporter:profiles!reports_reporter_id_fkey(full_name, email)").eq("reported_id", userId).order("created_at", { ascending: false }).limit(10);
       const { data: reportsBy } = await (supabase as any).from("reports").select("id, reason, details, status, created_at, reported:profiles!reports_reported_id_fkey(full_name, email)").eq("reporter_id", userId).order("created_at", { ascending: false }).limit(10);
 
-      return { profile, student, company, individual, postedTasks: postedTasks ?? [], appliedTasks: appliedTasks ?? [], wallet, walletTransactions: walletTransactions ?? [], reviewsReceived: reviewsReceived ?? [], reportsAgainst: reportsAgainst ?? [], reportsBy: reportsBy ?? [] };
+      return { profile, student, company, individual, postedTasks: postedTasks ?? [], appliedTasks: appliedTasks ?? [], reviewsReceived: reviewsReceived ?? [], reportsAgainst: reportsAgainst ?? [], reportsBy: reportsBy ?? [] };
+    },
+  });
+
+  const { data: adminWalletData } = useQuery<{ wallet: any; walletTransactions: any[] } | null>({
+    queryKey: ["admin-user-wallet", userId],
+    enabled: !!userId && open,
+    queryFn: async () => {
+      if (!userId) return null;
+      return await loadAdminUserWalletData({ data: { userId } });
     },
   });
 
@@ -76,8 +86,8 @@ export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: 
   const individual = data?.individual;
   const postedTasks = data?.postedTasks ?? [];
   const appliedTasks = data?.appliedTasks ?? [];
-  const wallet = data?.wallet;
-  const walletTransactions = data?.walletTransactions ?? [];
+  const wallet = adminWalletData?.wallet ?? null;
+  const walletTransactions = adminWalletData?.walletTransactions ?? [];
   const reviewsReceived = data?.reviewsReceived ?? [];
   const reportsAgainst = data?.reportsAgainst ?? [];
   const reportsBy = data?.reportsBy ?? [];

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { DEFAULT_BANNED_WORDS, normalizeWords } from "@/lib/moderation";
 
 function normalizeCreditWalletResult(data: any) {
   if (Array.isArray(data)) return data[0] ?? null;
@@ -53,6 +54,34 @@ function computePayoutSplits(
     .filter((s) => s.amount > 0);
 }
 
+function sumLedger(rows: any[] | null | undefined, amountField: string, predicate?: (row: any) => boolean) {
+  return (rows ?? []).reduce((sum, row) => {
+    if (predicate && !predicate(row)) return sum;
+    return sum + Number(row?.[amountField] ?? 0);
+  }, 0);
+}
+
+function deriveWalletSummary(
+  wallet: any | null,
+  earnedFromLedger: number,
+  withdrawnFromLedger: number,
+  spentFromLedger: number,
+) {
+  const walletBalance = Number(wallet?.balance ?? 0);
+  const walletEarned = Number(wallet?.total_earned ?? 0);
+  const walletWithdrawn = Number(wallet?.total_withdrawn ?? 0);
+
+  const totalEarned = Math.max(walletEarned, earnedFromLedger);
+  const totalSpent = Math.max(walletWithdrawn, withdrawnFromLedger, spentFromLedger);
+  const balance = Number.isFinite(walletBalance) && walletBalance > 0 ? walletBalance : Math.max(0, totalEarned - totalSpent);
+
+  return {
+    balance,
+    total_earned: totalEarned,
+    total_withdrawn: totalSpent,
+  };
+}
+
 async function ensureAdmin(userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const db = supabaseAdmin as any;
@@ -84,6 +113,209 @@ export const assertAdminAccess = createServerFn({ method: "GET" })
     return { ok: true };
   });
 
+export const getAdminUserWalletData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { userId: string }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId: adminUserId } = context;
+    const { db } = await ensureAdmin(adminUserId);
+
+    if (!data.userId) {
+      throw new Error("User id is required");
+    }
+
+    const walletRes = await db
+      .from("wallets")
+      .select("balance, total_earned, total_withdrawn")
+      .eq("user_id", data.userId)
+      .limit(1);
+
+    if (walletRes.error) throw walletRes.error;
+
+    const [earnedRes, withdrawalsRes, spentRes] = await Promise.all([
+      db.from("transactions").select("amount, status, student_id").eq("student_id", data.userId).eq("status", "released"),
+      db.from("withdrawal_requests").select("amount, net_amount, status, user_id").eq("user_id", data.userId).eq("status", "completed"),
+      db.from("transactions").select("amount, status, poster_id").eq("poster_id", data.userId),
+    ]);
+
+    if (earnedRes.error) throw earnedRes.error;
+    if (withdrawalsRes.error) throw withdrawalsRes.error;
+    if (spentRes.error) throw spentRes.error;
+
+    const earnedFromLedger = sumLedger(earnedRes.data, "amount");
+    const withdrawnFromLedger = sumLedger(withdrawalsRes.data, "net_amount") || sumLedger(withdrawalsRes.data, "amount");
+    const spentFromLedger = sumLedger(spentRes.data, "amount", (row) => ["in_escrow", "released", "disputed", "refunded"].includes(row?.status));
+
+    // Generated types in this project use `type`; support `transaction_type` as fallback.
+    let txRes = await db
+      .from("wallet_transactions")
+      .select("id, type, amount, status, description, created_at")
+      .eq("user_id", data.userId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (!txRes.error) {
+      txRes = {
+        ...txRes,
+        data: (txRes.data ?? []).map((row: any) => ({
+          ...row,
+          transaction_type: row.type,
+        })),
+      } as any;
+    }
+
+    if (txRes.error && String(txRes.error.message ?? "").toLowerCase().includes("type")) {
+      txRes = await db
+        .from("wallet_transactions")
+        .select("id, transaction_type, amount, status, description, created_at")
+        .eq("user_id", data.userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+    }
+
+    if (txRes.error) {
+      const rawTxRes = await db
+        .from("wallet_transactions")
+        .select("*")
+        .eq("user_id", data.userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (!rawTxRes.error) {
+        txRes = {
+          ...rawTxRes,
+          data: (rawTxRes.data ?? []).map((row: any) => ({
+            id: row.id,
+            amount: row.amount,
+            created_at: row.created_at,
+            description: row.description ?? row.narration ?? row.note ?? null,
+            status: row.status ?? "completed",
+            transaction_type: row.transaction_type ?? row.type ?? null,
+          })),
+        } as any;
+      }
+    }
+
+    // Wallet summary should remain available even when tx history query fails in drifted schemas.
+    const walletTransactions = txRes.error ? [] : (txRes.data ?? []);
+
+    let wallet = walletRes.data?.[0] ?? null;
+
+    if (!wallet) {
+      wallet = deriveWalletSummary(null, earnedFromLedger, withdrawnFromLedger, spentFromLedger);
+    } else {
+      wallet = deriveWalletSummary(wallet, earnedFromLedger, withdrawnFromLedger, spentFromLedger);
+    }
+
+    return {
+      wallet,
+      walletTransactions,
+    };
+  });
+
+export const getAdminUsersManagementData = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    const warnings: string[] = [];
+
+    let profilesRes = await db
+      .from("profiles")
+      .select("id, full_name, email, role, created_at, last_active_at, account_status, account_status_reason, is_admin")
+      .order("created_at", { ascending: false });
+
+    if (profilesRes.error) {
+      const fallbackProfilesRes = await db
+        .from("profiles")
+        .select("id, full_name, email, role, created_at, is_admin")
+        .order("created_at", { ascending: false });
+      if (fallbackProfilesRes.error) {
+        return { meId: userId, rows: [], warning: "Profiles table could not be loaded in this environment." };
+      }
+      warnings.push("Some profile status fields are unavailable in this environment.");
+      profilesRes = { ...fallbackProfilesRes, data: (fallbackProfilesRes.data ?? []).map((p: any) => ({ ...p, last_active_at: null, account_status: "active", account_status_reason: null })) };
+    }
+
+    const [studentsRes, companiesRes, individualsRes, walletsRes, tasksRes, txRes, withdrawalsRes] = await Promise.allSettled([
+      db.from("student_profiles").select("user_id, verified, tasks_completed"),
+      db.from("company_profiles").select("user_id, verified"),
+      db.from("individual_profiles").select("user_id, verified"),
+      db.from("wallets").select("user_id, balance, total_earned, total_withdrawn"),
+      db.from("tasks").select("id, poster_id, status"),
+      db.from("transactions").select("poster_id, student_id, amount, status"),
+      db.from("withdrawal_requests").select("user_id, amount, net_amount, status"),
+    ]);
+
+    function rowsFromResult(result: PromiseSettledResult<any>, label: string) {
+      if (result.status === "rejected") {
+        warnings.push(`${label} could not be loaded.`);
+        return [];
+      }
+      if (result.value?.error) {
+        warnings.push(`${label} could not be loaded.`);
+        return [];
+      }
+      return result.value?.data ?? [];
+    }
+
+    const profiles = profilesRes.data ?? [];
+    const students = rowsFromResult(studentsRes, "Student profiles");
+    const companies = rowsFromResult(companiesRes, "Company profiles");
+    const individuals = rowsFromResult(individualsRes, "Individual profiles");
+    const wallets = rowsFromResult(walletsRes, "Wallets");
+    const tasks = rowsFromResult(tasksRes, "Tasks");
+    const transactions = rowsFromResult(txRes, "Transactions");
+    const withdrawals = rowsFromResult(withdrawalsRes, "Withdrawal requests");
+
+    const studentMap = new Map(students.map((s: any) => [s.user_id, s]));
+    const companyMap = new Map(companies.map((c: any) => [c.user_id, c]));
+    const individualMap = new Map(individuals.map((i: any) => [i.user_id, i]));
+    const walletMap = new Map(wallets.map((w: any) => [w.user_id, w]));
+
+    const completedPostedByUser: Record<string, number> = {};
+    for (const task of tasks) {
+      if (task?.poster_id && task?.status === "completed") {
+        completedPostedByUser[task.poster_id] = (completedPostedByUser[task.poster_id] ?? 0) + 1;
+      }
+    }
+
+    const earnedByStudent: Record<string, number> = {};
+    const spentByPoster: Record<string, number> = {};
+    for (const tx of transactions) {
+      if (tx?.student_id && tx.status === "released") {
+        earnedByStudent[tx.student_id] = (earnedByStudent[tx.student_id] ?? 0) + Number(tx.amount ?? 0);
+      }
+      if (tx?.poster_id && ["in_escrow", "released", "disputed", "refunded"].includes(tx.status)) {
+        spentByPoster[tx.poster_id] = (spentByPoster[tx.poster_id] ?? 0) + Number(tx.amount ?? 0);
+      }
+    }
+
+    const withdrawnByUser: Record<string, number> = {};
+    for (const withdrawal of withdrawals) {
+      if (!withdrawal?.user_id || withdrawal.status !== "completed") continue;
+      withdrawnByUser[withdrawal.user_id] = (withdrawnByUser[withdrawal.user_id] ?? 0) + Number(withdrawal.net_amount ?? withdrawal.amount ?? 0);
+    }
+
+    const rows = profiles.map((profile: any) => {
+      const student = studentMap.get(profile.id);
+      const company = companyMap.get(profile.id);
+      const individual = individualMap.get(profile.id);
+      const wallet = walletMap.get(profile.id);
+
+      const verified = profile.role === "company" ? !!company?.verified : profile.role === "individual" ? !!individual?.verified : !!student?.verified;
+      const tasksCompleted = profile.role === "student" || profile.role === "alumni" ? Number(student?.tasks_completed ?? 0) : Number(completedPostedByUser[profile.id] ?? 0);
+      const totalEarned = Math.max(Number(wallet?.total_earned ?? 0), Number(earnedByStudent[profile.id] ?? 0));
+      const totalSpent = Math.max(Number(wallet?.total_withdrawn ?? 0), Number(withdrawnByUser[profile.id] ?? 0), Number(spentByPoster[profile.id] ?? 0));
+      const walletBalance = Number(wallet?.balance ?? 0) || Math.max(0, totalEarned - totalSpent);
+
+      return { ...profile, verified, tasksCompleted, totalEarned, totalSpent, walletBalance, accountStatus: profile.account_status ?? "active" };
+    });
+
+    return { meId: userId, rows, warning: warnings.length > 0 ? warnings[0] : null };
+  });
+
 export const adminSaveModerationRules = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { words: string[] }) => input)
@@ -91,13 +323,7 @@ export const adminSaveModerationRules = createServerFn({ method: "POST" })
     const { userId } = context;
     const { db } = await ensureAdmin(userId);
 
-    const normalized = Array.from(
-      new Set(
-        (data.words ?? [])
-          .map((w) => String(w ?? "").trim().toLowerCase())
-          .filter(Boolean),
-      ),
-    );
+    const normalized = normalizeWords(data.words ?? []);
 
     if (normalized.length === 0) {
       throw new Error("Add at least one keyword");
@@ -145,6 +371,167 @@ export const adminSaveModerationRules = createServerFn({ method: "POST" })
     return { ok: true, words: normalized };
   });
 
+export const getModerationRules = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as any;
+
+    const { data, error } = await db
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "banned_words_rules")
+      .maybeSingle();
+
+    if (error) {
+      return { words: DEFAULT_BANNED_WORDS };
+    }
+
+    const rawValue = data?.value;
+    if (!Array.isArray(rawValue)) {
+      return { words: DEFAULT_BANNED_WORDS };
+    }
+
+    return { words: normalizeWords(rawValue.map((v: any) => String(v ?? ""))) };
+  });
+
+export const getAdminFinancialData = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    // Some environments may not yet have updated_at/processed_at on withdrawal_requests.
+    // Use a compatible fallback select so financial tab remains functional.
+    let withdrawalsQueryResult = await db
+      .from("withdrawal_requests")
+      .select("id, user_id, amount, fee, net_amount, bank_name, account_number, account_name, status, created_at, updated_at, processed_at")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
+    if (withdrawalsQueryResult?.error?.message?.includes("column withdrawal_requests.updated_at does not exist")) {
+      withdrawalsQueryResult = await db
+        .from("withdrawal_requests")
+        .select("id, user_id, amount, fee, net_amount, bank_name, account_number, account_name, status, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+    }
+
+    const [txRes, fundingRes, profilesRes, walletsRes, tasksRes] = await Promise.allSettled([
+      db
+        .from("transactions")
+        .select("id, task_id, poster_id, student_id, amount, platform_fee, status, created_at, updated_at")
+        .order("created_at", { ascending: false })
+        .limit(2000),
+      db
+        .from("wallet_funding")
+        .select("id, user_id, amount, paystack_reference, status, webhook_processed, created_at, updated_at")
+        .order("created_at", { ascending: false })
+        .limit(1000),
+      db
+        .from("profiles")
+        .select("id, full_name, email")
+        .order("created_at", { ascending: false })
+        .limit(5000),
+      db
+        .from("wallets")
+        .select("user_id, balance"),
+      db
+        .from("tasks")
+        .select("id, title")
+        .order("created_at", { ascending: false })
+        .limit(5000),
+    ]);
+
+    function unwrap(result: PromiseSettledResult<any>, source: string) {
+      if (result.status === "rejected") {
+        return { data: [], error: `${source}: ${result.reason?.message ?? "request failed"}` };
+      }
+
+      if (result.value?.error) {
+        return { data: [], error: `${source}: ${result.value.error.message ?? "query failed"}` };
+      }
+
+      return { data: result.value?.data ?? [], error: null };
+    }
+
+    const withdrawalsPayload = withdrawalsQueryResult?.error
+      ? { data: [], error: `withdrawal_requests: ${withdrawalsQueryResult.error.message ?? "query failed"}` }
+      : { data: withdrawalsQueryResult?.data ?? [], error: null };
+    const transactionsPayload = unwrap(txRes, "transactions");
+    const fundingPayload = unwrap(fundingRes, "wallet_funding");
+    const profilesPayload = unwrap(profilesRes, "profiles");
+    const walletsPayload = unwrap(walletsRes, "wallets");
+    const tasksPayload = unwrap(tasksRes, "tasks");
+
+    const sourceErrors = [
+      withdrawalsPayload.error,
+      transactionsPayload.error,
+      fundingPayload.error,
+      profilesPayload.error,
+      walletsPayload.error,
+      tasksPayload.error,
+    ].filter(Boolean);
+
+    if (sourceErrors.length === 6) {
+      throw new Error(sourceErrors[0]);
+    }
+
+    const profiles = profilesPayload.data;
+    const tasks = tasksPayload.data;
+    const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
+    const taskMap = new Map(tasks.map((t: any) => [t.id, t]));
+
+    const withdrawals = (withdrawalsPayload.data ?? []).map((w: any) => ({
+      ...w,
+      user: profileMap.get(w.user_id)
+        ? {
+            id: profileMap.get(w.user_id).id,
+            full_name: profileMap.get(w.user_id).full_name,
+            email: profileMap.get(w.user_id).email,
+          }
+        : null,
+    }));
+
+    const transactions = (transactionsPayload.data ?? []).map((t: any) => ({
+      ...t,
+      task: taskMap.get(t.task_id)
+        ? { title: taskMap.get(t.task_id).title }
+        : null,
+      poster: profileMap.get(t.poster_id)
+        ? {
+            full_name: profileMap.get(t.poster_id).full_name,
+            email: profileMap.get(t.poster_id).email,
+          }
+        : null,
+      student: profileMap.get(t.student_id)
+        ? {
+            full_name: profileMap.get(t.student_id).full_name,
+            email: profileMap.get(t.student_id).email,
+          }
+        : null,
+    }));
+
+    const funding = (fundingPayload.data ?? []).map((f: any) => ({
+      ...f,
+      user: profileMap.get(f.user_id)
+        ? {
+            full_name: profileMap.get(f.user_id).full_name,
+            email: profileMap.get(f.user_id).email,
+          }
+        : null,
+    }));
+
+    return {
+      withdrawals,
+      transactions,
+      funding,
+      profiles,
+      wallets: walletsPayload.data ?? [],
+      sourceErrors,
+    };
+  });
+
 export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -163,7 +550,7 @@ export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
       db.from("transactions").select("id, task_id, status, amount, platform_fee, created_at, updated_at"),
       db.from("disputes").select("id, status"),
       db.from("reports").select("id, status"),
-      db.from("withdrawal_requests").select("id, status, created_at, webhook_processed"),
+      db.from("withdrawal_requests").select("id, status, fee, created_at, webhook_processed"),
       db.from("student_profiles").select("user_id, verified, verification_status, verification_method"),
       db.from("company_profiles").select("user_id, verified, verification_status"),
       db.from("individual_profiles").select("user_id, verification_status"),
@@ -213,14 +600,23 @@ export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
       .filter((tx) => tx.status === "in_escrow" || tx.status === "disputed")
       .reduce((sum, tx) => sum + Number(tx.amount ?? 0), 0);
 
-    const platformFeesEarned = transactions
+    const taskFeesEarned = transactions
       .filter((tx) => tx.status === "released")
       .reduce((sum, tx) => sum + Number(tx.platform_fee ?? 0), 0);
+
+    const withdrawalFeesEarned = withdrawals
+      .filter((w) => w.status === "completed")
+      .reduce((sum, w) => sum + Number(w.fee ?? 0), 0);
+
+    const platformFeesEarned = taskFeesEarned + withdrawalFeesEarned;
 
     const signupsToday = profiles.filter((p) => p.created_at && new Date(p.created_at) >= today).length;
     const tasksPostedToday = tasks.filter((t) => t.created_at && new Date(t.created_at) >= today).length;
     const tasksCompletedToday = tasks.filter((t) => t.status === "completed" && t.updated_at && new Date(t.updated_at) >= today).length;
     const paymentsProcessedToday = transactions.filter((tx) => tx.updated_at && new Date(tx.updated_at) >= today && ["in_escrow", "released", "refunded", "disputed"].includes(tx.status)).length;
+    const withdrawalFeesToday = withdrawals
+      .filter((w) => w.created_at && new Date(w.created_at) >= today && w.status === "completed")
+      .reduce((sum, w) => sum + Number(w.fee ?? 0), 0);
 
     const pendingStudent = students.filter((s) => !s.verified && (s.verification_method === "id_upload" || s.verification_status === "pending" || s.verification_status === "pending_review")).length;
     const pendingCompany = companies.filter((c) => !c.verified && c.verification_status !== "rejected").length;
@@ -306,6 +702,8 @@ export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
         totalTasks: tasks.length,
         taskStatusCounts,
         escrowVolume,
+        taskFeesEarned,
+        withdrawalFeesEarned,
         platformFeesEarned,
       },
       today: {
@@ -313,6 +711,7 @@ export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
         tasksPostedToday,
         tasksCompletedToday,
         paymentsProcessedToday,
+        withdrawalFeesToday,
       },
       queue: {
         pendingVerifications: pendingStudent + pendingCompany + pendingIndividual,

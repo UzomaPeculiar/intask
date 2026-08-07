@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { adminSaveModerationRules } from "@/lib/admin.functions";
+import { DEFAULT_BANNED_WORDS, findModerationMatches, normalizeWords } from "@/lib/moderation";
 import { toast } from "sonner";
 
 export function ModerationTab() {
@@ -14,7 +15,6 @@ export function ModerationTab() {
     queryKey: ["admin-moderation"],
     refetchInterval: 60000,
     queryFn: async () => {
-      const defaultWords = ["bitcoin", "crypto", "adult", "sex", "loan", "bet", "gamble", "scam"];
       const [tasksRes, messagesRes, convRes, settingsRes] = await Promise.all([
         (supabase as any)
           .from("tasks")
@@ -36,24 +36,23 @@ export function ModerationTab() {
 
       const rawSetting = settingsRes.data?.value;
       const words = Array.isArray(rawSetting)
-        ? rawSetting.map((w: any) => String(w).toLowerCase().trim()).filter(Boolean)
-        : defaultWords;
+        ? normalizeWords(rawSetting.map((w: any) => String(w ?? "")))
+        : DEFAULT_BANNED_WORDS;
 
       const taskByConversation = new Map((convRes.data ?? []).map((c: any) => [c.id, c.task_id]));
       const taskMap = new Map((tasksRes.data ?? []).map((t: any) => [t.id, t]));
 
       const flaggedTasks = (tasksRes.data ?? [])
         .map((task: any) => {
-          const combined = `${task.title ?? ""} ${task.description ?? ""}`.toLowerCase();
-          const matches = words.filter((w: string) => combined.includes(w));
+          const combined = `${task.title ?? ""} ${task.description ?? ""}`;
+          const matches = findModerationMatches(combined, words);
           return { ...task, matches };
         })
         .filter((task: any) => task.matches.length > 0);
 
       const flaggedMessages = (messagesRes.data ?? [])
         .map((msg: any) => {
-          const combined = `${msg.content ?? ""}`.toLowerCase();
-          const matches = words.filter((w: string) => combined.includes(w));
+          const matches = findModerationMatches(`${msg.content ?? ""}`, words);
           const taskId = taskByConversation.get(msg.conversation_id);
           const task = taskId ? taskMap.get(taskId) : null;
           return { ...msg, matches, task };
@@ -76,11 +75,7 @@ export function ModerationTab() {
 
   const saveWords = useMutation({
     mutationFn: async () => {
-      const parsed = keywordsInput
-        .split(",")
-        .map((w) => w.trim().toLowerCase())
-        .filter(Boolean);
-      const unique = Array.from(new Set(parsed));
+      const unique = normalizeWords(keywordsInput.split(","));
       if (unique.length === 0) throw new Error("Add at least one keyword");
 
       await saveModerationRules({ data: { words: unique } });
@@ -100,7 +95,7 @@ export function ModerationTab() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-foreground">Content moderation queue</h2>
-            <p className="text-xs text-muted-foreground">Auto-flagged tasks and messages based on banned-word rules.</p>
+            <p className="text-xs text-muted-foreground">Banned words block task posting and trigger payment-safety warnings in chat.</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             Refresh

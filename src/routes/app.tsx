@@ -1,10 +1,12 @@
 import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasSupabaseClientConfig } from "@/integrations/supabase/env";
 import { AuthProvider } from "@/hooks/useAuth.tsx";
 import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2 } from "lucide-react";
+import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app")({
   component: AppLayout,
@@ -15,6 +17,33 @@ function AppLayout() {
   const [ready, setReady] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
   const hasSupabaseConfig = hasSupabaseClientConfig();
+  const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
+
+  const { data: me } = useQuery({
+    queryKey: ["app-layout-user"],
+    enabled: ready,
+    queryFn: async () => (await supabase.auth.getUser()).data.user,
+  });
+
+  const { data: myProfile } = useQuery({
+    queryKey: ["app-layout-profile", me?.id],
+    enabled: !!me?.id,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("id, is_admin")
+        .eq("id", me!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const { data: runtimeSettings, isLoading: isLoadingRuntimeSettings } = useQuery({
+    queryKey: ["runtime-platform-settings"],
+    enabled: ready,
+    queryFn: async () => await loadRuntimePlatformSettings(),
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (!hasSupabaseConfig) return;
@@ -53,6 +82,30 @@ function AppLayout() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
         <Loader2 className="size-5 animate-spin" />
+      </div>
+    );
+  }
+
+  const maintenanceMode = !!runtimeSettings?.maintenance_mode;
+  const isAdmin = !!myProfile?.is_admin;
+
+  if (isLoadingRuntimeSettings) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" />
+      </div>
+    );
+  }
+
+  if (maintenanceMode && !isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+          <h1 className="text-xl font-semibold text-foreground">InTask is under maintenance</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We are making improvements right now. Please check back shortly.
+          </p>
+        </div>
       </div>
     );
   }

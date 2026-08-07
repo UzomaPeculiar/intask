@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function parseNumericSetting(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -31,10 +40,28 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
+    const { data: minWithdrawalSetting } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "min_withdrawal_amount")
+      .maybeSingle();
+
+    const { data: processingFeeSetting } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "processing_fee_amount")
+      .maybeSingle();
+
+    const minWithdrawalAmount = Math.max(0, parseNumericSetting(minWithdrawalSetting?.value, 550));
+    const processingFeeAmount = Math.max(0, parseNumericSetting(processingFeeSetting?.value, 50));
+
     const { amount, bank_account_id } = await req.json();
 
-    if (!amount || amount < 550) {
-      return new Response(JSON.stringify({ error: "Minimum withdrawal is ₦550 (₦500 + ₦50 fee)" }), { status: 400, headers: corsHeaders });
+    if (!amount || amount < minWithdrawalAmount) {
+      return new Response(
+        JSON.stringify({ error: `Minimum withdrawal is ₦${minWithdrawalAmount.toLocaleString("en-NG")}` }),
+        { status: 400, headers: corsHeaders },
+      );
     }
 
     // Get bank account and recipient code
@@ -83,8 +110,15 @@ serve(async (req) => {
 
     // Generate unique reference
     const reference = `WD_${user.id.replace(/-/g, "").slice(0, 8)}_${Date.now()}`;
-    const fee = 50;
+    const fee = processingFeeAmount;
     const net_amount = amount - fee;
+
+    if (!Number.isFinite(net_amount) || net_amount <= 0) {
+      return new Response(
+        JSON.stringify({ error: "Withdrawal amount must be greater than the configured processing fee" }),
+        { status: 400, headers: corsHeaders },
+      );
+    }
 
     // Atomic wallet debit
     const { data: debitResult, error: debitError } = await supabase

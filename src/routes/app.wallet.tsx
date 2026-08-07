@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import {
   CheckCircle2, AlertTriangle, Plus, Trash2, Building2, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
+import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
+import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app/wallet")({
   head: () => ({ meta: [{ title: "Wallet — InTask" }] }),
@@ -25,11 +27,11 @@ const SUPABASE_BASE_URL =
     ? `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`
     : "");
 const SUPABASE_FUNCTIONS_URL = `${SUPABASE_BASE_URL.replace(/\/$/, "")}/functions/v1`;
-const WITHDRAWAL_FEE = 50;
 
 function WalletPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
+  const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
   const setDefaultBankAccount = useServerFn(async ({ data }: { data: { bankAccountId: string } }) => {
     const { data: result, error } = await supabase.rpc("set_default_bank_account", {
       p_bank_account_id: data.bankAccountId,
@@ -55,6 +57,7 @@ function WalletPage() {
   const [verifyingAccount, setVerifyingAccount] = useState(false);
   const [pendingFundingRef, setPendingFundingRef] = useState<string | null>(null);
   const [walletTab, setWalletTab] = useState<"overview" | "activity">("overview");
+  const lastWithdrawalSyncKeyRef = useRef("");
 
   const { data: me } = useQuery({
     queryKey: ["me-id"],
@@ -139,6 +142,12 @@ function WalletPage() {
         .limit(10);
       return data ?? [];
     },
+  });
+
+  const { data: minWithdrawalSetting } = useQuery({
+    queryKey: ["runtime-platform-settings"],
+    queryFn: async () => await loadRuntimePlatformSettings(),
+    staleTime: 30_000,
   });
 
   async function verifyAccountNumber() {
@@ -384,7 +393,7 @@ function WalletPage() {
     mutationFn: async () => {
       if (!me) throw new Error("Not signed in");
       const amount = Number(withdrawAmount);
-      if (amount < 550) throw new Error("Minimum withdrawal is ₦550");
+      if (amount < minWithdrawalAmount) throw new Error(`Minimum withdrawal is ₦${minWithdrawalAmount.toLocaleString("en-NG")}`);
       if (!selectedBankAccountId) throw new Error("Please select a bank account");
       if (amount > (wallet?.balance ?? 0)) throw new Error("Insufficient wallet balance");
 
@@ -416,10 +425,88 @@ function WalletPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const syncPendingWithdrawals = useMutation({
+    mutationFn: async (references: string[]) => {
+      if (!references.length) return { updatedCount: 0, completedCount: 0, failedCount: 0, pendingCount: 0 };
+
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (!token) throw new Error("Session expired. Please sign in again.");
+
+      let updatedCount = 0;
+      let completedCount = 0;
+      let failedCount = 0;
+      let pendingCount = 0;
+
+      for (const reference of references) {
+        const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/verify-withdrawal-status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reference }),
+        });
+
+        const payload = await res.json();
+        if (!res.ok && payload?.pending !== true) {
+          throw new Error(payload?.error ?? payload?.message ?? "Could not verify withdrawal status");
+        }
+
+        if (payload?.updated) updatedCount += 1;
+        if (payload?.status === "completed") completedCount += 1;
+        if (payload?.status === "failed" || payload?.status === "reversed") failedCount += 1;
+        if (payload?.pending === true || payload?.status === "pending" || payload?.status === "otp") pendingCount += 1;
+      }
+
+      return { updatedCount, completedCount, failedCount, pendingCount };
+    },
+    onSuccess: (result) => {
+      if (result.updatedCount > 0) {
+        refetchWallet();
+        qc.invalidateQueries({ queryKey: ["withdrawals"] });
+        qc.invalidateQueries({ queryKey: ["wallet-transactions"] });
+      }
+
+      if (result.completedCount > 0) {
+        toast.success(`${result.completedCount} withdrawal${result.completedCount === 1 ? "" : "s"} confirmed`);
+      } else if (result.failedCount > 0) {
+        toast.error(`${result.failedCount} withdrawal${result.failedCount === 1 ? "" : "s"} failed and was reversed`);
+      }
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not refresh withdrawal status"),
+  });
+
   const withdrawAmountNum = Number(withdrawAmount);
-  const netAmount = withdrawAmountNum > 0 ? withdrawAmountNum - WITHDRAWAL_FEE : 0;
+  const withdrawalFee = Math.max(
+    0,
+    Number(minWithdrawalSetting?.processing_fee_amount ?? PLATFORM_SETTING_DEFAULTS.processing_fee_amount),
+  );
+  const netAmount = withdrawAmountNum > 0 ? Math.max(0, withdrawAmountNum - withdrawalFee) : 0;
+  const minWithdrawalAmount = Math.max(
+    0,
+    Number(minWithdrawalSetting?.min_withdrawal_amount ?? PLATFORM_SETTING_DEFAULTS.min_withdrawal_amount),
+  );
   const pendingWithdrawals = withdrawals?.filter((w: any) => w.status === "pending") ?? [];
+  const pendingWithdrawalRefs = pendingWithdrawals
+    .map((w: any) => String(w.reference ?? "").trim())
+    .filter(Boolean)
+    .sort();
+  const pendingWithdrawalSyncKey = pendingWithdrawalRefs.join("|");
   const defaultBank = bankAccounts?.find((b: any) => b.is_default) ?? bankAccounts?.[0];
+
+  useEffect(() => {
+    if (!me?.id || pendingWithdrawalRefs.length === 0) {
+      lastWithdrawalSyncKeyRef.current = "";
+      return;
+    }
+
+    if (lastWithdrawalSyncKeyRef.current === pendingWithdrawalSyncKey) return;
+    if (syncPendingWithdrawals.isPending) return;
+
+    lastWithdrawalSyncKeyRef.current = pendingWithdrawalSyncKey;
+    syncPendingWithdrawals.mutate(pendingWithdrawalRefs);
+  }, [me?.id, pendingWithdrawalSyncKey]);
 
   useEffect(() => {
     if (!selectedBankAccountId && defaultBank?.id) {
@@ -501,7 +588,7 @@ function WalletPage() {
 
           <Sheet open={withdrawOpen} onOpenChange={setWithdrawOpen}>
             <SheetTrigger asChild>
-              <Button className="gap-2" disabled={(wallet?.balance ?? 0) < 550}>
+              <Button className="gap-2" disabled={(wallet?.balance ?? 0) < minWithdrawalAmount}>
                 <ArrowUpRight className="size-4" /> Withdraw
               </Button>
             </SheetTrigger>
@@ -552,10 +639,15 @@ function WalletPage() {
 
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium">Amount (₦)</label>
-                      <Input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} placeholder="Minimum ₦550" />
+                      <Input
+                        type="number"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        placeholder={`Minimum ₦${minWithdrawalAmount.toLocaleString("en-NG")}`}
+                      />
                     </div>
 
-                    {withdrawAmountNum >= 550 && (
+                    {withdrawAmountNum >= minWithdrawalAmount && (
                       <div className="rounded-xl border border-border bg-card p-3 space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Withdrawal amount</span>
@@ -563,7 +655,7 @@ function WalletPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Processing fee</span>
-                          <span className="font-medium text-destructive">-₦{WITHDRAWAL_FEE.toLocaleString("en-NG")}</span>
+                          <span className="font-medium text-destructive">-₦{withdrawalFee.toLocaleString("en-NG")}</span>
                         </div>
                         <div className="flex justify-between border-t border-border pt-2">
                           <span className="font-semibold text-foreground">You receive</span>
@@ -581,7 +673,7 @@ function WalletPage() {
                     <Button
                       className="w-full"
                       size="lg"
-                      disabled={!withdrawAmountNum || withdrawAmountNum < 550 || !selectedBankAccountId || withdrawAmountNum > (wallet?.balance ?? 0) || withdraw.isPending}
+                      disabled={!withdrawAmountNum || withdrawAmountNum < minWithdrawalAmount || !selectedBankAccountId || withdrawAmountNum > (wallet?.balance ?? 0) || withdraw.isPending}
                       onClick={() => withdraw.mutate()}
                     >
                       {withdraw.isPending ? "Processing..." : `Withdraw ₦${netAmount > 0 ? netAmount.toLocaleString("en-NG") : "0"}`}
@@ -595,9 +687,19 @@ function WalletPage() {
 
             {pendingWithdrawals.length > 0 && (
               <div className="it-note-warning rounded-xl border p-3">
-                <p className="flex items-center gap-1 text-sm font-medium text-warning">
-                  <Clock className="size-4" /> {pendingWithdrawals.length} pending withdrawal{pendingWithdrawals.length === 1 ? "" : "s"}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-1 text-sm font-medium text-warning">
+                    <Clock className="size-4" /> {pendingWithdrawals.length} pending withdrawal{pendingWithdrawals.length === 1 ? "" : "s"}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={syncPendingWithdrawals.isPending}
+                    onClick={() => syncPendingWithdrawals.mutate(pendingWithdrawalRefs)}
+                  >
+                    {syncPendingWithdrawals.isPending ? "Syncing..." : "Sync status"}
+                  </Button>
+                </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   ₦{pendingWithdrawals.reduce((s: number, w: any) => s + Number(w.net_amount ?? w.amount), 0).toLocaleString("en-NG")} being processed
                 </p>
