@@ -35,7 +35,7 @@ export function MessagePartyLink({ taskId, studentId, posterId, label = "Message
       if (error) throw error;
       return data.id;
     },
-    onSuccess: (id) => nav({ to: "/app/messages/$conversationId", params: { conversationId: id } }),
+    onSuccess: (id) => nav({ to: "/app/messages", search: { conversationId: id } }),
     onError: (e: any) => toast.error(e.message ?? "Could not open conversation"),
   });
 

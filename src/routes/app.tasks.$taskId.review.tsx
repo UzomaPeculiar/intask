@@ -99,51 +99,53 @@ function ReviewPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md pb-10">
-      <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => {
-          if (window.history.length > 1) window.history.back();
-          else nav({ to: "/app/tasks/$taskId", params: { taskId } });
-        }} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card">
+    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="mx-auto w-full max-w-[640px] px-6 pb-10 pt-7 sm:px-10">
+        <button
+          onClick={() => {
+            if (window.history.length > 1) window.history.back();
+            else nav({ to: "/app/tasks/$taskId", params: { taskId } });
+          }}
+          aria-label="Back"
+          className="mb-4 grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white"
+        >
           <ArrowLeft className="size-4" />
         </button>
-      </header>
-      <div className="space-y-5 px-4 pt-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Review delivery</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{task.title}</p>
-        </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+        <h1 className="font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1a1e16]">Review delivery</h1>
+        <p className="mt-1 text-[0.85rem] text-[#6a8064]">{task.title}</p>
+
+        <div className="mt-5 rounded-[14px] border border-[#c4deb8] bg-white p-5">
           {task.is_team_task ? (
             <div className="space-y-4">
               {(teamDeliveries ?? []).map((delivery: any) => (
-                <div key={delivery.id} className="rounded-lg border border-border/80 bg-background/60 p-3">
-                  <p className="text-xs font-medium text-muted-foreground">Submitted by</p>
-                  <p className="mt-1 text-sm font-medium text-foreground">{delivery.student?.full_name ?? "Student"}</p>
+                <div key={delivery.id} className="rounded-[12px] border border-[#dbead4] bg-[#fbfef9] p-4">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Submitted by</p>
+                  <p className="mt-1.5 font-['Space_Grotesk',sans-serif] text-[0.95rem] font-semibold text-[#1a1e16]">{delivery.student?.full_name ?? "Student"}</p>
                   {delivery.delivery_submitted_at ? (
                     <>
                       {Boolean(delivery.delivery_title) && (
                         <>
-                          <p className="mt-3 text-xs font-medium text-muted-foreground">Work title</p>
-                          <p className="mt-1 text-sm font-medium text-foreground">{delivery.delivery_title}</p>
+                          <div className="mt-3 h-px bg-[#e4efe0]" />
+                          <p className="mt-3 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Work title</p>
+                          <p className="mt-1.5 font-['Space_Grotesk',sans-serif] text-[0.95rem] font-semibold text-[#1a1e16]">{delivery.delivery_title}</p>
                         </>
                       )}
-                      <p className="mt-3 text-xs font-medium text-muted-foreground">Student's message</p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm">{delivery.delivery_message ?? "—"}</p>
+                      <p className="mt-3 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Student's message</p>
+                      <p className="mt-1.5 whitespace-pre-wrap text-[0.85rem] leading-[1.6] text-[#1a1e16]">{delivery.delivery_message ?? "—"}</p>
                       {delivery.delivery_url && (
-                        <a href={delivery.delivery_url} target="_blank" rel="noreferrer" className="it-link-accent mt-3 inline-flex items-center gap-1 text-sm font-medium">
+                        <a href={delivery.delivery_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[0.85rem] font-semibold text-[#3dcb6c]">
                           Open delivery <ExternalLink className="size-3.5" />
                         </a>
                       )}
                       {delivery.delivery_file_url && (
-                        <a href={delivery.delivery_file_url} target="_blank" rel="noreferrer" className="it-link-accent mt-2 inline-flex items-center gap-1 text-sm font-medium">
+                        <a href={delivery.delivery_file_url} target="_blank" rel="noreferrer" className="mt-1.5 inline-flex items-center gap-1 text-[0.85rem] font-semibold text-[#3dcb6c]">
                           Open document{delivery.delivery_file_name ? `: ${delivery.delivery_file_name}` : ""} <ExternalLink className="size-3.5" />
                         </a>
                       )}
                     </>
                   ) : (
-                    <p className="mt-2 text-sm text-muted-foreground">Submission pending</p>
+                    <p className="mt-2 text-[0.82rem] text-[#6a8064]">Submission pending</p>
                   )}
                 </div>
               ))}
@@ -152,23 +154,23 @@ function ReviewPage() {
             <>
               {Boolean((task as any).delivery_title) && (
                 <>
-                  <p className="text-xs font-medium text-muted-foreground">Work title</p>
-                  <p className="mt-1 text-sm font-medium text-foreground">{(task as any).delivery_title}</p>
-                  <div className="my-3 h-px bg-border" />
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Work title</p>
+                  <p className="mt-1.5 font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1a1e16]">{(task as any).delivery_title}</p>
+                  <div className="my-3.5 h-px bg-[#e4efe0]" />
                 </>
               )}
-              <p className="text-xs font-medium text-muted-foreground">Student's message</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Student's message</p>
+              <p className="mt-1.5 whitespace-pre-wrap text-[0.85rem] leading-[1.6] text-[#1a1e16]">
                 {(task.delivery_message ?? "—").split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g).map((part: string, i: number) =>
                   /^(https?:\/\/|www\.)/.test(part) ? (
-                    <a key={i} href={/^https?:\/\//.test(part) ? part : `https://${part}`} target="_blank" rel="noreferrer" className="it-link-accent underline underline-offset-2 break-all">
+                    <a key={i} href={/^https?:\/\//.test(part) ? part : `https://${part}`} target="_blank" rel="noreferrer" className="break-all text-[#3dcb6c] underline underline-offset-2">
                       {part}
                     </a>
                   ) : part
                 )}
               </p>
               {task.delivery_url && (
-                <a href={task.delivery_url} target="_blank" rel="noreferrer" className="it-link-accent mt-3 inline-flex items-center gap-1 text-sm font-medium">
+                <a href={task.delivery_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[0.85rem] font-semibold text-[#3dcb6c]">
                   Open delivery <ExternalLink className="size-3.5" />
                 </a>
               )}
@@ -177,7 +179,7 @@ function ReviewPage() {
                   href={(task as any).delivery_file_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="it-link-accent mt-2 inline-flex items-center gap-1 text-sm font-medium"
+                  className="mt-1.5 inline-flex items-center gap-1 text-[0.85rem] font-semibold text-[#3dcb6c]"
                 >
                   Open document{Boolean((task as any).delivery_file_name) ? `: ${(task as any).delivery_file_name}` : ""} <ExternalLink className="size-3.5" />
                 </a>
@@ -186,18 +188,35 @@ function ReviewPage() {
           )}
         </div>
 
-        <div className="it-note-success rounded-xl border p-4">
-          <p className="flex items-center gap-2 text-sm font-medium text-success"><ShieldCheck className="size-4" /> Happy with the work?</p>
-          <p className="mt-1 text-xs text-muted-foreground">Releases {naira(Number(task.budget) * payoutRate)} to the student after {platformFeePercent}% platform fee.</p>
-          <Button className="mt-3 w-full bg-success text-success-foreground hover:bg-success/90" size="lg" disabled={busy} onClick={approve}>
+        <div className="mt-4 rounded-[14px] border border-[#c4deb8] bg-[#f0f8ec] p-5">
+          <p className="flex items-center gap-1.5 text-[0.9rem] font-semibold text-[#1a7a42]"><ShieldCheck className="size-4" /> Happy with the work?</p>
+          <p className="mt-1 text-[0.8rem] text-[#6a8064]">Releases {naira(Number(task.budget) * payoutRate)} to the student after {platformFeePercent}% platform fee.</p>
+          <Button
+            className="mt-3.5 h-12 w-full rounded-[10px] bg-[#1a7a42] text-[0.9rem] font-semibold text-white hover:bg-[#166838]"
+            disabled={busy}
+            onClick={approve}
+          >
             Approve & release payment
           </Button>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-sm font-medium">Needs changes?</p>
-          <Textarea className="mt-2" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What needs to be fixed?" />
-          <Button variant="outline" className="mt-3 w-full" disabled={busy} onClick={revision}>Request revision</Button>
+        <div className="mt-4 rounded-[14px] border border-[#c4deb8] bg-white p-5">
+          <p className="text-[0.9rem] font-semibold text-[#1a1e16]">Needs changes?</p>
+          <Textarea
+            className="mt-2.5 min-h-[80px] rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] px-3.5 py-3 text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
+            rows={4}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="What needs to be fixed?"
+          />
+          <Button
+            variant="outline"
+            className="mt-2.5 h-11 w-full rounded-[10px] border-[#c4deb8] bg-white text-[0.85rem] font-medium text-[#1a1e16] hover:bg-[#f7fbf4]"
+            disabled={busy}
+            onClick={revision}
+          >
+            Request revision
+          </Button>
         </div>
       </div>
     </div>

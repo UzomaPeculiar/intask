@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -514,179 +514,222 @@ function WalletPage() {
     }
   }, [defaultBank?.id, selectedBankAccountId]);
 
+  const availableBalance = Number(wallet?.balance ?? 0);
+  const totalEarned = Number(wallet?.total_earned ?? 0);
+  const totalWithdrawn = Number(wallet?.total_withdrawn ?? 0);
+
+  const compactNaira = (value: number) =>
+    new Intl.NumberFormat("en-NG", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+
   return (
-    <div className="mx-auto max-w-2xl pb-10">
-      <header className="flex items-center justify-between px-4 pt-4">
-        <div className="flex items-center gap-2">
-          <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card">
-            <ArrowLeft className="size-4" />
+    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="mx-auto w-full max-w-[1280px] px-4 pb-10 pt-8 sm:px-8 lg:px-12">
+        <header className="mb-7 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => window.history.back()}
+              className="grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white"
+              aria-label="Back"
+            >
+              <ArrowLeft className="size-4" />
+            </button>
+            <h1 className="font-['Space_Grotesk',sans-serif] text-[1.6rem] font-bold text-[#1a1e16]">Wallet</h1>
+          </div>
+          <button
+            onClick={() => {
+              refetchWallet();
+              qc.invalidateQueries({ queryKey: ["wallet-transactions"] });
+            }}
+            className="grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white"
+            aria-label="Refresh wallet"
+          >
+            <RefreshCw className="size-4 text-[#1a1e16]" />
           </button>
-          <h1 className="text-lg font-semibold">My Wallet</h1>
+        </header>
+
+        <div className="mb-6">
+          <Tabs value={walletTab} onValueChange={(value) => setWalletTab(value as "overview" | "activity")}>
+            <TabsList className="grid h-auto w-full grid-cols-2 rounded-[12px] border border-[#c4deb8] bg-white p-1">
+              <TabsTrigger
+                value="overview"
+                className="rounded-[8px] py-2.5 text-[0.85rem] font-semibold data-[state=active]:bg-[#3dcb6c] data-[state=active]:text-[#0f2b1b]"
+              >
+                Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="activity"
+                className="rounded-[8px] py-2.5 text-[0.85rem] font-semibold data-[state=active]:bg-[#3dcb6c] data-[state=active]:text-[#0f2b1b]"
+              >
+                Activity
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-        <button onClick={() => { refetchWallet(); qc.invalidateQueries({ queryKey: ["wallet-transactions"] }); }} className="grid size-9 place-items-center rounded-full border border-border bg-card">
-          <RefreshCw className="size-4 text-muted-foreground" />
-        </button>
-      </header>
 
-      <div className="px-4 pt-4">
-        <Tabs value={walletTab} onValueChange={(value) => setWalletTab(value as "overview" | "activity")}>
-          <TabsList className="grid h-auto w-full grid-cols-2">
-            <TabsTrigger value="overview" className="py-2.5">Overview</TabsTrigger>
-            <TabsTrigger value="activity" className="py-2.5">Activity</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-4 pt-3">
-            <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
-              <div className="mb-1 flex items-center gap-2">
-                <Wallet className="size-5 opacity-80" />
-                <p className="text-sm opacity-80">Available balance</p>
-              </div>
-              <p className="text-4xl font-bold">₦{Number(wallet?.balance ?? 0).toLocaleString("en-NG")}</p>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-white/15 p-3">
-                  <p className="text-xs opacity-70">Total earned</p>
-                  <p className="mt-0.5 text-sm font-semibold">₦{Number(wallet?.total_earned ?? 0).toLocaleString("en-NG")}</p>
-                </div>
-                <div className="rounded-xl bg-white/15 p-3">
-                  <p className="text-xs opacity-70">Total withdrawn</p>
-                  <p className="mt-0.5 text-sm font-semibold">₦{Number(wallet?.total_withdrawn ?? 0).toLocaleString("en-NG")}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-          <Sheet open={fundOpen} onOpenChange={setFundOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Plus className="size-4" /> Add money
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="rounded-t-2xl">
-              <SheetHeader className="text-left">
-                <SheetTitle>Add money to wallet</SheetTitle>
-              </SheetHeader>
-              <div className="space-y-4 px-4 pb-6 pt-2">
-                <p className="text-sm text-muted-foreground">Fund your InTask wallet using your debit card or bank transfer via Paystack.</p>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Amount (₦)</label>
-                  <Input type="number" value={fundAmount} onChange={(e) => setFundAmount(e.target.value)} placeholder="e.g. 5000" />
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[1000, 5000, 10000].map((amt) => (
-                    <button key={amt} onClick={() => setFundAmount(String(amt))} className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${fundAmount === String(amt) ? "it-chip-active" : "border-border text-muted-foreground"}`}>
-                      ₦{amt.toLocaleString()}
-                    </button>
-                  ))}
-                </div>
-                <Button className="w-full" size="lg" disabled={!fundAmount || Number(fundAmount) < 100 || fundWallet.isPending} onClick={() => fundWallet.mutate()}>
-                  {fundWallet.isPending ? "Processing..." : `Add ₦${fundAmount ? Number(fundAmount).toLocaleString() : "0"}`}
-                </Button>
-                <p className="text-center text-xs text-muted-foreground">Secured by Paystack. No fees for funding.</p>
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          <Sheet open={withdrawOpen} onOpenChange={setWithdrawOpen}>
-            <SheetTrigger asChild>
-              <Button className="gap-2" disabled={(wallet?.balance ?? 0) < minWithdrawalAmount}>
-                <ArrowUpRight className="size-4" /> Withdraw
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="rounded-t-2xl max-h-[90vh] overflow-y-auto">
-              <SheetHeader className="text-left">
-                <SheetTitle>Withdraw funds</SheetTitle>
-              </SheetHeader>
-              <div className="space-y-4 px-4 pb-6 pt-2">
-                <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-                  Available: <span className="font-semibold text-foreground">₦{Number(wallet?.balance ?? 0).toLocaleString("en-NG")}</span>
-                </div>
-
-                {(bankAccounts?.length ?? 0) === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border p-4 text-center">
-                    <Building2 className="size-6 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm font-medium">No bank account added</p>
-                    <p className="text-xs text-muted-foreground mt-1">Add a bank account to withdraw funds</p>
-                    <Button size="sm" className="mt-3" onClick={() => { setWithdrawOpen(false); setAddBankOpen(true); }}>
-                      Add bank account
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium">Select bank account</label>
-                      <div className="space-y-2">
-                        {bankAccounts?.map((b: any) => (
-                          <button
-                            key={b.id}
-                            onClick={() => setSelectedBankAccountId(b.id)}
-                            className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selectedBankAccountId === b.id ? "it-note-accent" : "border-border bg-card"}`}
-                          >
-                            <div className="grid size-9 place-items-center rounded-lg bg-muted shrink-0">
-                              <Building2 className="size-4 text-muted-foreground" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-foreground">{b.account_name}</p>
-                              <p className="text-xs text-muted-foreground">{b.bank_name} · {b.account_number}</p>
-                            </div>
-                            {b.verified && <CheckCircle2 className="size-4 text-success shrink-0" />}
-                          </button>
-                        ))}
-                      </div>
-                      <button onClick={() => { setWithdrawOpen(false); setAddBankOpen(true); }} className="it-link-accent text-xs hover:underline">
-                        + Add another bank account
+        {walletTab === "overview" ? (
+          <>
+            <section className="relative mb-7 overflow-hidden rounded-[20px] bg-[linear-gradient(135deg,#1a3a2a_0%,#2d5a3d_50%,#1a4a30_100%)] p-7 text-white lg:p-9">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(61,203,108,0.15)_0%,transparent_50%)]" />
+              <div className="relative z-[1]">
+                <p className="text-[0.8rem] text-white/50">Available balance</p>
+                <p className="mt-1 font-['Space_Grotesk',sans-serif] text-[2.3rem] font-bold tracking-[-0.02em] sm:text-[2.8rem]">
+                  ₦{availableBalance.toLocaleString("en-NG")}
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2.5">
+                  <Sheet open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+                    <SheetTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={availableBalance < minWithdrawalAmount}
+                        className="inline-flex items-center gap-1 rounded-[10px] bg-[#3dcb6c] px-5 py-2.5 text-[0.85rem] font-semibold text-white disabled:opacity-50"
+                      >
+                        <ArrowUpRight className="size-4" /> Withdraw
                       </button>
-                    </div>
+                    </SheetTrigger>
+                    <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-2xl">
+                      <SheetHeader className="text-left">
+                        <SheetTitle>Withdraw funds</SheetTitle>
+                      </SheetHeader>
+                      <div className="space-y-4 px-4 pb-6 pt-2">
+                        <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                          Available: <span className="font-semibold text-foreground">₦{availableBalance.toLocaleString("en-NG")}</span>
+                        </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium">Amount (₦)</label>
-                      <Input
-                        type="number"
-                        value={withdrawAmount}
-                        onChange={(e) => setWithdrawAmount(e.target.value)}
-                        placeholder={`Minimum ₦${minWithdrawalAmount.toLocaleString("en-NG")}`}
-                      />
-                    </div>
+                        {(bankAccounts?.length ?? 0) === 0 ? (
+                          <div className="rounded-xl border border-dashed border-border p-4 text-center">
+                            <Building2 className="mx-auto mb-2 size-6 text-muted-foreground" />
+                            <p className="text-sm font-medium">No bank account added</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Add a bank account to withdraw funds</p>
+                            <Button size="sm" className="mt-3" onClick={() => { setWithdrawOpen(false); setAddBankOpen(true); }}>
+                              Add bank account
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="space-y-1.5">
+                              <label className="text-sm font-medium">Select bank account</label>
+                              <div className="space-y-2">
+                                {bankAccounts?.map((b: any) => (
+                                  <button
+                                    key={b.id}
+                                    onClick={() => setSelectedBankAccountId(b.id)}
+                                    className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${selectedBankAccountId === b.id ? "it-note-accent" : "border-border bg-card"}`}
+                                  >
+                                    <div className="grid size-9 place-items-center rounded-lg bg-muted shrink-0">
+                                      <Building2 className="size-4 text-muted-foreground" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium text-foreground">{b.account_name}</p>
+                                      <p className="text-xs text-muted-foreground">{b.bank_name} · {b.account_number}</p>
+                                    </div>
+                                    {b.verified && <CheckCircle2 className="size-4 text-success shrink-0" />}
+                                  </button>
+                                ))}
+                              </div>
+                              <button onClick={() => { setWithdrawOpen(false); setAddBankOpen(true); }} className="it-link-accent text-xs hover:underline">
+                                + Add another bank account
+                              </button>
+                            </div>
 
-                    {withdrawAmountNum >= minWithdrawalAmount && (
-                      <div className="rounded-xl border border-border bg-card p-3 space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Withdrawal amount</span>
-                          <span className="font-medium">₦{withdrawAmountNum.toLocaleString("en-NG")}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Processing fee</span>
-                          <span className="font-medium text-destructive">-₦{withdrawalFee.toLocaleString("en-NG")}</span>
-                        </div>
-                        <div className="flex justify-between border-t border-border pt-2">
-                          <span className="font-semibold text-foreground">You receive</span>
-                          <span className="font-semibold text-success">₦{netAmount.toLocaleString("en-NG")}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">New balance: ₦{Math.max(0, (wallet?.balance ?? 0) - withdrawAmountNum).toLocaleString("en-NG")}</p>
+                            <div className="space-y-1.5">
+                              <label className="text-sm font-medium">Amount (₦)</label>
+                              <Input
+                                type="number"
+                                value={withdrawAmount}
+                                onChange={(e) => setWithdrawAmount(e.target.value)}
+                                placeholder={`Minimum ₦${minWithdrawalAmount.toLocaleString("en-NG")}`}
+                              />
+                            </div>
+
+                            {withdrawAmountNum >= minWithdrawalAmount && (
+                              <div className="space-y-2 rounded-xl border border-border bg-card p-3 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Withdrawal amount</span>
+                                  <span className="font-medium">₦{withdrawAmountNum.toLocaleString("en-NG")}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Processing fee</span>
+                                  <span className="font-medium text-destructive">-₦{withdrawalFee.toLocaleString("en-NG")}</span>
+                                </div>
+                                <div className="flex justify-between border-t border-border pt-2">
+                                  <span className="font-semibold text-foreground">You receive</span>
+                                  <span className="font-semibold text-success">₦{netAmount.toLocaleString("en-NG")}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">New balance: ₦{Math.max(0, availableBalance - withdrawAmountNum).toLocaleString("en-NG")}</p>
+                              </div>
+                            )}
+
+                            <div className="it-note-warning rounded-lg border p-3 text-xs flex items-start gap-2">
+                              <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                              <p>Double-check your account details. Funds sent to wrong accounts cannot be reversed.</p>
+                            </div>
+
+                            <Button
+                              className="w-full"
+                              size="lg"
+                              disabled={!withdrawAmountNum || withdrawAmountNum < minWithdrawalAmount || !selectedBankAccountId || withdrawAmountNum > availableBalance || withdraw.isPending}
+                              onClick={() => withdraw.mutate()}
+                            >
+                              {withdraw.isPending ? "Processing..." : `Withdraw ₦${netAmount > 0 ? netAmount.toLocaleString("en-NG") : "0"}`}
+                            </Button>
+                          </>
+                        )}
                       </div>
-                    )}
+                    </SheetContent>
+                  </Sheet>
 
-                    <div className="it-note-warning rounded-lg border p-3 text-xs flex items-start gap-2">
-                      <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                      <p>Double-check your account details. Funds sent to wrong accounts cannot be reversed.</p>
-                    </div>
-
-                    <Button
-                      className="w-full"
-                      size="lg"
-                      disabled={!withdrawAmountNum || withdrawAmountNum < minWithdrawalAmount || !selectedBankAccountId || withdrawAmountNum > (wallet?.balance ?? 0) || withdraw.isPending}
-                      onClick={() => withdraw.mutate()}
-                    >
-                      {withdraw.isPending ? "Processing..." : `Withdraw ₦${netAmount > 0 ? netAmount.toLocaleString("en-NG") : "0"}`}
-                    </Button>
-                  </>
-                )}
+                  <Sheet open={fundOpen} onOpenChange={setFundOpen}>
+                    <SheetTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-[10px] border border-white/20 bg-white/10 px-5 py-2.5 text-[0.85rem] font-semibold text-white"
+                      >
+                        <Plus className="size-4" /> Add funds
+                      </button>
+                    </SheetTrigger>
+                    <SheetContent side="bottom" className="rounded-t-2xl">
+                      <SheetHeader className="text-left">
+                        <SheetTitle>Add money to wallet</SheetTitle>
+                      </SheetHeader>
+                      <div className="space-y-4 px-4 pb-6 pt-2">
+                        <p className="text-sm text-muted-foreground">Fund your InTask wallet using your debit card or bank transfer via Paystack.</p>
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-medium">Amount (₦)</label>
+                          <Input type="number" value={fundAmount} onChange={(e) => setFundAmount(e.target.value)} placeholder="e.g. 5000" />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[1000, 5000, 10000].map((amt) => (
+                            <button key={amt} onClick={() => setFundAmount(String(amt))} className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${fundAmount === String(amt) ? "it-chip-active" : "border-border text-muted-foreground"}`}>
+                              ₦{amt.toLocaleString()}
+                            </button>
+                          ))}
+                        </div>
+                        <Button className="w-full" size="lg" disabled={!fundAmount || Number(fundAmount) < 100 || fundWallet.isPending} onClick={() => fundWallet.mutate()}>
+                          {fundWallet.isPending ? "Processing..." : `Add ₦${fundAmount ? Number(fundAmount).toLocaleString() : "0"}`}
+                        </Button>
+                        <p className="text-center text-xs text-muted-foreground">Secured by Paystack. No fees for funding.</p>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
               </div>
-            </SheetContent>
-          </Sheet>
-            </div>
+            </section>
+
+            <section className="mb-7 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[14px] border border-[#c4deb8] bg-white p-4">
+                <div className="mb-2 text-[#1a7a42]"><Wallet className="size-5" /></div>
+                <p className="font-['Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-[#1a1e16]">₦{compactNaira(totalEarned)}</p>
+                <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">Total earned</p>
+              </div>
+              <div className="rounded-[14px] border border-[#c4deb8] bg-white p-4">
+                <div className="mb-2 text-[#b5771a]"><ArrowUpRight className="size-5" /></div>
+                <p className="font-['Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-[#1a1e16]">₦{compactNaira(totalWithdrawn)}</p>
+                <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">Total withdrawn</p>
+              </div>
+            </section>
 
             {pendingWithdrawals.length > 0 && (
-              <div className="it-note-warning rounded-xl border p-3">
+              <div className="it-note-warning mb-7 rounded-xl border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="flex items-center gap-1 text-sm font-medium text-warning">
                     <Clock className="size-4" /> {pendingWithdrawals.length} pending withdrawal{pendingWithdrawals.length === 1 ? "" : "s"}
@@ -706,9 +749,9 @@ function WalletPage() {
               </div>
             )}
 
-            <div>
+            <div className="rounded-[16px] border border-[#c4deb8] bg-white p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">Bank accounts</h2>
+                <h2 className="font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1a1e16]">Bank accounts</h2>
                 <button onClick={() => setAddBankOpen(true)} className="it-link-accent flex items-center gap-1 text-xs hover:underline">
                   <Plus className="size-3" /> Add
                 </button>
@@ -745,12 +788,12 @@ function WalletPage() {
                 ))}
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="activity" className="space-y-4 pt-3">
+          </>
+        ) : (
+          <div className="space-y-6">
             {withdrawals && withdrawals.length > 0 && (
-              <div>
-                <h2 className="mb-3 text-sm font-semibold text-foreground">Withdrawal history</h2>
+              <div className="rounded-[16px] border border-[#c4deb8] bg-white p-4">
+                <h2 className="mb-3 font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1a1e16]">Withdrawal history</h2>
                 <div className="space-y-2">
                   {withdrawals.map((w: any) => (
                     <div key={w.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
@@ -774,8 +817,8 @@ function WalletPage() {
               </div>
             )}
 
-            <div>
-              <h2 className="mb-3 text-sm font-semibold text-foreground">Transaction history</h2>
+            <div className="rounded-[16px] border border-[#c4deb8] bg-white p-4">
+              <h2 className="mb-3 font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1a1e16]">Transaction history</h2>
               {(!transactions || transactions.length === 0) && (
                 <EmptyState icon={Wallet} title="No transactions yet" description="Complete tasks or add money to get started." />
               )}
@@ -801,8 +844,8 @@ function WalletPage() {
                 ))}
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </div>
 
       {/* Add bank account sheet */}

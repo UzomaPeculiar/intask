@@ -99,53 +99,82 @@ function DeliverPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md pb-10">
-      <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => {
-          if (window.history.length > 1) window.history.back();
-          else nav({ to: "/app/tasks/$taskId", params: { taskId } });
-        }} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card">
+    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="mx-auto w-full max-w-[640px] px-6 pb-10 pt-7 sm:px-10">
+        <button
+          onClick={() => {
+            if (window.history.length > 1) window.history.back();
+            else nav({ to: "/app/tasks/$taskId", params: { taskId } });
+          }}
+          aria-label="Back"
+          className="mb-4 grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white"
+        >
           <ArrowLeft className="size-4" />
         </button>
-      </header>
-      <div className="space-y-5 px-4 pt-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Submit delivery</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{task.title}</p>
-        </div>
+
+        <h1 className="font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1a1e16]">Submit delivery</h1>
+        <p className="mt-1 text-[0.85rem] text-[#6a8064]">{task.title}</p>
+
         {task.revision_notes && (
-          <div className="rounded-lg border border-warning/50 bg-warning/10 p-3 text-sm">
-            <p className="font-medium text-warning">Revision requested</p>
-            <p className="mt-1 text-foreground/90">{task.revision_notes}</p>
+          <div className="mt-4 rounded-[10px] border border-[#e6c79a] bg-[#f7ecd9] p-3.5">
+            <p className="text-[0.85rem] font-semibold text-[#b5771a]">⚠️ Revision requested</p>
+            <p className="mt-1 text-[0.8rem] leading-relaxed text-[#8b5f17]">{task.revision_notes}</p>
           </div>
         )}
-        <div className="space-y-1.5">
-          <Label>Title of your work</Label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Final landing page draft" />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Message to poster</Label>
-          <Textarea rows={5} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Summarise what you delivered." />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Link to file or work (optional)</Label>
-          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://drive.google.com/…" />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Attach document (optional)</Label>
-          <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground hover:bg-accent/40">
-            <Paperclip className="size-4" />
-            <span className="truncate">{documentFile ? documentFile.name : "Choose a document to include with this submission"}</span>
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => setDocumentFile(e.target.files?.[0] ?? null)}
+
+        <div className="mt-5 rounded-[16px] border border-[#c4deb8] bg-white p-6">
+          <div className="mb-[18px] space-y-1.5">
+            <Label className="text-[0.8rem] font-semibold text-[#1a1e16]">Title of your work</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Final landing page draft"
+              className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
             />
-          </label>
+          </div>
+
+          <div className="mb-[18px] space-y-1.5">
+            <Label className="text-[0.8rem] font-semibold text-[#1a1e16]">Message to poster</Label>
+            <Textarea
+              rows={5}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Summarise what you delivered..."
+              className="min-h-[120px] rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] px-3.5 py-3 text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
+            />
+          </div>
+
+          <div className="mb-[18px] space-y-1.5">
+            <Label className="text-[0.8rem] font-semibold text-[#1a1e16]">Link to file or work <span className="font-normal text-[#9eb79c]">(optional)</span></Label>
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://drive.google.com/..."
+              className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
+            />
+          </div>
+
+          <div className="mb-[18px] space-y-1.5">
+            <Label className="text-[0.8rem] font-semibold text-[#1a1e16]">Attach document <span className="font-normal text-[#9eb79c]">(optional)</span></Label>
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-[10px] border border-dashed border-[#c4deb8] bg-[#f9fdf7] px-3.5 py-3 text-[0.85rem] text-[#6a8064] hover:border-[#3dcb6c]">
+              <Paperclip className="size-4" />
+              <span className="truncate">{documentFile ? documentFile.name : "Choose a document to include with this submission"}</span>
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => setDocumentFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          </div>
+
+          <Button
+            className="h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.9rem] font-semibold text-white hover:bg-[#34b35d]"
+            onClick={submit}
+            disabled={busy || !title.trim() || !message.trim()}
+          >
+            {busy ? "Submitting..." : "Submit for review"}
+          </Button>
         </div>
-        <Button className="w-full" size="lg" onClick={submit} disabled={busy || !title.trim() || !message.trim()}>
-          {busy ? "Submitting…" : "Submit for review"}
-        </Button>
       </div>
     </div>
   );

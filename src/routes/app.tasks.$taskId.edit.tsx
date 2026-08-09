@@ -10,13 +10,23 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TASK_CATEGORIES, SKILLS } from "@/lib/constants";
-import { ArrowLeft, ShieldCheck, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { ArrowLeft, ShieldCheck, ChevronDown, ChevronUp, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app/tasks/$taskId/edit")({
-  head: () => ({ meta: [{ title: "Edit task — InTask" }] }),
+  head: () => ({
+    meta: [{ title: "Edit task — InTask" }],
+    links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap",
+      },
+    ],
+  }),
   component: EditTaskPage,
 });
 
@@ -117,13 +127,21 @@ function EditTaskPage() {
       .limit(1)
       .maybeSingle();
 
+    const { count: applicantCount } = await supabase
+      .from("applications")
+      .select("id", { count: "exact", head: true })
+      .eq("task_id", taskId)
+      .eq("status", "pending");
+
     const txLocked = !!txData?.status && LOCKED_TRANSACTION_STATUSES.has(txData.status);
-    const taskIsEditableState = (task.status === "open" || task.status === "matched") && !txLocked;
+    const taskIsEditableState = (task.status === "open" || task.status === "matched") && !txLocked && (applicantCount ?? 0) === 0;
 
     if (!taskIsEditableState) {
       setLoading(false);
       setEditable(false);
-      setErrorMessage("This task can no longer be edited once escrow has started.");
+      setErrorMessage((applicantCount ?? 0) > 0
+        ? "This task can no longer be edited once someone has applied."
+        : "This task can no longer be edited once escrow has started.");
       return;
     }
 
@@ -177,12 +195,20 @@ function EditTaskPage() {
       .limit(1)
       .maybeSingle();
 
+    const { count: applicantCount } = await supabase
+      .from("applications")
+      .select("id", { count: "exact", head: true })
+      .eq("task_id", taskId)
+      .eq("status", "pending");
+
     const txLocked = !!txData?.status && LOCKED_TRANSACTION_STATUSES.has(txData.status);
-    const taskIsEditableState = (task.status === "open" || task.status === "matched") && !txLocked;
+    const taskIsEditableState = (task.status === "open" || task.status === "matched") && !txLocked && (applicantCount ?? 0) === 0;
 
     if (!taskIsEditableState) {
       setSaving(false);
-      return toast.error("This task can no longer be edited once escrow has started.");
+      return toast.error((applicantCount ?? 0) > 0
+        ? "This task can no longer be edited once someone has applied."
+        : "This task can no longer be edited once escrow has started.");
     }
 
     const { error } = await supabase
@@ -215,172 +241,183 @@ function EditTaskPage() {
 
   if (loading) {
     return (
-      <div className="grid min-h-screen place-items-center text-muted-foreground">
-        <Loader2 className="size-5 animate-spin" />
+      <div className="grid min-h-screen place-items-center bg-[#eff8ea] text-muted-foreground">
+        <Loader2 className="size-5 animate-spin text-[#1a7a42]" />
       </div>
     );
   }
 
   if (!editable) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-10">
-        <header className="flex items-center gap-2">
-          <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
+      <div className="min-h-screen bg-[#eff8ea] px-6 py-7 [font-family:'Inter',sans-serif]">
+        <div className="mx-auto w-full max-w-[640px]">
+          <button onClick={() => window.history.back()} aria-label="Back" className="mb-4 inline-flex size-9 items-center justify-center rounded-full border border-[#c4deb8] bg-white text-[#1a1e16] shadow-sm transition-transform duration-150 hover:-translate-y-0.5">
             <ArrowLeft className="size-4" />
           </button>
-          <div className="it-hero-surface rounded-2xl border px-4 py-3 shadow-sm">
-            <h1 className="text-lg font-semibold">Edit task</h1>
-          </div>
-        </header>
 
-        <div className="mt-6 rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">{errorMessage}</p>
-          <Button className="mt-4 w-full" onClick={() => nav({ to: "/app/tasks/$taskId", params: { taskId } })}>
-            Back to task
-          </Button>
+          <section className="rounded-[18px] border border-[#c4deb8] bg-[linear-gradient(145deg,#f4fbf0,#eaf3f8)] p-4 shadow-sm">
+            <h1 className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1a1e16]">
+              <FileText className="size-5 text-[#1a7a42]" /> Edit task
+            </h1>
+            <p className="mt-2 text-[0.85rem] text-[#6a8064]">You can change the task details while it is still awaiting escrow funding.</p>
+          </section>
+
+          <section className="mt-4 rounded-[14px] border border-[#c4deb8] bg-white p-4 shadow-sm">
+            <p className="text-sm text-[#6a8064]">{errorMessage}</p>
+            <Button className="mt-4 w-full rounded-[10px] bg-[#3dcb6c] text-white hover:bg-[#36ba61]" onClick={() => nav({ to: "/app/tasks/$taskId", params: { taskId } })}>
+              Back to task
+            </Button>
+          </section>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl pb-28">
-      <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
+    <div className="min-h-screen bg-[#eff8ea] pb-24 text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="mx-auto min-h-screen w-full max-w-[640px] px-6 py-7">
+        <button onClick={() => window.history.back()} aria-label="Back" className="mb-4 inline-flex size-9 items-center justify-center rounded-full border border-[#c4deb8] bg-white text-[#1a1e16] shadow-sm transition-transform duration-150 hover:-translate-y-0.5">
           <ArrowLeft className="size-4" />
         </button>
-        <div className="it-hero-surface rounded-2xl border px-4 py-3 shadow-sm">
-          <h1 className="text-lg font-semibold">Edit task</h1>
+
+        <section className="rounded-[18px] border border-[#c4deb8] bg-[linear-gradient(145deg,#f4fbf0,#eaf3f8)] p-5 shadow-sm">
+          <h1 className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1a1e16]">
+            <FileText className="size-5 text-[#1a7a42]" /> Edit task
+          </h1>
+          <p className="mt-2 text-[0.85rem] text-[#6a8064]">You can change the task details while it is still awaiting escrow funding.</p>
+        </section>
+
+        <div className="mt-4 rounded-[14px] border border-[#c4deb8] bg-white p-5 shadow-sm">
+          <div className="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-[#9eb79c]">Update task details</div>
+          <p className="mt-1 text-[0.85rem] text-[#6a8064]">You can change the task details while it is still awaiting escrow funding.</p>
         </div>
-      </header>
 
-      <div className="rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm mx-4 mt-4">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Update the task details</p>
-        <p className="mt-1 text-sm text-muted-foreground">You can change the task details while it is still awaiting escrow funding.</p>
-      </div>
-
-      <div className="space-y-3 px-4 pt-4">
-        <Field label="Task title">
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Design a logo for my clothing brand" />
-        </Field>
-
-        <Field label="Category">
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-            <option value="">Select a category</option>
-            {TASK_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </Field>
-
-        <Field label="Description">
-          <Textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe what you need done, what the deliverable looks like, and any specific requirements." />
-        </Field>
-
-        <Field label="Budget (₦)">
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₦</span>
-            <Input type="number" min={0} value={budget} disabled={negotiable} onChange={(e) => setBudget(e.target.value)} placeholder="e.g. 15000" className="pl-7" />
-          </div>
-          <label className="mt-2 flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2.5 text-sm">
-            <span>I&apos;m open to negotiation</span>
-            <Switch checked={negotiable} onCheckedChange={setNegotiable} />
-          </label>
-          {category && !negotiable && (
-            <div className="mt-2 rounded-lg bg-muted/50 px-3 py-2 text-[11px] text-muted-foreground">
-              {CATEGORY_MINIMUMS[category] ? (
-                <>
-                  <span className="font-medium text-foreground">Suggested range for {category}:</span>{" "}
-                  ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")} – ₦{(CATEGORY_MINIMUMS[category] * 8).toLocaleString("en-NG")}
-                  {" · "}Minimum: ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")}
-                </>
-              ) : (
-                <span>Set a fair budget — students depend on this income.</span>
-              )}
-            </div>
-          )}
-          <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-            <ShieldCheck className="size-3 text-success" /> Funds are held safely in escrow until you approve the work.
-          </p>
-        </Field>
-
-        <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-          <div className="rounded-2xl border border-border/80 bg-card/70 p-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Additional details</p>
-                <p className="text-xs text-muted-foreground">Deadline, format, team setup, and skills</p>
-              </div>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1">
-                  {showAdvanced ? "Hide" : "Show"}
-                  {showAdvanced ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-          </div>
-
-          <CollapsibleContent className="space-y-3 pt-3">
-            <Field label="Deadline">
-              <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        <div className="mt-3 space-y-3">
+          <section className="rounded-[14px] border border-[#c4deb8] bg-white p-5 shadow-sm">
+            <Field label="Task title">
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Design a logo for my clothing brand" className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] text-[0.85rem]" />
             </Field>
 
-            <Field label="Work type">
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                {(["remote", "on_campus", "either"] as const).map((w) => (
-                  <button key={w} type="button" onClick={() => setWorkType(w)} className={`rounded-md border px-2 py-2 ${workType === w ? "it-chip-active" : "border-border bg-card text-foreground"}`}>
-                    {w === "remote" ? "Remote" : w === "on_campus" ? "On-campus" : "Either"}
-                  </button>
-                ))}
-              </div>
+            <Field label="Category">
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className="flex h-11 w-full rounded-[10px] border border-[#c4deb8] bg-[#f9fdf7] px-3.5 text-[0.85rem] outline-none focus:border-[#3dcb6c]">
+                <option value="">Select a category</option>
+                {TASK_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </Field>
 
-            <Field label="Team task">
-              <label className="flex cursor-pointer items-center justify-between rounded-lg border border-border bg-card p-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">This is a team task</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Hire multiple students to work together</p>
-                </div>
-                <Switch checked={isTeamTask} onCheckedChange={setIsTeamTask} />
+            <Field label="Description">
+              <Textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe what you need done, what the deliverable looks like, and any specific requirements." className="min-h-[100px] resize-y rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] px-3.5 py-3 text-[0.85rem]" />
+            </Field>
+          </section>
+
+          <section className="rounded-[14px] border border-[#c4deb8] bg-white p-5 shadow-sm">
+            <Field label="Budget (₦)">
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6a8064]">₦</span>
+                <Input type="number" min={0} value={budget} disabled={negotiable} onChange={(e) => setBudget(e.target.value)} placeholder="e.g. 15000" className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] pl-7 text-[0.85rem]" />
+              </div>
+              <label className="mt-2 flex items-center justify-between rounded-[10px] border border-[#c4deb8] bg-white px-3 py-2.5 text-[0.8rem]">
+                <span>I&apos;m open to negotiation</span>
+                <Switch checked={negotiable} onCheckedChange={setNegotiable} />
               </label>
-              {isTeamTask && (
-                <div className="mt-3 space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Number of students needed</label>
-                  <select
-                    value={teamSize}
-                    onChange={(e) => setTeamSize(Number(e.target.value))}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    {[2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>{n} students</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-muted-foreground">
-                    Budget of ₦{budget ? Number(budget).toLocaleString("en-NG") : "0"} will be split equally - ₦{budget && teamSize ? Math.floor(Number(budget) / teamSize).toLocaleString("en-NG") : "0"} per student
-                  </p>
+              {category && !negotiable && (
+                <div className="mt-2 rounded-[8px] border border-[#e4efe0] bg-[#f4fbf0] px-3 py-2 text-[0.7rem] text-[#6a8064]">
+                  {CATEGORY_MINIMUMS[category] ? (
+                    <>
+                      <span className="font-semibold text-[#1a1e16]">Suggested range for {category}:</span>{" "}
+                      ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")} – ₦{(CATEGORY_MINIMUMS[category] * 8).toLocaleString("en-NG")}
+                      {" · "}Minimum: ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")}
+                    </>
+                  ) : (
+                    <span>Set a fair budget — students depend on this income.</span>
+                  )}
                 </div>
               )}
+              <p className="mt-2 flex items-center gap-1.5 text-[0.7rem] text-[#6a8064]">
+                <ShieldCheck className="size-3.5 text-[#1a7a42]" /> Funds are held safely in escrow until you approve the work.
+              </p>
             </Field>
+          </section>
 
-            <Field label="Skills needed">
-              <div className="flex flex-wrap gap-1.5">
-                {SKILLS.map((sk) => {
-                  const sel = skills.includes(sk);
-                  return (
-                    <button key={sk} type="button" onClick={() => setSkills(sel ? skills.filter((x) => x !== sk) : [...skills, sk])} className={`rounded-full border px-2.5 py-1 text-xs ${sel ? "it-chip-active" : "border-border bg-card text-foreground"}`}>
-                      {sk}
-                    </button>
-                  );
-                })}
+          <section className="rounded-[14px] border border-[#c4deb8] bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-[0.9rem] font-semibold text-[#1a1e16]">Additional details</p>
+                <p className="text-[0.75rem] text-[#6a8064]">Deadline, format, team setup, and skills</p>
               </div>
-            </Field>
-          </CollapsibleContent>
-        </Collapsible>
-      </div>
+              <button type="button" className="text-[0.75rem] font-medium text-[#3dcb6c]" onClick={() => setShowAdvanced((value) => !value)}>
+                {showAdvanced ? "Hide ▴" : "Show ▾"}
+              </button>
+            </div>
 
-      <div className="fixed inset-x-0 bottom-16 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur">
-        <div className="mx-auto max-w-md">
-          <Button className="w-full" size="lg" onClick={submit} disabled={saving}>
+            <div className={showAdvanced ? "space-y-3" : "space-y-3"}>
+              <Field label="Deadline">
+                <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] text-[0.85rem]" />
+              </Field>
+
+              <Field label="Work type">
+                <div className="grid grid-cols-3 gap-2">
+                  {(["remote", "on_campus", "either"] as const).map((w) => {
+                    const active = workType === w;
+                    return (
+                      <button key={w} type="button" onClick={() => setWorkType(w)} className={`rounded-[8px] border px-2 py-2 text-[0.8rem] font-medium transition-all duration-150 ${active ? "border-[#3dcb6c] bg-[#d8f5e4] text-[#1a7a42]" : "border-[#c4deb8] bg-white text-[#1a1e16]"}`}>
+                        {w === "remote" ? "Remote" : w === "on_campus" ? "On-campus" : "Either"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+
+              <Field label="Team task">
+                <label className="flex items-center justify-between rounded-[10px] border border-[#e4efe0] bg-white px-3 py-2.5 text-[0.8rem]">
+                  <div>
+                    <p className="font-medium text-[#1a1e16]">This is a team task</p>
+                    <p className="mt-0.5 text-[0.7rem] text-[#6a8064]">Hire multiple students to work together</p>
+                  </div>
+                  <Switch checked={isTeamTask} onCheckedChange={setIsTeamTask} />
+                </label>
+                {isTeamTask && (
+                  <div className="mt-2 space-y-1.5">
+                    <label className="text-[0.75rem] font-medium text-[#6a8064]">Number of students needed</label>
+                    <select
+                      value={teamSize}
+                      onChange={(e) => setTeamSize(Number(e.target.value))}
+                      className="flex h-11 w-full rounded-[10px] border border-[#c4deb8] bg-[#f9fdf7] px-3.5 text-[0.85rem] outline-none focus:border-[#3dcb6c]"
+                    >
+                      {[2, 3, 4, 5].map((n) => (
+                        <option key={n} value={n}>{n} students</option>
+                      ))}
+                    </select>
+                    <p className="text-[0.7rem] text-[#6a8064]">
+                      Budget of ₦{budget ? Number(budget).toLocaleString("en-NG") : "0"} will be split equally - ₦{budget && teamSize ? Math.floor(Number(budget) / teamSize).toLocaleString("en-NG") : "0"} per student
+                    </p>
+                  </div>
+                )}
+              </Field>
+
+              <Field label="Skills needed">
+                <div className="flex flex-wrap gap-1.5">
+                  {SKILLS.map((sk) => {
+                    const sel = skills.includes(sk);
+                    return (
+                      <button key={sk} type="button" onClick={() => setSkills(sel ? skills.filter((x) => x !== sk) : [...skills, sk])} className={`rounded-full border px-3 py-1.5 text-[0.75rem] font-medium ${sel ? "border-[#3dcb6c] bg-[#3dcb6c] text-white" : "border-[#c4deb8] bg-white text-[#1a1e16]"}`}>
+                        {sk}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+            </div>
+          </section>
+
+          <section className="rounded-[14px] border border-[#c4deb8] bg-white p-4 shadow-sm">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-[#9eb79c]">Warning</p>
+            <p className="mt-1 text-[0.85rem] text-[#6a8064]">Once someone applies, this task can no longer be edited. Double-check your details before saving.</p>
+          </section>
+
+          <button type="button" onClick={submit} disabled={saving} className="mt-2 flex h-12 w-full items-center justify-center rounded-[10px] bg-[#3dcb6c] px-6 text-[0.9rem] font-semibold text-white transition-colors duration-150 hover:bg-[#36ba61] disabled:cursor-not-allowed disabled:bg-[#c4deb8]">
             {saving ? "Saving…" : "Save changes"}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -389,8 +426,8 @@ function EditTaskPage() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm space-y-2">
-      <Label>{label}</Label>
+    <div className="space-y-2">
+      <Label className="block text-[0.8rem] font-semibold text-[#1a1e16]">{label}</Label>
       {children}
     </div>
   );

@@ -1,11 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/auth/forgot-password")({
   head: () => ({ meta: [{ title: "Reset password — InTask" }] }),
@@ -32,46 +29,70 @@ function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="border-b border-border">
-        <div className="mx-auto flex h-14 max-w-md items-center px-4">
-          <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
-              <Sparkles className="size-4" />
-            </span>
-            InTask
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="grid min-h-screen grid-cols-1 md:grid-cols-2">
+        <section className="relative overflow-hidden bg-[linear-gradient(160deg,#0d2818_0%,#1a3a2a_60%,#2d5a3d_100%)] px-8 py-12 md:px-14 md:py-16 lg:px-20 lg:py-20">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_70%,rgba(61,203,108,0.12)_0%,transparent_50%)]" />
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-8">
-        <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
-          <h1 className="text-2xl font-semibold tracking-tight">Reset your password</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Enter your account email and we&apos;ll send you a reset link.</p>
-        </div>
+          <div className="relative z-10 flex h-full flex-col justify-center">
+            <Link to="/" className="mb-10 flex w-fit items-center gap-2.5 no-underline md:mb-12">
+              <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#3dcb6c] text-base text-white">✦</span>
+              <span className="[font-family:'Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-white">InTask</span>
+            </Link>
 
-        <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm">
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-            />
+            <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[2.1rem] leading-[1.1] font-bold tracking-[-0.03em] text-white md:text-[2.4rem]">
+              Forgot your <span className="text-[#3dcb6c]">password?</span>
+            </h1>
+            <p className="mt-5 max-w-[380px] text-base leading-[1.6] text-white/60">
+              No worries - we&apos;ll send you a reset link to get you back into your account.
+            </p>
           </div>
-          <Button type="submit" className="w-full" size="lg" disabled={busy || !email.trim()}>
-            {busy ? "Sending..." : "Send reset link"}
-          </Button>
-        </form>
+        </section>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Remember your password? <Link to="/auth/login" className="font-medium text-primary hover:underline">Back to login</Link>
-        </p>
-      </main>
+        <section className="flex flex-col justify-center bg-white px-8 py-12 md:px-14 md:py-16 lg:px-20 lg:py-[60px]">
+          <div className="mb-7">
+            <h2 className="[font-family:'Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1a1e16]">
+              Reset your password
+            </h2>
+            <p className="mt-1.5 text-[0.85rem] text-[#6a8064]">
+              Enter your account email and we&apos;ll send you a reset link.
+            </p>
+          </div>
+
+          <form onSubmit={onSubmit}>
+            <div className="mb-[18px]">
+              <label htmlFor="email" className="mb-1.5 block text-[0.8rem] font-semibold text-[#1a1e16]">
+                Email address
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="h-11 w-full rounded-[10px] border border-[#c4deb8] bg-[#f9fdf7] px-[14px] text-[0.9rem] text-[#1a1e16] outline-none transition-shadow duration-150 placeholder:text-[#95aa90] focus:border-[#3dcb6c] focus:ring-[3px] focus:ring-[rgba(61,203,108,0.1)]"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={busy}
+              className="h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.95rem] font-semibold text-white hover:bg-[#35b35f] disabled:cursor-not-allowed disabled:bg-[#c4deb8]"
+            >
+              {busy ? "Sending..." : "Send reset link"}
+            </Button>
+          </form>
+
+          <p className="mt-6 text-center text-[0.85rem] text-[#6a8064]">
+            Remember your password?{" "}
+            <Link to="/auth/login" className="font-semibold text-[#3dcb6c] no-underline">
+              Back to login
+            </Link>
+          </p>
+        </section>
+      </div>
     </div>
   );
 }

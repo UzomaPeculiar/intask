@@ -220,7 +220,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
   const { data: tasks, isLoading } = useQuery({
     queryKey: ["feed", filter],
     queryFn: async () => {
-      let q = supabase.from("tasks").select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, role)").eq("status", "open").order("featured", { ascending: false }).order("created_at", { ascending: false }).limit(40);
+      let q = supabase.from("tasks").select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, role, avatar_url)").eq("status", "open").order("featured", { ascending: false }).order("created_at", { ascending: false }).limit(40);
       if (userId) q = q.neq("poster_id", userId);
       if (filter !== "All") q = q.ilike("category", `%${filter}%`);
       const { data, error } = await q;
@@ -894,7 +894,7 @@ export function TaskCard({ task, currentUserId, categoryBudgetStats = {} }: { ta
         </div>
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
           <div className="flex min-w-0 items-center gap-2">
-            <InitialsAvatar name={task.poster?.full_name} size={24} />
+            <InitialsAvatar name={task.poster?.full_name} size={24} avatarUrl={task.poster?.avatar_url} />
             <span className="truncate text-xs text-foreground">{task.poster?.full_name ?? "Poster"}</span>
           </div>
           <div className="flex items-center gap-2">

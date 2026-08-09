@@ -19,12 +19,53 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
 
+  async function ensureRecoverySession() {
+    const normalizeToken = (value: string | null) => (value ? value.replace(/ /g, "+") : null);
+
+    const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+    const hashParams = new URLSearchParams(hash);
+    const queryParams = new URLSearchParams(window.location.search);
+    const accessToken = normalizeToken(hashParams.get("access_token") ?? queryParams.get("access_token"));
+    const refreshToken = normalizeToken(hashParams.get("refresh_token") ?? queryParams.get("refresh_token"));
+
+    if (accessToken && refreshToken) {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (!error && data.session) return true;
+    }
+
+    const code = normalizeToken(queryParams.get("code"));
+    if (code) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error && data.session) return true;
+    }
+
+    const tokenHash = normalizeToken(queryParams.get("token_hash"));
+    const type = queryParams.get("type");
+    if (tokenHash && (!type || type === "recovery")) {
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "recovery",
+      });
+      if (!error && data.session) return true;
+    }
+
+    const { data } = await supabase.auth.getSession();
+    return !!data.session;
+  }
+
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
+
+    const hydrateRecoverySession = async () => {
+      const hasSession = await ensureRecoverySession();
       if (!mounted) return;
-      setReady(!!data.session);
-    });
+      setReady(hasSession);
+    };
+
+    void hydrateRecoverySession();
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || !!session) {
@@ -49,6 +90,13 @@ function ResetPasswordPage() {
       return;
     }
 
+    const hasSession = await ensureRecoverySession();
+    setReady(hasSession);
+    if (!hasSession) {
+      toast.error("Auth session missing. Open the reset link from your email again.");
+      return;
+    }
+
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password });
     setBusy(false);
@@ -64,58 +112,86 @@ function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="border-b border-border">
-        <div className="mx-auto flex h-14 max-w-md items-center px-4">
-          <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
+    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="grid min-h-screen grid-cols-1 md:grid-cols-2">
+        <section className="relative hidden overflow-hidden bg-[linear-gradient(160deg,#0d2818_0%,#1a3a2a_60%,#2d5a3d_100%)] px-16 py-20 md:flex md:flex-col md:justify-center lg:px-20">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_70%,rgba(61,203,108,0.12)_0%,transparent_50%)]" />
+
+          <Link to="/" className="relative z-10 mb-12 inline-flex items-center gap-2.5">
+            <span className="grid size-9 place-items-center rounded-[10px] bg-[#3dcb6c] text-white">
               <Sparkles className="size-4" />
             </span>
-            InTask
+            <span className="font-['Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-white">InTask</span>
           </Link>
-        </div>
-      </header>
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-8">
-        <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
-          <h1 className="text-2xl font-semibold tracking-tight">Set a new password</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {ready
-              ? "Choose a strong password for your account."
-              : "Open the password reset link from your email first, then return to this page."}
-          </p>
-        </div>
+          <div className="relative z-10">
+            <h1 className="font-['Space_Grotesk',sans-serif] text-[2.4rem] font-bold leading-[1.1] tracking-[-0.03em] text-white">
+              Set a new <span className="text-[#3dcb6c]">password.</span>
+            </h1>
+            <p className="mt-5 max-w-[380px] text-[1rem] leading-[1.6] text-white/60">
+              Choose a strong password for your account. Make it something memorable but secure.
+            </p>
+          </div>
+        </section>
 
-        <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded-3xl border border-border/80 bg-card/90 p-4 shadow-sm">
-          <div className="space-y-1.5">
-            <Label htmlFor="password">New password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={!ready}
-            />
+        <section className="flex min-h-screen flex-col justify-center bg-white px-6 py-10 sm:px-10 md:px-16 lg:px-20">
+          <div className="mx-auto w-full max-w-[420px]">
+            <div className="mb-7">
+              <h2 className="font-['Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1a1e16]">Set a new password</h2>
+              <p className="mt-1.5 text-[0.85rem] text-[#6a8064]">
+                {ready
+                  ? "Choose a strong password for your account."
+                  : "Open the password reset link from your email first, then return to this page."}
+              </p>
+            </div>
+
+            <form onSubmit={onSubmit} className="space-y-4.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-[0.8rem] font-semibold text-[#1a1e16]">New password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  className="h-11 rounded-[10px] border-[1.5px] border-[#c4deb8] bg-[#f9fdf7] px-3.5 text-[0.9rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword" className="text-[0.8rem] font-semibold text-[#1a1e16]">Confirm password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter your password"
+                  className="h-11 rounded-[10px] border-[1.5px] border-[#c4deb8] bg-[#f9fdf7] px-3.5 text-[0.9rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.95rem] font-semibold text-white hover:bg-[#34b35d] disabled:bg-[#c4deb8]"
+                disabled={busy}
+              >
+                {busy ? "Updating..." : "Update password"}
+              </Button>
+            </form>
+
+            <p className="mt-6 text-center text-[0.85rem] text-[#6a8064]">
+              Password updated?{" "}
+              <Link to="/auth/login" className="font-semibold text-[#3dcb6c] hover:underline">
+                Go to login
+              </Link>
+            </p>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={!ready}
-            />
-          </div>
-          <Button type="submit" className="w-full" size="lg" disabled={busy || !ready}>
-            {busy ? "Updating..." : "Update password"}
-          </Button>
-        </form>
-      </main>
+        </section>
+      </div>
     </div>
   );
 }

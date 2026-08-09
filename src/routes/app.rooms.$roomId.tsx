@@ -121,139 +121,218 @@ function ProjectRoomPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border bg-card/95 shrink-0 shadow-sm">
-        <div className="flex items-center gap-2">
-          <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
-            <ArrowLeft className="size-4" />
-          </button>
-          <div>
-            <p className="font-semibold text-foreground text-sm">{room?.name ?? "Project Room"}</p>
-            <p className="text-xs text-muted-foreground">{room?.task?.title}</p>
+    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="mx-auto h-screen max-w-[1280px] lg:grid lg:grid-cols-[1fr_300px]">
+        <main className="flex min-h-0 flex-col bg-[#f9fdf7]">
+          <header className="flex items-center gap-3 border-b border-[#e4efe0] bg-white px-6 py-3.5">
+            <button
+              onClick={() => window.history.back()}
+              className="grid size-8 place-items-center rounded-full border border-[#c4deb8] bg-white"
+              aria-label="Back"
+            >
+              <ArrowLeft className="size-3.5" />
+            </button>
+            <InitialsAvatar name={room?.name ?? "Project Room"} size={36} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[0.9rem] font-semibold text-[#1a1e16]">{room?.name ?? "Project Room"}</p>
+              <p className="truncate text-[0.7rem] text-[#6a8064]">{room?.task?.title}</p>
+            </div>
+            <div className="flex items-center gap-1 text-[0.72rem] text-[#6a8064]">
+              <Users className="size-3.5" />
+              <span>{members?.length ?? 0}</span>
+            </div>
+          </header>
+
+          <div className="flex border-b border-[#e4efe0] bg-white">
+            {(["chat", "members", "files"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setActiveTab(t)}
+                className={`flex-1 border-b-2 px-2 py-2.5 text-center text-[0.8rem] font-semibold capitalize transition-colors ${
+                  activeTab === t ? "border-[#3dcb6c] text-[#3dcb6c]" : "border-transparent text-[#6a8064]"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
           </div>
-        </div>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Users className="size-3.5" />
-          <span>{members?.length ?? 0}</span>
-        </div>
-      </header>
 
-      {canSubmitTeamDelivery && (
-        <div className="border-b border-border bg-card/90 px-4 py-3 shrink-0">
-          <Button
-            className="w-full"
-            onClick={() => nav({ to: "/app/tasks/$taskId/deliver", params: { taskId: room.task.id } })}
-          >
-            Submit team delivery
-          </Button>
-        </div>
-      )}
+          {canSubmitTeamDelivery && (
+            <div className="border-b border-[#e4efe0] bg-white px-6 py-3">
+              <Button
+                className="w-full"
+                onClick={() => nav({ to: "/app/tasks/$taskId/deliver", params: { taskId: room.task.id } })}
+              >
+                Submit team delivery
+              </Button>
+            </div>
+          )}
 
-      <div className="flex border-b border-border shrink-0">
-        {(["chat", "members", "files"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setActiveTab(t)}
-            className={`flex-1 py-2.5 text-sm font-medium transition-colors capitalize ${activeTab === t ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+          {activeTab === "chat" && (
+            <>
+              <div className="flex-1 space-y-3 overflow-y-auto px-6 py-5">
+                {(!messages || messages.length === 0) && (
+                  <div className="py-8 text-center text-[0.7rem] text-[#9eb79c]">Project room created</div>
+                )}
 
-      {activeTab === "chat" && (
-        <>
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-            {messages?.map((m: any) => {
-              const isMe = m.sender_id === me?.id;
+                {messages?.map((m: any) => {
+                  const isMe = m.sender_id === me?.id;
+                  return (
+                    <div key={m.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-[72%] rounded-[14px] px-3.5 py-2.5 text-[0.82rem] leading-relaxed ${
+                          isMe
+                            ? "rounded-br-[4px] bg-[#3dcb6c] text-white"
+                            : "rounded-bl-[4px] border border-[#e4efe0] bg-white text-[#1a1e16]"
+                        }`}
+                      >
+                        <p className={`mb-0.5 text-[0.65rem] font-semibold ${isMe ? "text-white/70" : "text-[#6a8064]"}`}>
+                          {isMe ? "You" : m.sender?.full_name}
+                        </p>
+                        <p>{m.content}</p>
+                        <p className={`mt-1 text-[0.6rem] ${isMe ? "text-white/60" : "text-[#9eb79c]"}`}>
+                          {new Date(m.created_at).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="flex items-center gap-2.5 border-t border-[#e4efe0] bg-white px-6 py-3.5">
+                <label className="grid size-10 cursor-pointer place-items-center rounded-[10px] border border-[#c4deb8] bg-white">
+                  <Paperclip className="size-4 text-[#6a8064]" />
+                  <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }} />
+                </label>
+                <input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+                  placeholder="Type a message..."
+                  className="h-10 flex-1 rounded-[10px] border border-[#c4deb8] bg-[#f9fdf7] px-3.5 text-[0.82rem] outline-none focus:border-[#3dcb6c]"
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!message.trim() || sending}
+                  className="grid size-10 place-items-center rounded-[10px] bg-[#3dcb6c] text-white disabled:opacity-50"
+                >
+                  <Send className="size-4" />
+                </button>
+              </div>
+            </>
+          )}
+
+          {activeTab === "members" && (
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="space-y-2">
+                {members?.map((m: any) => (
+                  <div key={m.id} className="flex items-center justify-between rounded-[10px] border border-[#e4efe0] bg-white p-3">
+                    <div className="flex items-center gap-2.5">
+                      <InitialsAvatar name={m.user?.full_name} size={34} />
+                      <div>
+                        <p className="text-[0.82rem] font-semibold text-[#1a1e16]">{m.user?.full_name}</p>
+                        <p className="text-[0.68rem] capitalize text-[#6a8064]">{m.role}</p>
+                      </div>
+                    </div>
+                    {m.role === "lead" && (
+                      <span className="rounded-full border border-[#c4deb8] bg-[#f4fbf0] px-2 py-0.5 text-[0.62rem] font-semibold text-[#3dcb6c]">
+                        Lead
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "files" && (
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              {(!files || files.length === 0) && (
+                <div className="py-10 text-center">
+                  <FileText className="mx-auto mb-2 size-8 text-[#9eb79c]" />
+                  <p className="text-sm text-[#6a8064]">No files uploaded yet</p>
+                  <p className="mt-1 text-xs text-[#9eb79c]">Use the paperclip icon in chat to share files</p>
+                </div>
+              )}
+              <div className="space-y-2">
+                {files?.map((f: any) => (
+                  <a
+                    key={f.id}
+                    href={f.file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2.5 rounded-[10px] border border-[#e4efe0] bg-white p-3 transition-colors hover:bg-[#f4fbf0]"
+                  >
+                    <div className="grid size-9 place-items-center rounded-[8px] border border-[#c4deb8] bg-[#f4fbf0]">
+                      <FileText className="size-4 text-[#6a8064]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[0.8rem] font-medium text-[#1a1e16]">{f.file_name}</p>
+                      <p className="text-[0.65rem] text-[#9eb79c]">Uploaded by {f.uploader?.full_name}</p>
+                    </div>
+                    <CheckCircle2 className="size-4 text-[#3dcb6c]" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </main>
+
+        <aside className="hidden overflow-y-auto border-l border-[#c4deb8] bg-white p-5 lg:block">
+          <div className="mb-4 rounded-[12px] border border-[#c4deb8] bg-[#f4fbf0] p-3.5">
+            <p className="text-[0.8rem] font-semibold text-[#1a1e16]">{room?.task?.title}</p>
+            <p className="mt-1 font-['Space_Grotesk',sans-serif] text-[1rem] font-bold text-[#1a7a42]">
+              ₦{Number(room?.task?.budget_max ?? room?.task?.budget_min ?? 0).toLocaleString("en-NG")}
+            </p>
+            <p className="mt-1 flex items-center gap-1 text-[0.7rem] text-[#6a8064]">
+              <span className="inline-block size-1.5 rounded-full bg-[#3dcb6c]" />
+              {room?.task?.status === "in_progress" ? "In progress" : room?.task?.status?.replaceAll("_", " ")}
+            </p>
+          </div>
+
+          <p className="mb-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Members</p>
+          <div className="mb-5 space-y-1">
+            {members?.map((m: any) => {
+              const isCurrent = m.user_id === me?.id;
               return (
-                <div key={m.id} className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : ""}`}>
-                  {!isMe && <InitialsAvatar name={m.sender?.full_name} size={28} />}
-                  <div className={`max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${isMe ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-card border border-border rounded-bl-sm"}`}>
-                    {!isMe && <p className="text-[10px] font-medium mb-1 opacity-70">{m.sender?.full_name}</p>}
-                    <p className="text-sm">{m.content}</p>
-                    <p className={`text-[10px] mt-1 ${isMe ? "opacity-70 text-right" : "text-muted-foreground"}`}>
-                      {new Date(m.created_at).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
+                <div key={`side-${m.id}`} className="flex items-center gap-2 rounded-[10px] p-2.5 hover:bg-[#f4fbf0]">
+                  <InitialsAvatar name={m.user?.full_name} size={34} />
+                  <div className="min-w-0">
+                    <p className="truncate text-[0.8rem] font-semibold text-[#1a1e16]">
+                      {m.user?.full_name}
+                      {isCurrent ? <span className="ml-1 text-[0.6rem] font-semibold text-[#3dcb6c]">you</span> : null}
                     </p>
+                    <p className="text-[0.65rem] capitalize text-[#6a8064]">{m.role}</p>
                   </div>
                 </div>
               );
             })}
-            {(!messages || messages.length === 0) && (
-              <div className="text-center py-10">
-                <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
           </div>
 
-          <div className="px-4 py-3 border-t border-border bg-card shrink-0">
-            <div className="flex items-center gap-2">
-              <label className="grid size-9 place-items-center rounded-full border border-border cursor-pointer shrink-0 hover:bg-accent">
-                <Paperclip className="size-4 text-muted-foreground" />
-                <input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }} />
-              </label>
-              <input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                placeholder="Type a message..."
-                className="flex-1 rounded-full border border-input bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!message.trim() || sending}
-                className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50 shrink-0"
+          <p className="mb-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Files</p>
+          <div className="space-y-1.5">
+            {files?.slice(0, 4).map((f: any) => (
+              <a
+                key={`side-file-${f.id}`}
+                href={f.file_url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 rounded-[10px] border border-[#e4efe0] p-2.5 hover:bg-[#f4fbf0]"
               >
-                <Send className="size-4" />
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {activeTab === "members" && (
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-          {members?.map((m: any) => (
-            <div key={m.id} className="flex items-center justify-between rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
-              <div className="flex items-center gap-3">
-                <InitialsAvatar name={m.user?.full_name} size={36} />
-                <div>
-                  <p className="text-sm font-medium text-foreground">{m.user?.full_name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{m.role}</p>
+                <FileText className="size-4 text-[#6a8064]" />
+                <div className="min-w-0">
+                  <p className="truncate text-[0.78rem] font-medium text-[#1a1e16]">{f.file_name}</p>
+                  <p className="text-[0.62rem] text-[#9eb79c]">Shared file</p>
                 </div>
-              </div>
-              {m.role === "lead" && (
-                <span className="it-note-accent rounded-full border px-2 py-0.5 text-[11px] font-medium">Lead</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeTab === "files" && (
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-          {(!files || files.length === 0) && (
-            <div className="text-center py-10">
-              <FileText className="size-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No files uploaded yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Use the paperclip icon in chat to share files</p>
-            </div>
-          )}
-          {files?.map((f: any) => (
-            <a key={f.id} href={f.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
-              <div className="it-note-accent grid size-10 place-items-center rounded-lg border shrink-0">
-                <FileText className="size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground truncate">{f.file_name}</p>
-                <p className="text-xs text-muted-foreground">Uploaded by {f.uploader?.full_name}</p>
-              </div>
-              <CheckCircle2 className="size-4 text-success shrink-0" />
-            </a>
-          ))}
-        </div>
-      )}
+              </a>
+            ))}
+            {(!files || files.length === 0) && (
+              <p className="text-[0.7rem] text-[#9eb79c]">No files shared yet.</p>
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

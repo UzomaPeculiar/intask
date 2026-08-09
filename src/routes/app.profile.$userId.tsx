@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
@@ -146,6 +145,25 @@ function ProfilePage() {
     },
   });
 
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      if (!isOwn || !targetId) {
+        throw new Error("Only the task poster can delete this task.");
+      }
+
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId).eq("poster_id", targetId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["profile-tasks", targetId] });
+      await qc.invalidateQueries({ queryKey: ["profile", targetId] });
+      toast.success("Task deleted");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message ?? "Couldn't delete task");
+    },
+  });
+
   const { data: alumniProSub } = useQuery({
     queryKey: ["alumni-pro-sub", targetId],
     enabled: !!targetId && data?.profile?.role === "alumni",
@@ -161,6 +179,7 @@ function ProfilePage() {
   });
 
   const [editing, setEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "activity">("overview");
 
   if (isLoading && !timedOut) {
     return <div className="grid min-h-[60vh] place-items-center text-muted-foreground">Loading profile…</div>;
@@ -185,48 +204,133 @@ function ProfilePage() {
   const isCompany = profile.role === "company";
   const isIndividual = profile.role === "individual";
   const fromBottomNav = userId === "me";
+  const profileActionButtonClass =
+    "inline-flex items-center gap-1 rounded-[8px] border border-[#c4deb8] bg-white px-3.5 py-1.5 text-[0.75rem] font-medium text-[#1a1e16] transition-colors hover:bg-[#f6fbf4]";
+  const profileTabButtonBaseClass =
+    "rounded-[8px] px-3 py-2 text-[0.8rem] font-semibold transition-colors";
 
   return (
-    <div className="mx-auto max-w-2xl pb-10">
-      <header className="flex items-center justify-between gap-2 px-4 pt-4">
-        {fromBottomNav ? (
-          <div />
-        ) : (
-          <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card">
-            <ArrowLeft className="size-4" />
-          </button>
-        )}
-        {isOwn && (
-          <button onClick={async () => { await supabase.auth.signOut(); nav({ to: "/" }); }} className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-            <LogOut className="size-4" /> Sign out
-          </button>
-        )}
-      </header>
+    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="mx-auto grid w-full max-w-[1280px] lg:grid-cols-[1fr_380px]">
+        <div className="px-4 pb-10 pt-7 sm:px-8 lg:px-10">
+          <header className="mb-4 flex items-center justify-between gap-2">
+            {fromBottomNav ? (
+              <div />
+            ) : (
+              <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white">
+                <ArrowLeft className="size-4" />
+              </button>
+            )}
+            {isOwn && (
+              <button onClick={async () => { await supabase.auth.signOut(); nav({ to: "/" }); }} className="inline-flex items-center gap-1 text-sm text-[#6a8064]">
+                <LogOut className="size-4" /> Sign out
+              </button>
+            )}
+          </header>
 
-      <section className="px-4 pt-5">
-        <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-          {isOwn ? (
-            <AvatarUpload
-              userId={profile.id}
-              currentUrl={profile.avatar_url}
-              name={profile.full_name}
-              size={72}
-              editable={true}
-              onUpload={(url) => qc.invalidateQueries({ queryKey: ["profile", targetId] })}
-            />
-          ) : (
-            <InitialsAvatar name={profile.full_name} size={72} avatarUrl={profile.avatar_url} />
-          )}
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-xl font-semibold tracking-tight">{profile.full_name}</h1>
-            {isStudentOrAlumni && student?.university && (
-              <p className="truncate text-sm text-muted-foreground">{student.university} {student.year_of_study ? `· ${student.year_of_study}` : ""}</p>
-            )}
-            {isCompany && company?.company_name && (
-              <p className="truncate text-sm text-muted-foreground">{company.company_name}</p>
-            )}
-            <div className="mt-1.5"><VerifiedBadge role={profile.role} verified={isCompany ? company?.verified : isIndividual ? individual?.verified : student?.verified} isPro={!!alumniProSub} /></div>
+          <section className="mb-5 rounded-[18px] border border-[#c4deb8] bg-[linear-gradient(145deg,#f4fbf0,#eaf3f8)] p-7">
+            <div className="flex items-start gap-5">
+              <div className="shrink-0">
+                {isOwn ? (
+                  <AvatarUpload
+                    userId={profile.id}
+                    currentUrl={profile.avatar_url}
+                    name={profile.full_name}
+                    size={80}
+                    editable={true}
+                    onUpload={() => qc.invalidateQueries({ queryKey: ["profile", targetId] })}
+                  />
+                ) : (
+                  <InitialsAvatar name={profile.full_name} size={80} avatarUrl={profile.avatar_url} />
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">{profile.full_name}</h1>
+                {isStudentOrAlumni && student?.university && (
+                  <p className="mt-0.5 truncate text-[0.8rem] text-[#6a8064]">
+                    {student.university}
+                    {student.year_of_study ? ` · ${student.year_of_study}` : ""}
+                    {student.department ? ` · ${student.department}` : ""}
+                  </p>
+                )}
+                {isCompany && company?.company_name && (
+                  <p className="mt-0.5 truncate text-[0.8rem] text-[#6a8064]">{company.company_name}</p>
+                )}
+
+                <div className="mt-1.5">
+                  <VerifiedBadge role={profile.role} verified={isCompany ? company?.verified : isIndividual ? individual?.verified : student?.verified} isPro={!!alumniProSub} />
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-5 text-[0.8rem] text-[#6a8064]">
+                  {isStudentOrAlumni ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Star className="size-4 fill-[#b5771a] text-[#b5771a]" />
+                      <span className="font-semibold text-[#1a1e16]">{(student?.rating_count ?? 0) > 0 ? Number(student?.rating_average ?? 0).toFixed(1) : "0.0"}</span>
+                      <span>({student?.rating_count ?? 0} reviews)</span>
+                    </span>
+                  ) : null}
+                  <span className="inline-flex items-center gap-1">
+                    <Briefcase className="size-4" />
+                    <span className="font-semibold text-[#1a1e16]">{student?.tasks_completed ?? 0}</span>
+                    <span>tasks done</span>
+                  </span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {isOwn && (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(true)}
+                      className={profileActionButtonClass}
+                    >
+                      <Edit3 className="size-3.5" /> Edit profile
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = `${window.location.origin}/app/profile/${targetId}`;
+                      navigator.clipboard.writeText(url);
+                      toast.success("Profile link copied to clipboard");
+                    }}
+                    className={profileActionButtonClass}
+                  >
+                    <Share2 className="size-3.5" /> Share
+                  </button>
+
+                  {(profile.role === "student" || profile.role === "alumni" || profile.role === "individual" || profile.role === "company") && (
+                    <button
+                      type="button"
+                      onClick={() => nav({ to: "/app/wallet" as any })}
+                      className={profileActionButtonClass}
+                    >
+                      <Wallet className="size-3.5" /> Wallet
+                    </button>
+                  )}
+
+                  {MVP_FEATURES.assessments && isOwn && (
+                    <button
+                      type="button"
+                      onClick={() => nav({ to: "/app/assessments" as any })}
+                      className="inline-flex items-center gap-1 rounded-[8px] border border-[#c4deb8] bg-white px-3.5 py-1.5 text-[0.75rem] font-medium text-[#1a1e16]"
+                    >
+                      <Award className="size-3.5" /> Assessments
+                    </button>
+                  )}
+
+                  {!isOwn && !!user && profile && (
+                    <div>
+                      <ReportButton reportedId={profile.id} reportedName={profile.full_name ?? "this user"} />
+                    </div>
+                  )}
+                </div>
+
+                {profile.bio && !editing && <p className="mt-3 text-[0.82rem] leading-[1.6] text-[#1a1e16]">{profile.bio}</p>}
+              </div>
+            </div>
+
             {isOwn && profile.role === "student" && !student?.verified && (
               <StudentVerificationSection
                 userId={profile.id}
@@ -243,195 +347,194 @@ function ProfilePage() {
             {isOwn && isIndividual && individual?.verification_status === "pending_review" && (
               <div className="it-note-warning mt-3 rounded-xl border p-4">
                 <p className="text-sm font-medium text-warning">ID verification pending</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Your government ID is under review. We will notify you once verified.</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Your government ID is under review. We will notify you once verified.</p>
               </div>
             )}
             {isOwn && isIndividual && (!individual || individual.verification_status === "rejected") && (
               <IndividualIdVerificationSection userId={profile.id} />
             )}
-          </div>
-          </div>
-        </div>
-        {isStudentOrAlumni && (
-          <div className="mt-3 flex items-center gap-4 text-sm">
-            {(student?.rating_count ?? 0) > 0 ? (
-              <span className="inline-flex items-center gap-1"><Star className="size-4 fill-warning text-warning" />{Number(student?.rating_average ?? 0).toFixed(1)} ({student?.rating_count ?? 0})</span>
-            ) : (
-              <span className="text-muted-foreground">No ratings yet</span>
-            )}
-            <span className="inline-flex items-center gap-1 text-muted-foreground"><Briefcase className="size-4" /> {student?.tasks_completed ?? 0} done</span>
-          </div>
-        )}
+          </section>
 
-        {profile.bio && !editing && <p className="mt-4 text-sm text-foreground/90">{profile.bio}</p>}
+          {isOwn && editing ? (
+            <EditPanel profile={profile} student={student} company={company} onDone={() => { setEditing(false); qc.invalidateQueries({ queryKey: ["profile", targetId] }); }} />
+          ) : (
+            <>
+              <div className="mb-6 grid grid-cols-3 gap-[2px] rounded-[10px] bg-[#e4efe0] p-[3px]">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("overview")}
+                  className={`${profileTabButtonBaseClass} ${activeTab === "overview" ? "bg-white text-[#1a1e16] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[#6a8064] hover:bg-[#edf5e9]"}`}
+                >
+                  Overview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("reviews")}
+                  className={`${profileTabButtonBaseClass} ${activeTab === "reviews" ? "bg-white text-[#1a1e16] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[#6a8064] hover:bg-[#edf5e9]"}`}
+                >
+                  Reviews
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("activity")}
+                  className={`${profileTabButtonBaseClass} ${activeTab === "activity" ? "bg-white text-[#1a1e16] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[#6a8064] hover:bg-[#edf5e9]"}`}
+                >
+                  Activities
+                </button>
+              </div>
 
-        {/* Details for individual / company */}
-        {!editing && (isIndividual || isCompany) && (
-          <div className="mt-4 space-y-2 rounded-2xl border border-border/80 bg-card/90 p-3 text-sm shadow-sm">
-            {isCompany && company?.company_name && (
-              <Row icon={<Building2 className="size-4" />} label="Business" value={company.company_name} />
-            )}
-            {isOwn && isCompany && company?.cac_number && (
-              <Row icon={<Building2 className="size-4" />} label="CAC No." value={company.cac_number} />
-            )}
-            {isCompany && company?.industry && (
-              <Row icon={<Briefcase className="size-4" />} label="Industry" value={company.industry} />
-            )}
-            {isCompany && company?.location && (
-              <Row icon={<MapPin className="size-4" />} label="Location" value={company.location} />
-            )}
-            {isCompany && company?.website && (
-              <Row icon={<Globe className="size-4" />} label="Website" value={
-                <a href={/^https?:\/\//.test(company.website) ? company.website : `https://${company.website}`} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
-                  {company.website}
-                </a>
-              } />
-            )}
-            {isOwn && profile.email && (
-              <Row icon={<Mail className="size-4" />} label="Email" value={profile.email} />
-            )}
-            {isOwn && profile.phone && (
-              <Row icon={<Phone className="size-4" />} label="Phone" value={profile.phone} />
-            )}
-          </div>
-        )}
-
-        {isOwn && !editing && (
-          <div className="mt-4 flex flex-col items-start gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-1" 
-              onClick={() => setEditing(true)}
-            >
-              <Edit3 className="size-3.5" /> Edit profile
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1"
-              onClick={() => {
-                const url = `${window.location.origin}/app/profile/${targetId}`;
-                navigator.clipboard.writeText(url);
-                toast.success("Profile link copied to clipboard");
-              }}
-            >
-              <Share2 className="size-3.5" /> Share profile
-            </Button>
-
-            {MVP_FEATURES.assessments && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                onClick={() => nav({ to: "/app/assessments" as any })}
-              >
-                <Award className="size-3.5" /> Take skill assessments
-              </Button>
-            )}
-            
-            {(profile.role === "student" || profile.role === "alumni" || profile.role === "individual" || profile.role === "company") && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                onClick={() => nav({ to: "/app/wallet" as any })}
-              >   
-                <Wallet className="size-3.5" /> My wallet
-              </Button>
-            )}
-            
-            {isStudent && (
-              <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <GraduationCap className="size-3.5" />
-                Alumni status is handled by support.
-              </p>
-            )}
-          </div>
-        )}
-        {!isOwn && !!user && profile && (
-          <div className="mt-4">
-            <ReportButton reportedId={profile.id} reportedName={profile.full_name ?? "this user"} />
-          </div>
-        )}
-      </section>
-
-      {isOwn && editing && (
-        <EditPanel profile={profile} student={student} company={company} onDone={() => { setEditing(false); qc.invalidateQueries({ queryKey: ["profile", targetId] }); }} />
-      )}
-
-      {!editing && (
-        <section className="px-4 pt-6">
-          <Tabs defaultValue="overview">
-            <TabsList className="grid h-auto w-full grid-cols-3">
-              <TabsTrigger value="overview" className="py-2.5">Overview</TabsTrigger>
-              <TabsTrigger value="reviews" className="py-2.5">Reviews</TabsTrigger>
-              <TabsTrigger value="activity" className="py-2.5">Activity</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-6 pt-3">
-              {isStudentOrAlumni && student && (student.skills?.length ?? 0) > 0 && (
-                <section>
-                  <h2 className="text-sm font-semibold">Skills</h2>
-                  {skillBadges && skillBadges.length > 0 && (
-                    <div className="mb-3 mt-2">
-                      <p className="mb-2 text-xs text-muted-foreground">Verified badges</p>
-                      <div className="flex flex-wrap gap-2">
-                        {skillBadges.map((b: any) => (
-                          <span key={b.skill} className="it-note-success inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium">
-                            <Award className="size-3" /> {b.skill}
-                          </span>
+              {activeTab === "overview" && (
+                <div className="space-y-6">
+                  {isStudentOrAlumni && student && (student.skills?.length ?? 0) > 0 && (
+                    <section>
+                      <h2 className="mb-2.5 font-['Space_Grotesk',sans-serif] text-[0.9rem] font-semibold text-[#1a1e16]">Skills</h2>
+                      <div className="flex flex-wrap gap-1.5">
+                        {student.skills.map((s: string) => (
+                          <span key={s} className="rounded-full bg-[#d8f5e4] px-3.5 py-1.5 text-[0.75rem] font-medium text-[#1a7a42]">{s}</span>
                         ))}
                       </div>
+                      {skillBadges && skillBadges.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {skillBadges.map((b: any) => (
+                            <span key={b.skill} className="inline-flex items-center gap-1 rounded-full border border-[#c4deb8] bg-white px-3 py-1 text-[0.7rem] font-medium text-[#1a1e16]">
+                              <Award className="size-3" /> {b.skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  )}
+
+                  {isStudentOrAlumni && targetId && (
+                    <ProjectsSection userId={targetId} isOwn={!!isOwn} />
+                  )}
+
+                  {!editing && (isIndividual || isCompany) && (
+                    <div className="space-y-2 rounded-2xl border border-[#c4deb8] bg-white p-4 text-sm">
+                      {isCompany && company?.company_name && (
+                        <Row icon={<Building2 className="size-4" />} label="Business" value={company.company_name} />
+                      )}
+                      {isOwn && isCompany && company?.cac_number && (
+                        <Row icon={<Building2 className="size-4" />} label="CAC No." value={company.cac_number} />
+                      )}
+                      {isCompany && company?.industry && (
+                        <Row icon={<Briefcase className="size-4" />} label="Industry" value={company.industry} />
+                      )}
+                      {isCompany && company?.location && (
+                        <Row icon={<MapPin className="size-4" />} label="Location" value={company.location} />
+                      )}
+                      {isCompany && company?.website && (
+                        <Row icon={<Globe className="size-4" />} label="Website" value={
+                          <a href={/^https?:\/\//.test(company.website) ? company.website : `https://${company.website}`} target="_blank" rel="noreferrer" className="text-[#1a7a42] underline underline-offset-2">
+                            {company.website}
+                          </a>
+                        } />
+                      )}
+                      {isOwn && profile.email && (
+                        <Row icon={<Mail className="size-4" />} label="Email" value={profile.email} />
+                      )}
+                      {isOwn && profile.phone && (
+                        <Row icon={<Phone className="size-4" />} label="Phone" value={profile.phone} />
+                      )}
                     </div>
                   )}
-                  {student.skills?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {student.skills.map((s: string) => (
-                        <span key={s} className="rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground">{s}</span>
+
+                  {isStudent && (
+                    <p className="inline-flex items-center gap-1 text-xs text-[#6a8064]">
+                      <GraduationCap className="size-3.5" /> Alumni status is handled by support.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "reviews" && (
+                <section>
+                  {reviews.length === 0 ? (
+                    <p className="text-sm text-[#6a8064]">No reviews yet.</p>
+                  ) : (
+                    <ul className="space-y-2.5">
+                      {reviews.map((r) => (
+                        <li key={r.id} className="rounded-[12px] border border-[#e4efe0] bg-white p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-[0.85rem] font-semibold text-[#1a1e16]">{r.reviewer?.full_name ?? "Anonymous"}</p>
+                              {r.task?.title && <p className="mt-0.5 text-[0.7rem] text-[#6a8064]">{r.task.title}</p>}
+                            </div>
+                            <span className="inline-flex items-center gap-0.5 text-[0.8rem] text-[#b5771a]">
+                              {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-[#b5771a] text-[#b5771a]" />)}
+                            </span>
+                          </div>
+                          {r.comment && <p className="mt-2 text-[0.8rem] leading-[1.5] text-[#1a1e16]">{r.comment}</p>}
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   )}
                 </section>
               )}
 
-              {isStudentOrAlumni && targetId && (
-                <ProjectsSection userId={targetId} isOwn={!!isOwn} />
+              {activeTab === "activity" && (
+                <PostedTasksSection
+                  tasks={postedTasks ?? []}
+                  isOwn={isOwn}
+                  deletingTaskId={deleteTaskMutation.variables ?? null}
+                  onDeleteTask={(taskId) => {
+                    if (!window.confirm("Delete this task? This will remove its applications too.")) return;
+                    deleteTaskMutation.mutate(taskId);
+                  }}
+                />
               )}
-            </TabsContent>
+            </>
+          )}
+        </div>
 
-            <TabsContent value="reviews" className="pt-3">
-              <section>
-                <h2 className="text-sm font-semibold">Reviews</h2>
-                {reviews.length === 0 ? (
-                  <p className="mt-2 text-sm text-muted-foreground">No reviews yet.</p>
-                ) : (
-                  <ul className="mt-3 space-y-3">
-                    {reviews.map((r) => (
-                      <li key={r.id} className="rounded-xl border border-border bg-card p-3 shadow-card">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">{r.reviewer?.full_name ?? "Anonymous"}</p>
-                          <span className="inline-flex items-center gap-0.5 text-sm">
-                            {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-warning text-warning" />)}
-                          </span>
-                        </div>
-                        {r.task?.title && <p className="mt-0.5 text-xs text-muted-foreground">{r.task.title}</p>}
-                        {r.comment && <p className="mt-2 text-sm text-foreground/90">{r.comment}</p>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            </TabsContent>
+        <aside className="hidden border-l border-[#c4deb8] bg-white px-6 py-7 lg:block">
+          <section className="mb-6">
+            <p className="mb-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Profile stats</p>
+            <div className="rounded-[12px] border border-[#e4efe0] bg-[#f9fdf7] p-3.5">
+              <div className="flex items-center justify-between border-b border-[#e4efe0] py-2">
+                <span className="text-[0.8rem] text-[#6a8064]">Rating</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">
+                  {(student?.rating_count ?? 0) > 0 ? `${Number(student?.rating_average ?? 0).toFixed(1)} ⭐` : "0.0 ⭐"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-b border-[#e4efe0] py-2">
+                <span className="text-[0.8rem] text-[#6a8064]">Tasks completed</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">{student?.tasks_completed ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-[#e4efe0] py-2">
+                <span className="text-[0.8rem] text-[#6a8064]">Member since</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">
+                  {profile.created_at ? new Date(profile.created_at).toLocaleDateString("en-NG", { month: "short", year: "numeric" }) : "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-[0.8rem] text-[#6a8064]">Response time</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">&lt; 2 hours</span>
+              </div>
+            </div>
+          </section>
 
-            <TabsContent value="activity" className="pt-3">
-              <PostedTasksSection tasks={postedTasks ?? []} />
-            </TabsContent>
-          </Tabs>
-        </section>
-      )}
-
+          <section>
+            <p className="mb-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Recent reviews</p>
+            {reviews.length === 0 ? (
+              <div className="rounded-[12px] border border-[#e4efe0] bg-[#f9fdf7] p-4 text-[0.8rem] text-[#6a8064]">No reviews yet.</div>
+            ) : (
+              <div className="space-y-2.5">
+                {reviews.slice(0, 2).map((r) => (
+                  <div key={r.id} className="rounded-[12px] border border-[#e4efe0] bg-white p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[0.85rem] font-semibold text-[#1a1e16]">{r.reviewer?.full_name ?? "Anonymous"}</p>
+                      <span className="text-[0.8rem] text-[#b5771a]">{"★".repeat(Math.max(1, Math.min(5, r.rating || 0)))}</span>
+                    </div>
+                    {r.task?.title && <p className="mt-0.5 text-[0.7rem] text-[#6a8064]">{r.task.title}</p>}
+                    {r.comment && <p className="mt-2 text-[0.8rem] leading-[1.5] text-[#1a1e16]">{r.comment}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
@@ -929,7 +1032,17 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
     );
 }
 
-function PostedTasksSection({ tasks }: { tasks: any[] }) {
+function PostedTasksSection({
+  tasks,
+  isOwn,
+  deletingTaskId,
+  onDeleteTask,
+}: {
+  tasks: any[];
+  isOwn: boolean;
+  deletingTaskId: string | null;
+  onDeleteTask: (taskId: string) => void;
+}) {
   if (!tasks || tasks.length === 0) {
     return <p className="text-sm text-muted-foreground">No posted tasks yet.</p>;
   }
@@ -939,8 +1052,8 @@ function PostedTasksSection({ tasks }: { tasks: any[] }) {
       <ul className="mt-3 space-y-2">
         {tasks.map((t) => (
           <li key={t.id}>
-            <Link to="/app/tasks/$taskId" params={{ taskId: t.id }} className="block">
-              <div className="rounded-xl border border-border bg-card p-3 shadow-card transition-colors active:bg-accent/50">
+            <div className="relative rounded-xl border border-border bg-card p-3 shadow-card transition-colors active:bg-accent/50">
+              <Link to="/app/tasks/$taskId" params={{ taskId: t.id }} className="block pr-10">
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-sm font-medium text-foreground line-clamp-2">{t.title}</p>
                   <span className="shrink-0 rounded-md bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">
@@ -957,8 +1070,19 @@ function PostedTasksSection({ tasks }: { tasks: any[] }) {
                     {t.status === "open" ? "Open" : t.status === "completed" ? "Completed" : "In progress"}
                   </span>
                 </div>
-              </div>
-            </Link>
+              </Link>
+              {isOwn && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteTask(t.id)}
+                  disabled={deletingTaskId === t.id}
+                  aria-label="Delete task"
+                  className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-full border border-[#e4efe0] bg-white text-[#6a8064] shadow-sm transition-colors hover:border-[#efb5b5] hover:bg-[#fff3f3] hover:text-[#d64545] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deletingTaskId === t.id ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                </button>
+              )}
+            </div>
           </li>
         ))}
       </ul>

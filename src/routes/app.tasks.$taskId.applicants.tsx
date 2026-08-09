@@ -1,14 +1,12 @@
 import { MessagePartyLink } from "@/components/intask/MessagePartyLink";
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { InitialsAvatar } from "@/components/intask/Avatar";
-import { VerifiedBadge } from "@/components/intask/Badges";
 import { EmptyState } from "@/components/intask/EmptyState";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { naira } from "@/lib/format";
 import { ArrowLeft, Inbox, Star, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -40,11 +38,13 @@ function ApplicantsPage() {
     queryKey: ["task", taskId],
     queryFn: async () => (await supabase.from("tasks").select("*").eq("id", taskId).single()).data,
   });
+
   const { data: platformFeePercentSetting } = useQuery({
     queryKey: ["runtime-platform-settings"],
     queryFn: async () => await loadRuntimePlatformSettings(),
     staleTime: 30_000,
   });
+
   const platformFeePercent = Math.min(
     100,
     Math.max(0, Number(platformFeePercentSetting?.platform_fee_percent ?? PLATFORM_SETTING_DEFAULTS.platform_fee_percent)),
@@ -58,18 +58,21 @@ function ApplicantsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("applications")
-        .select("*, student:profiles!applications_student_id_fkey(id, full_name, role)")
+        .select("*, student:profiles!applications_student_id_fkey(id, full_name, role, avatar_url)")
         .eq("task_id", taskId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      const apps = data ?? [];
-      const ids = apps.map((a) => a.student_id);
-      const sp: Record<string, any> = {};
-      if (ids.length) {
-        const { data: sps } = await supabase.from("student_profiles").select("user_id, department, portfolio, rating_average, rating_count, skills, tasks_completed, university, verified, year_of_study, verification_method, created_at, updated_at").in("user_id", ids);
-        for (const s of sps ?? []) sp[s.user_id] = s;
+      const applications = data ?? [];
+      const ids = applications.map((application) => application.student_id);
+      const studentProfileById: Record<string, any> = {};
+      if (ids.length > 0) {
+        const { data: studentProfiles } = await supabase
+          .from("student_profiles")
+          .select("user_id, department, portfolio, rating_average, rating_count, skills, tasks_completed, university, verified, year_of_study, verification_method, created_at, updated_at")
+          .in("user_id", ids);
+        for (const studentProfile of studentProfiles ?? []) studentProfileById[studentProfile.user_id] = studentProfile;
       }
-      return apps.map((a) => ({ ...a, student_profile: sp[a.student_id] ?? null }));
+      return applications.map((application) => ({ ...application, student_profile: studentProfileById[application.student_id] ?? null }));
     },
   });
 
@@ -93,10 +96,7 @@ function ApplicantsPage() {
 
   const dismiss = useMutation({
     mutationFn: async ({ appId, studentId }: { appId: string; studentId: string }) => {
-      const { error } = await supabase
-        .from("applications")
-        .update({ status: "rejected" })
-        .eq("id", appId);
+      const { error } = await supabase.from("applications").update({ status: "rejected" }).eq("id", appId);
       if (error) throw error;
       await supabase.from("notifications").insert({
         user_id: studentId,
@@ -125,180 +125,214 @@ function ApplicantsPage() {
     },
     onError: (e: any) => toast.error(e.message ?? "Couldn't remove accepted student"),
   });
-  const pendingApps = (apps ?? []).filter((a: any) => a.status === "pending");
-  const acceptedApps = (apps ?? []).filter((a: any) => a.status === "accepted");
-  const rejectedApps = (apps ?? []).filter((a: any) => a.status === "rejected");
-  const visibleApps = tab === "all"
-    ? apps ?? []
-    : tab === "pending"
-      ? pendingApps
-      : tab === "accepted"
-        ? acceptedApps
-        : rejectedApps;
+
+  const pendingApps = (apps ?? []).filter((application: any) => application.status === "pending");
+  const acceptedApps = (apps ?? []).filter((application: any) => application.status === "accepted");
+  const rejectedApps = (apps ?? []).filter((application: any) => application.status === "rejected");
+  const visibleApps = tab === "all" ? apps ?? [] : tab === "pending" ? pendingApps : tab === "accepted" ? acceptedApps : rejectedApps;
+
+  const tabButtonClass = (isActive: boolean) =>
+    `rounded-lg px-2 py-2 text-center text-[0.8rem] font-semibold transition-colors ${
+      isActive ? "bg-white text-[#1a1e16] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "bg-transparent text-[#6a8064] hover:text-[#1a1e16]"
+    }`;
+
+  const statusClass: Record<string, string> = {
+    pending: "bg-[#f4fbf0] text-[#6a8064]",
+    accepted: "bg-[rgba(61,203,108,0.12)] text-[#1a7a42]",
+    rejected: "bg-[rgba(199,59,59,0.1)] text-[#c73b3b]",
+  };
 
   return (
-    <div className="mx-auto max-w-2xl pb-10">
-      <header className="flex items-center gap-2 px-4 pt-4">
-        <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
-          <ArrowLeft className="size-4" />
-        </button>
-      </header>
+    <div className="mx-auto w-full max-w-[800px] px-4 pb-10 pt-6 sm:px-6 md:px-12" style={{ color: "#1a1e16" }}>
+      <button
+        onClick={() => window.history.back()}
+        aria-label="Back"
+        className="mb-4 inline-flex size-9 items-center justify-center rounded-full border bg-white"
+        style={{ borderColor: "#c4deb8" }}
+      >
+        <ArrowLeft className="size-4" />
+      </button>
 
       {task && me && !isOwner && (
-        <div className="px-4 pt-10 text-center text-sm text-muted-foreground">
-          You don't have access to this task's applicants.
-        </div>
+        <div className="mt-6 text-center text-sm text-muted-foreground">You don't have access to this task's applicants.</div>
       )}
 
-      {isOwner && (<>
+      {isOwner && (
+        <>
+          {task && (
+            <div
+              className="mb-5 rounded-[18px] border p-5"
+              style={{
+                borderColor: "#c4deb8",
+                background: "linear-gradient(145deg, #f4fbf0, #eaf3f8)",
+              }}
+            >
+              <h2 className="text-[1.2rem] font-bold leading-tight text-[#1a1e16]" style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}>{task.title}</h2>
+              <p className="mt-1.5 text-[1.1rem] font-bold text-[#1a7a42]" style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}>
+                {task.budget_negotiable ? "Negotiable" : naira(task.budget)}
+              </p>
+            </div>
+          )}
 
+          <div className="mb-4 rounded-xl border bg-white p-4" style={{ borderColor: "#c4deb8" }}>
+            <h3 className="text-[0.9rem] font-semibold text-[#1a1e16]">
+              {apps?.length ?? 0} applicant{apps?.length === 1 ? "" : "s"}
+            </h3>
+            <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">Review pending applicants first, then check accepted and dismissed history.</p>
+          </div>
 
-      {task && (
-        <div className="mx-4 mt-2 rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 shadow-sm">
-          <h1 className="text-xl font-semibold tracking-tight">{task.title}</h1>
-          <p className="mt-1 text-lg font-semibold text-success">{task.budget_negotiable ? "Negotiable" : naira(task.budget)}</p>
-        </div>
-      )}
+          {isLoading && <div className="mt-4 h-32 animate-pulse rounded-xl border border-border bg-card" />}
 
-      <div className="px-4 pt-6">
-        <div className="rounded-2xl border border-border/80 bg-card/90 p-3 shadow-sm">
-          <h2 className="text-sm font-semibold text-foreground">{apps?.length ?? 0} applicant{apps?.length === 1 ? "" : "s"}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Review pending applicants first, then check accepted and dismissed history.</p>
-        </div>
-        {isLoading && <div className="mt-4 h-32 animate-pulse rounded-xl border border-border bg-card" />}
-        {!isLoading && (apps?.length ?? 0) === 0 && (
-          <div className="mt-4"><EmptyState icon={Inbox} title="No applicants yet" description="Students are being notified. Check back soon." /></div>
-        )}
+          {!isLoading && (apps?.length ?? 0) === 0 && (
+            <div className="mt-4"><EmptyState icon={Inbox} title="No applicants yet" description="Students are being notified. Check back soon." /></div>
+          )}
 
-        {!isLoading && (apps?.length ?? 0) > 0 && (
-          <Tabs value={tab} onValueChange={(value) => setTab(value as "pending" | "accepted" | "rejected" | "all")}>
-            <TabsList className="mt-4 grid h-auto w-full grid-cols-4">
-              <TabsTrigger value="pending" className="py-2">Pending ({pendingApps.length})</TabsTrigger>
-              <TabsTrigger value="accepted" className="py-2">Accepted ({acceptedApps.length})</TabsTrigger>
-              <TabsTrigger value="rejected" className="py-2">Dismissed ({rejectedApps.length})</TabsTrigger>
-              <TabsTrigger value="all" className="py-2">All</TabsTrigger>
-            </TabsList>
+          {!isLoading && (apps?.length ?? 0) > 0 && (
+            <>
+              <div className="mb-5 grid grid-cols-4 gap-0.5 rounded-[10px] p-[3px]" style={{ backgroundColor: "#e4efe0" }}>
+                <button type="button" className={tabButtonClass(tab === "pending")} onClick={() => setTab("pending")}>Pending ({pendingApps.length})</button>
+                <button type="button" className={tabButtonClass(tab === "accepted")} onClick={() => setTab("accepted")}>Accepted ({acceptedApps.length})</button>
+                <button type="button" className={tabButtonClass(tab === "rejected")} onClick={() => setTab("rejected")}>Dismissed ({rejectedApps.length})</button>
+                <button type="button" className={tabButtonClass(tab === "all")} onClick={() => setTab("all")}>All</button>
+              </div>
 
-            <TabsContent value={tab} className="mt-4">
               {visibleApps.length === 0 ? (
                 <EmptyState icon={Inbox} title="No applicants in this group" description="Switch tabs to review other applicants." />
               ) : (
                 <ul className="space-y-3">
-                  {visibleApps.map((a) => (
-            <li key={a.id} className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md" onClick={() => nav({ to: "/app/profile/$userId", params: { userId: a.student_id } })}>
-              <div className="flex items-start gap-3">
-                <InitialsAvatar name={a.student?.full_name} size={44} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate font-medium text-foreground">{a.student?.full_name}</p>
-                    <VerifiedBadge role={a.student?.role} verified={a.student_profile?.verified} />
-                  </div>
-                  {a.student_profile && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {a.student_profile.university} {a.student_profile.year_of_study ? `· ${a.student_profile.year_of_study}` : ""}
-                    </p>
-                  )}
-                  <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><Star className="size-3 fill-warning text-warning" />{Number(a.student_profile?.rating_average ?? 0).toFixed(1)}</span>
-                    <span>{a.student_profile?.tasks_completed ?? 0} tasks done</span>
-                  </div>
-                </div>
-                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{a.status}</span>
-              </div>
+                  {visibleApps.map((application: any) => (
+                    <li
+                      key={application.id}
+                      className="cursor-pointer rounded-[14px] border bg-white p-[18px] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(61,203,108,0.1)]"
+                      style={{ borderColor: "#c4deb8" }}
+                      onClick={() => nav({ to: "/app/profile/$userId", params: { userId: application.student_id } })}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0" onClick={(event) => event.stopPropagation()}>
+                          <InitialsAvatar name={application.student?.full_name} avatarUrl={application.student?.avatar_url} size={44} />
+                        </div>
 
-              {a.message && (
-                <p className="mt-3 line-clamp-3 text-sm text-foreground/90">{a.message}</p>
-              )}
-              {(a as any).proposed_rate && (
-                <p className="mt-2 text-sm font-medium text-success">
-                  Proposed rate: {naira((a as any).proposed_rate)}
-                </p>
-              )}   
-              {a.student_profile?.skills?.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {a.student_profile.skills.slice(0, 3).map((s: string) => (
-                    <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">{s}</span>
-                  ))}
-                </div>
-              )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="truncate text-[0.9rem] font-semibold text-[#1a1e16]">{application.student?.full_name}</p>
+                            {application.student_profile?.verified && (
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold text-[#1a7a42]" style={{ backgroundColor: "rgba(61,203,108,0.12)" }}>
+                                ✓ Verified
+                              </span>
+                            )}
+                          </div>
 
-              <div className="mt-4 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  {a.status === "pending" && task?.status === "open" ? (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <AcceptSheet
-                        studentName={a.student?.full_name ?? "this student"}
-                        budget={task?.budget ?? 0}
-                        negotiable={task?.budget_negotiable}
-                        taskId={taskId}
-                        platformFeePercent={platformFeePercent}
-                        onConfirm={(agreedPrice) => accept.mutate({ appId: a.id, studentId: a.student_id, agreedPrice })}
-                        pending={accept.isPending}
-                      />
-                    </div>
-                  ) : (
-                    <Button disabled className="w-full" size="sm">{a.status}</Button>
-                  )}
-                </div>
-                {a.status === "pending" && task?.status === "open" && task?.budget_negotiable && (
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <MessagePartyLink
-                      taskId={taskId}
-                      studentId={a.student_id}
-                      posterId={task.poster_id}
-                      label="Discuss price with student"
-                      variant="outline"
-                      className="w-full"
-                    />
-                    </div>
-                )}
-                {a.status === "pending" && task?.status === "open" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-muted-foreground hover:text-destructive"
-                    disabled={dismiss.isPending}
-                    onClick={(e) => { e.stopPropagation(); dismiss.mutate({ appId: a.id, studentId: a.student_id }); }}
-                  >
-                    {dismiss.isPending ? "Dismissing…" : "Dismiss applicant"}
-                  </Button>
-                )}
-                {a.status === "accepted" && ["open", "matched"].includes(String(task?.status)) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-muted-foreground hover:text-destructive"
-                    disabled={removeAccepted.isPending}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeAccepted.mutate({ appId: a.id, studentId: a.student_id });
-                    }}
-                  >
-                    {removeAccepted.isPending ? "Removing…" : "Remove accepted student"}
-                  </Button>
-                )}
-              </div>
-            </li>
+                          {application.student_profile && (
+                            <p className="mt-0.5 truncate text-[0.7rem] text-[#6a8064]">
+                              {application.student_profile.university}
+                              {application.student_profile.year_of_study ? ` · ${application.student_profile.year_of_study}` : ""}
+                              {application.student_profile.department ? ` · ${application.student_profile.department}` : ""}
+                            </p>
+                          )}
+
+                          <div className="mt-1 flex items-center gap-3 text-[0.7rem] text-[#6a8064]">
+                            <span className="inline-flex items-center gap-1">
+                              <Star className="size-3" />
+                              {Number(application.student_profile?.rating_average ?? 0).toFixed(1)}
+                            </span>
+                            <span>{application.student_profile?.tasks_completed ?? 0} tasks done</span>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-[3px] text-[0.65rem] font-semibold capitalize ${statusClass[application.status] ?? "bg-[#f4fbf0] text-[#6a8064]"}`}
+                        >
+                          {application.status === "rejected" ? "Dismissed" : application.status}
+                        </span>
+                      </div>
+
+                      {application.message && <p className="mt-2.5 line-clamp-2 text-[0.8rem] leading-[1.5] text-[#1a1e16]">{application.message}</p>}
+
+                      {(application as any).proposed_rate && (
+                        <p className="mt-2 text-[0.8rem] font-medium text-[#1a7a42]">Proposed rate: {naira((application as any).proposed_rate)}</p>
+                      )}
+
+                      {Array.isArray(application.student_profile?.skills) && application.student_profile.skills.length > 0 && (
+                        <div className="mt-2.5 flex flex-wrap gap-1">
+                          {application.student_profile.skills.slice(0, 3).map((skill: string) => (
+                            <span key={skill} className="rounded-full px-2 py-0.5 text-[0.6rem] font-medium text-[#1a7a42]" style={{ backgroundColor: "#d8f5e4" }}>
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {application.status === "pending" && task?.status === "open" && (
+                        <div className="mt-3 flex flex-wrap gap-2" onClick={(event) => event.stopPropagation()}>
+                          <div className="min-w-[120px] flex-1">
+                            <AcceptSheet
+                              studentName={application.student?.full_name ?? "this student"}
+                              budget={task?.budget ?? 0}
+                              negotiable={task?.budget_negotiable}
+                              taskId={taskId}
+                              platformFeePercent={platformFeePercent}
+                              onConfirm={(agreedPrice) => accept.mutate({ appId: application.id, studentId: application.student_id, agreedPrice })}
+                              pending={accept.isPending}
+                            />
+                          </div>
+
+                          <MessagePartyLink
+                            taskId={taskId}
+                            studentId={application.student_id}
+                            posterId={task.poster_id}
+                            label="Message"
+                            variant="outline"
+                            className="h-9 border-[#c4deb8] bg-transparent px-4 text-[0.8rem] font-semibold text-[#3dcb6c] hover:bg-transparent"
+                          />
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 border-[#e4efe0] bg-transparent px-4 text-[0.8rem] font-semibold text-[#6a8064] hover:bg-transparent"
+                            disabled={dismiss.isPending}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              dismiss.mutate({ appId: application.id, studentId: application.student_id });
+                            }}
+                          >
+                            {dismiss.isPending ? "Dismissing…" : "Dismiss"}
+                          </Button>
+                        </div>
+                      )}
+
+                      {application.status === "accepted" && ["open", "matched"].includes(String(task?.status)) && (
+                        <div className="mt-3" onClick={(event) => event.stopPropagation()}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 border-[#e4efe0] bg-transparent px-4 text-[0.8rem] font-semibold text-[#6a8064] hover:bg-transparent"
+                            disabled={removeAccepted.isPending}
+                            onClick={() => removeAccepted.mutate({ appId: application.id, studentId: application.student_id })}
+                          >
+                            {removeAccepted.isPending ? "Removing…" : "Remove accepted student"}
+                          </Button>
+                        </div>
+                      )}
+                    </li>
                   ))}
                 </ul>
               )}
-            </TabsContent>
-          </Tabs>
-        )}
-      </div>
-      </>)}
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-function AcceptSheet({ studentName, budget, negotiable, taskId, platformFeePercent, onConfirm, pending }: { 
-  studentName: string; 
-  budget: number; 
+function AcceptSheet({ studentName, budget, negotiable, taskId, platformFeePercent, onConfirm, pending }: {
+  studentName: string;
+  budget: number;
   negotiable?: boolean;
   taskId: string;
   platformFeePercent: number;
-  onConfirm: (agreedPrice?: number) => void; 
-  pending: boolean; 
+  onConfirm: (agreedPrice?: number) => void;
+  pending: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [agreedPrice, setAgreedPrice] = useState("");
@@ -308,14 +342,12 @@ function AcceptSheet({ studentName, budget, negotiable, taskId, platformFeePerce
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button className="w-full bg-success text-success-foreground hover:bg-success/90" size="sm">Accept</Button>
+        <Button className="h-9 w-full bg-[#1a7a42] text-[0.8rem] font-semibold text-white hover:bg-[#156838]" size="sm">Accept</Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="rounded-t-2xl">
         <SheetHeader className="text-left">
           <SheetTitle>Hire {studentName}?</SheetTitle>
-          <SheetDescription>
-            {negotiable ? "This task has a negotiable price. Enter the agreed amount." : `Budget: ${naira(budget)}`}
-          </SheetDescription>
+          <SheetDescription>{negotiable ? "This task has a negotiable price. Enter the agreed amount." : `Budget: ${naira(budget)}`}</SheetDescription>
         </SheetHeader>
         <div className="space-y-4 px-4 pb-6">
           {negotiable && (
@@ -324,88 +356,49 @@ function AcceptSheet({ studentName, budget, negotiable, taskId, platformFeePerce
               <input
                 type="number"
                 value={agreedPrice}
-                onChange={(e) => setAgreedPrice(e.target.value)}
+                onChange={(event) => setAgreedPrice(event.target.value)}
                 placeholder="e.g. 15000"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <p className="text-xs text-muted-foreground">
-                Make sure you and the student have agreed on this amount before proceeding.
-              </p>
+              <p className="text-xs text-muted-foreground">Make sure you and the student have agreed on this amount before proceeding.</p>
             </div>
           )}
+
           {finalAmount > 0 && (
             <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Amount going to escrow</span>
                 <span className="font-semibold text-foreground">{naira(finalAmount)}</span>
               </div>
-              <div className="flex justify-between mt-1">
+              <div className="mt-1 flex justify-between">
                 <span className="text-muted-foreground">Student receives (after {platformFeePercent}% fee)</span>
                 <span className="font-medium text-success">{naira(finalAmount * payoutRate)}</span>
               </div>
             </div>
           )}
+
           <p className="flex items-start gap-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" />
             By accepting, you agree to pay this amount into escrow. Funds are held safely until you approve the work.
           </p>
+
           <Button
             className="w-full"
             size="lg"
             disabled={pending || (negotiable && !agreedPrice)}
-            onClick={() => { onConfirm(negotiable && agreedPrice ? Number(agreedPrice) : undefined); setOpen(false); }}
+            onClick={() => {
+              onConfirm(negotiable && agreedPrice ? Number(agreedPrice) : undefined);
+              setOpen(false);
+            }}
           >
             {pending ? "Accepting…" : "Accept & proceed to payment"}
           </Button>
+
           <button className="w-full text-center text-sm text-muted-foreground" onClick={() => setOpen(false)}>
             Cancel
           </button>
         </div>
       </SheetContent>
     </Sheet>
-  );
-}
-
-function TeamMembersSection({ taskId, teamSize }: { taskId: string; teamSize: number }) {
-  const { data: members } = useQuery({
-    queryKey: ["team-members", taskId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("task_team_members")
-        .select("*, student:profiles!task_team_members_student_id_fkey(id, full_name)")
-        .eq("task_id", taskId);
-      return data ?? [];
-    },
-  });
-
-  if (!members || members.length === 0) return null;
-
-  return (
-    <div className="px-4 pt-4">
-      <h2 className="text-sm font-semibold text-foreground mb-2">
-        Team ({members.length}/{teamSize} filled)
-      </h2>
-      <div className="space-y-2">
-        {members.map((m: any) => (
-          <div key={m.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-            <div className="flex items-center gap-2">
-              <InitialsAvatar name={m.student?.full_name} size={32} />
-              <div>
-                <p className="text-sm font-medium text-foreground">{m.student?.full_name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{m.role}</p>
-              </div>
-            </div>
-            <span className="text-sm font-medium text-success">
-              ₦{Number(m.payment_share).toLocaleString("en-NG")}
-            </span>
-          </div>
-        ))}
-      </div>
-      {members.length < teamSize && (
-        <p className="mt-2 text-xs text-muted-foreground text-center">
-          {teamSize - members.length} more student{teamSize - members.length === 1 ? "" : "s"} needed
-        </p>
-      )}
-    </div>
   );
 }

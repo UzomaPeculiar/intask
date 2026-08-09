@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Sparkles, GraduationCap, Briefcase, User, CheckCircle2, Upload, ArrowRight, ArrowLeft, Award } from "lucide-react";
+import { GraduationCap, Briefcase, User, CheckCircle2, Upload, ArrowRight, ArrowLeft, Award } from "lucide-react";
 import { NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY, SKILLS, NG_PHONE_REGEX } from "@/lib/constants";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
@@ -56,8 +56,8 @@ function Stepper({ current, total }: { current: number; total: number }) {
         return (
           <span
             key={i}
-            className={`h-2 rounded-full transition-all ${
-              active ? "w-8 bg-primary" : done ? "w-2 bg-primary/60" : "w-2 bg-muted"
+            className={`h-1.5 rounded-full transition-all ${
+              active ? "w-8 bg-[#3dcb6c]" : done ? "w-1.5 bg-[rgba(61,203,108,0.5)]" : "w-1.5 bg-[#e4efe0]"
             }`}
           />
         );
@@ -72,7 +72,7 @@ function SignupPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [s, setS] = useState<SignupState>({
-    role: null,
+    role: "student",
     full_name: "",
     email: "",
     phone: "",
@@ -100,24 +100,21 @@ function SignupPage() {
   const isIndividual = s.role === "individual";
 
   // Per-role stepper config. Welcome screen is hidden from stepper.
-  function stepInfo(): { current: number | null; total: number } {
+  function stepInfo(): { current: number; total: number } {
     if (s.role === "student") {
-      // 1=role(hide), 2=account, 3=uni, 4=verify, 5=skills, 6=welcome(hide)
-      if (step === 1 || step === 6) return { current: null, total: 4 };
-      return { current: step - 1, total: 4 };
+      // 1=role, 2=account, 3=uni, 4=verify, 5=skills, 6=welcome
+      return { current: Math.min(step, 4), total: 4 };
     }
     if (s.role === "alumni") {
-      // 1=role(hide), 2=account, 3=grad, 4=skills, 5=welcome
-      if (step === 1) return { current: null, total: 4 };
-      return { current: step - 1, total: 4 };
+      // 1=role, 2=account, 3=grad, 4=skills, 5=welcome
+      return { current: Math.min(step, 4), total: 4 };
     }
-    if (s.role === "individual") return { current: step, total: 2 };
+    if (s.role === "individual") return { current: Math.min(step, 2), total: 2 };
     if (s.role === "company") {
-      // 1=role(hide), 2=account, 3=business, 4=verify, 5=finish(hide)
-      if (step === 1 || step === 5) return { current: null, total: 3 };
-      return { current: step - 1, total: 3 };
+      // 1=role, 2=account, 3=business, 4=verify, 5=finish
+      return { current: Math.min(step, 4), total: 4 };
     }
-    return { current: null, total: 1 };
+    return { current: 1, total: 4 };
   }
   const sinfo = stepInfo();
 
@@ -342,43 +339,58 @@ function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="border-b border-border">
-        <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground"><Sparkles className="size-4" /></span>
-            InTask
-          </Link>
+    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="grid min-h-screen grid-cols-1 md:grid-cols-2">
+        <section className="relative overflow-hidden bg-[linear-gradient(160deg,#0d2818_0%,#1a3a2a_60%,#2d5a3d_100%)] px-8 py-12 md:px-14 md:py-16 lg:px-20 lg:py-20">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_70%,rgba(61,203,108,0.12)_0%,transparent_50%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(181,119,26,0.06)_0%,transparent_40%)]" />
+
+          <div className="relative z-10 flex h-full flex-col justify-center">
+            <Link to="/" className="mb-12 flex w-fit items-center gap-2.5 no-underline">
+              <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#3dcb6c] text-base text-white">✦</span>
+              <span className="[font-family:'Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-white">InTask</span>
+            </Link>
+
+            <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[2.2rem] leading-[1.1] font-bold tracking-[-0.03em] text-white md:text-[2.8rem]">
+              Start earning in <span className="text-[#3dcb6c]">minutes.</span>
+            </h1>
+            <p className="mt-5 max-w-[400px] text-[1.05rem] leading-[1.6] text-white/60">
+              Create your account, verify your student status, and start finding paid tasks that match your skills.
+            </p>
+          </div>
+        </section>
+
+        <section className="flex flex-col justify-center bg-white px-8 py-12 md:px-14 md:py-16 lg:px-20 lg:py-12">
           {step > 1 && (
-            <button onClick={back} aria-label="Back" className="text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /></button>
+            <button onClick={back} aria-label="Back" className="mb-4 inline-flex w-fit items-center gap-1 text-[0.8rem] font-medium text-[#6a8064] hover:text-[#1a1e16]">
+              <ArrowLeft className="size-4" />
+              Back
+            </button>
           )}
-        </div>
-        {sinfo.current && (
-          <div className="mx-auto max-w-md px-4 pb-4">
+
+          <div className="mb-7">
             <Stepper current={sinfo.current} total={sinfo.total} />
           </div>
-        )}
-      </header>
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-6">
+          <div>
         {/* STEP 1 — Role selection (4 roles) */}
         {step === 1 && (
           <div>
-            <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
-              <h1 className="text-2xl font-semibold tracking-tight">How will you use InTask?</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Pick the option that fits you best.</p>
+            <div className="mb-7">
+              <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1a1e16]">How will you use InTask?</h1>
+              <p className="mt-1 text-[0.85rem] text-[#6a8064]">Pick the option that fits you best.</p>
             </div>
-            <div className="mt-6 space-y-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <RoleCard icon={GraduationCap} title="I'm a student" desc="I want to find work and get paid for my skills." selected={s.role === "student"} onClick={() => set("role", "student")} />
               <RoleCard icon={User} title="I want to post a task" desc="I need help from a student with a project." selected={s.role === "individual"} onClick={() => set("role", "individual")} />
               <RoleCard icon={Award} title="I'm alumni" desc="I graduated and want to keep working and earning." selected={s.role === "alumni"} onClick={() => set("role", "alumni")} />
-              <RoleCard icon={Briefcase} title="I'm a company or business" desc="I want to hire verified students for tasks." selected={s.role === "company"} onClick={() => set("role", "company")} />
+              <RoleCard icon={Briefcase} title="I'm a company" desc="I want to hire verified students for tasks." selected={s.role === "company"} onClick={() => set("role", "company")} />
             </div>
-            <Button size="lg" className="mt-6 w-full" disabled={!s.role} onClick={next}>
+            <Button size="lg" className="mt-6 h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.95rem] font-semibold text-white hover:bg-[#35b860]" disabled={!s.role} onClick={next}>
               Continue <ArrowRight className="size-4" />
             </Button>
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              Already have an account? <Link to="/auth/login" className="font-medium text-primary hover:underline">Log in</Link>
+            <p className="mt-5 text-center text-[0.85rem] text-[#6a8064]">
+              Already have an account? <Link to="/auth/login" className="font-semibold text-[#3dcb6c] no-underline">Log in</Link>
             </p>
           </div>
         )}
@@ -692,7 +704,9 @@ function SignupPage() {
             </div>
           </div>
         )}
-      </main>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -750,20 +764,31 @@ function SkillsPicker({
 function RoleCard({
   icon: Icon, title, desc, selected, onClick,
 }: { icon: typeof GraduationCap; title: string; desc: string; selected: boolean; onClick: () => void }) {
+  const iconTone =
+    title.includes("student")
+      ? "bg-[rgba(61,203,108,0.12)] text-[#1a7a42]"
+      : title.includes("post a task")
+        ? "bg-[rgba(37,99,235,0.10)] text-[#2563eb]"
+        : title.includes("alumni")
+          ? "bg-[rgba(181,119,26,0.12)] text-[#b5771a]"
+          : "bg-[rgba(26,122,66,0.12)] text-[#1a7a42]";
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
-        selected ? "border-primary bg-primary/10 shadow-sm" : "border-border bg-card/90 hover:-translate-y-0.5 hover:shadow-sm hover:bg-accent/50"
+      className={`flex w-full items-start gap-3.5 rounded-[14px] border p-[18px] text-left transition-all ${
+        selected
+          ? "border-[#3dcb6c] bg-[rgba(61,203,108,0.06)] shadow-[0_0_0_3px_rgba(61,203,108,0.1)]"
+          : "border-[#c4deb8] bg-white hover:border-[#3dcb6c] hover:bg-[#f9fdf7]"
       }`}
     >
-      <div className={`grid size-9 place-items-center rounded-lg ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+      <div className={`grid h-10 w-10 place-items-center rounded-[10px] ${iconTone}`}>
         <Icon className="size-5" />
       </div>
       <div className="min-w-0">
-        <p className="font-medium text-foreground">{title}</p>
-        <p className="text-sm text-muted-foreground">{desc}</p>
+        <p className="mb-0.5 text-[0.9rem] font-semibold text-[#1a1e16]">{title}</p>
+        <p className="text-[0.75rem] leading-[1.4] text-[#6a8064]">{desc}</p>
       </div>
     </button>
   );

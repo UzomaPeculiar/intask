@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasSupabaseClientConfig } from "@/integrations/supabase/env";
 import { AuthProvider } from "@/hooks/useAuth.tsx";
-import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2 } from "lucide-react";
+import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2, PanelLeft } from "lucide-react";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app")({
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/app")({
 function AppLayout() {
   const nav = useNavigate();
   const [ready, setReady] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
   const hasSupabaseConfig = hasSupabaseClientConfig();
   const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
@@ -113,8 +114,8 @@ function AppLayout() {
   return (
     <AuthProvider>
       <div className="min-h-screen bg-background">
-        {!path.startsWith("/app/messages/") && <DesktopSidebar path={path} />}
-        <div className={`${path.startsWith("/app/messages/") ? "" : "pb-20 lg:pb-0 lg:pl-72"}`}>
+        {!path.startsWith("/app/messages/") && <DesktopSidebar path={path} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((value) => !value)} />}
+        <div className={`${path.startsWith("/app/messages/") ? "" : sidebarCollapsed ? "pb-20 lg:pb-0 lg:pl-20" : "pb-20 lg:pb-0 lg:pl-72"}`}>
           <Outlet />
         </div>
         {!path.startsWith("/app/messages/") && <BottomNav path={path} />}
@@ -123,7 +124,7 @@ function AppLayout() {
   );
 }
 
-function DesktopSidebar({ path }: { path: string }) {
+function DesktopSidebar({ path, collapsed, onToggleCollapsed }: { path: string; collapsed: boolean; onToggleCollapsed: () => void }) {
   const { data: me } = useQuery({
     queryKey: ["nav-me-id"],
     queryFn: async () => (await supabase.auth.getUser()).data.user,
@@ -171,19 +172,32 @@ function DesktopSidebar({ path }: { path: string }) {
   });
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex lg:flex-col">
-      <div className="border-b border-sidebar-border px-6 py-5">
-        <Link to="/app" className="text-lg font-semibold tracking-tight text-sidebar-foreground">
-          InTask
+    <aside className={`fixed inset-y-0 left-0 z-30 hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex lg:flex-col ${collapsed ? "w-20" : "w-72"}`}>
+      <div className={`flex items-center justify-between gap-3 border-b border-sidebar-border ${collapsed ? "px-3 py-5" : "px-6 py-5"}`}>
+        <Link to="/app" className={`flex items-center font-semibold tracking-tight text-sidebar-foreground ${collapsed ? "justify-center" : "text-lg"}`} aria-label="InTask home">
+          {collapsed ? (
+            <span className="grid size-10 place-items-center rounded-2xl bg-sidebar-accent text-sm font-bold text-sidebar-accent-foreground">IT</span>
+          ) : (
+            "InTask"
+          )}
         </Link>
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          className="grid size-8 place-items-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-pressed={collapsed}
+        >
+          <PanelLeft className={`size-4 transition-transform ${collapsed ? "rotate-180" : "rotate-0"}`} />
+        </button>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        <DesktopNavItem to="/app" label="Dashboard" icon={Home} active={path === "/app" || path === "/app/"} />
-        <DesktopNavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} />
-        <DesktopNavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} />
-        <DesktopNavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} />
-        <DesktopNavItem to="/app/profile/$userId" label="Profile" icon={UserIcon} active={path.startsWith("/app/profile")} params={{ userId: "me" }} />
+      <nav className={`flex-1 space-y-1 py-4 ${collapsed ? "px-2" : "px-3"}`}>
+        <DesktopNavItem to="/app" label="Dashboard" icon={Home} active={path === "/app" || path === "/app/"} collapsed={collapsed} />
+        <DesktopNavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} collapsed={collapsed} />
+        <DesktopNavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} collapsed={collapsed} />
+        <DesktopNavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} collapsed={collapsed} />
+        <DesktopNavItem to="/app/profile/$userId" label="Profile" icon={UserIcon} active={path.startsWith("/app/profile")} params={{ userId: "me" }} collapsed={collapsed} />
       </nav>
     </aside>
   );
@@ -331,6 +345,7 @@ function DesktopNavItem({
   active,
   badge,
   params,
+  collapsed,
 }: {
   to: string;
   label: string;
@@ -338,21 +353,29 @@ function DesktopNavItem({
   active: boolean;
   badge?: number;
   params?: Record<string, string>;
+  collapsed: boolean;
 }) {
   return (
     <Link
       to={to as any}
       params={params as any}
-      className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+      title={label}
+      aria-label={label}
+      className={`relative flex items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${
         active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/75 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
-      }`}
+      } ${collapsed ? "justify-center px-2" : "justify-between px-3"}`}
     >
-      <span className="flex items-center gap-2.5">
+      <span className={`flex items-center ${collapsed ? "gap-0" : "gap-2.5"}`}>
         <Icon className="size-4" />
-        {label}
+        {!collapsed && label}
       </span>
-      {!!badge && badge > 0 && (
+      {!collapsed && !!badge && badge > 0 && (
         <span className="grid h-5 min-w-5 place-items-center rounded-full bg-sidebar-primary px-1 text-[10px] font-semibold text-sidebar-primary-foreground">
+          {badge > 9 ? "9+" : badge}
+        </span>
+      )}
+      {collapsed && !!badge && badge > 0 && (
+        <span className="absolute right-2 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-sidebar-primary px-1 text-[10px] font-semibold text-sidebar-primary-foreground">
           {badge > 9 ? "9+" : badge}
         </span>
       )}
