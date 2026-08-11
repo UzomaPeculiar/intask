@@ -1,14 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { TASK_CATEGORIES, SKILLS } from "@/lib/constants";
+import { TASK_CATEGORIES, getSkillsForTaskCategory } from "@/lib/constants";
 import { ArrowLeft, ArrowRight, FileText, ShieldCheck, Wallet, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
@@ -76,6 +76,12 @@ function CreateTaskPage() {
     0,
     Number(minTaskBudgetSetting?.min_task_budget ?? PLATFORM_SETTING_DEFAULTS.min_task_budget),
   );
+  const categorySkills = getSkillsForTaskCategory(category);
+
+  useEffect(() => {
+    const allowedSkills = new Set(categorySkills);
+    setSkills((prev) => prev.filter((skill) => allowedSkills.has(skill)));
+  }, [category]);
 
   async function submit() {
     if (!title.trim()) return toast.error("Add a title");
@@ -277,7 +283,7 @@ function CreateTaskPage() {
                   Skills needed <span className="font-normal text-[#9eb79c]">(optional)</span>
                 </Label>
                 <div className="flex flex-wrap gap-1.5">
-                  {SKILLS.map((sk) => {
+                  {categorySkills.map((sk) => {
                     const sel = skills.includes(sk);
                     return (
                       <button

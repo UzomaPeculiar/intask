@@ -7,7 +7,7 @@ import { SaveTaskButton } from "@/components/intask/SaveTaskButton";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth.tsx";
@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { naira, timeAgo } from "@/lib/format";
 import { FEED_FILTERS } from "@/lib/constants";
-import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle, Users, Wallet, ChevronDown, ChevronUp } from "lucide-react";
+import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle, Users, Wallet, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { useApplicantCount, applicantLabel } from "@/hooks/useApplicantCount";
 import { MessagePartyLink } from "@/components/intask/MessagePartyLink";
 import { MVP_FEATURES } from "@/lib/mvp-features";
@@ -201,7 +201,31 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
   const loadStudentActiveTasks = useServerFn(getStudentActiveTasks);
   const loadProjectRoomForTask = useServerFn(getProjectRoomForTask);
   const [showQuickLinks, setShowQuickLinks] = useState(false);
-  const [showAllFilters, setShowAllFilters] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(checkScroll);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const scrollFilters = (dir: "left" | "right") => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "left" ? -200 : 200, behavior: "smooth" });
+  };
   const { data: stats } = useQuery({
     queryKey: ["student-stats", userId],
     enabled: !!userId,
@@ -231,8 +255,6 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
 
   const taskCategories = Array.from(new Set((tasks ?? []).map((t: any) => t.category).filter(Boolean)));
   const { data: categoryBudgetStats = {} } = useCategoryBudgetStats(taskCategories);
-
-  const visibleFilters = showAllFilters ? FEED_FILTERS : FEED_FILTERS.slice(0, 7);
 
   return (
     <div className="space-y-6 pt-5">
@@ -326,18 +348,23 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
       )}
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Task feed</h2>
-          <button
-            onClick={() => setShowAllFilters((prev) => !prev)}
-            className="it-link-accent text-xs font-medium hover:underline"
-          >
-            {showAllFilters ? "Fewer filters" : "More filters"}
-          </button>
-        </div>
+        <h2 className="text-sm font-semibold text-foreground">Task feed</h2>
         <div className="relative">
-          <div className="flex gap-2 overflow-x-auto pb-1 pr-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-wrap lg:overflow-visible lg:pr-0">
-            {visibleFilters.map((f) => {
+          {canScrollLeft && (
+            <button
+              onClick={() => scrollFilters("left")}
+              className="absolute -left-1 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card shadow-md transition-colors hover:bg-accent/50"
+              aria-label="Scroll filters left"
+            >
+              <ChevronLeft className="size-4 text-foreground" />
+            </button>
+          )}
+          <div
+            ref={scrollContainerRef}
+            onScroll={checkScroll}
+            className="flex gap-2 overflow-x-auto pb-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {FEED_FILTERS.map((f) => {
               const active = f === filter;
               return (
                 <button key={f} onClick={() => onFilter(f)}
@@ -347,7 +374,17 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
               );
             })}
           </div>
-          <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent" />
+          {canScrollRight && (
+            <button
+              onClick={() => scrollFilters("right")}
+              className="absolute -right-1 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card shadow-md transition-colors hover:bg-accent/50"
+              aria-label="Scroll filters right"
+            >
+              <ChevronRight className="size-4 text-foreground" />
+            </button>
+          )}
+          {canScrollLeft && <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background to-transparent" />}
+          {canScrollRight && <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background to-transparent" />}
         </div>
       </section>
 

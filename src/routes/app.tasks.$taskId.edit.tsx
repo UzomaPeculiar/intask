@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { TASK_CATEGORIES, SKILLS } from "@/lib/constants";
+import { TASK_CATEGORIES, getSkillsForTaskCategory } from "@/lib/constants";
 import { ArrowLeft, ShieldCheck, ChevronDown, ChevronUp, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
@@ -84,10 +84,16 @@ function EditTaskPage() {
     0,
     Number(minTaskBudgetSetting?.min_task_budget ?? PLATFORM_SETTING_DEFAULTS.min_task_budget),
   );
+  const categorySkills = getSkillsForTaskCategory(category);
 
   useEffect(() => {
     void loadTask();
   }, [taskId]);
+
+  useEffect(() => {
+    const allowedSkills = new Set(categorySkills);
+    setSkills((prev) => prev.filter((skill) => allowedSkills.has(skill)));
+  }, [category]);
 
   async function loadTask() {
     setLoading(true);
@@ -397,7 +403,7 @@ function EditTaskPage() {
 
               <Field label="Skills needed">
                 <div className="flex flex-wrap gap-1.5">
-                  {SKILLS.map((sk) => {
+                  {categorySkills.map((sk) => {
                     const sel = skills.includes(sk);
                     return (
                       <button key={sk} type="button" onClick={() => setSkills(sel ? skills.filter((x) => x !== sk) : [...skills, sk])} className={`rounded-full border px-3 py-1.5 text-[0.75rem] font-medium ${sel ? "border-[#3dcb6c] bg-[#3dcb6c] text-white" : "border-[#c4deb8] bg-white text-[#1a1e16]"}`}>

@@ -128,7 +128,29 @@ function ProfilePage() {
         .order("created_at", { ascending: false })
         .limit(20);
 
-      return { profile: profile as any, student, company, individual, reviews: reviews ?? [] };
+      let responseTimeLabel = "—";
+      const { data: conversations } = await supabase
+        .from("conversations")
+        .select("id")
+        .or(`poster_id.eq.${targetId},student_id.eq.${targetId}`)
+        .limit(50);
+
+      const conversationIds = (conversations ?? []).map((conversation: any) => conversation.id);
+      if (conversationIds.length > 0) {
+        const { data: messages } = await supabase
+          .from("messages")
+          .select("conversation_id, sender_id, created_at")
+          .in("conversation_id", conversationIds)
+          .order("created_at", { ascending: true })
+          .limit(1000);
+
+        const samples = computeResponseSamples(messages ?? [], targetId!);
+        if (samples.length > 0) {
+          responseTimeLabel = formatResponseTime(samples);
+        }
+      }
+
+      return { profile: profile as any, student, company, individual, reviews: reviews ?? [], responseTimeLabel };
     },
   });
   const { data: postedTasks } = useQuery({
@@ -509,7 +531,7 @@ function ProfilePage() {
               </div>
               <div className="flex items-center justify-between py-2">
                 <span className="text-[0.8rem] text-[#6a8064]">Response time</span>
-                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">&lt; 2 hours</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">{resolved.responseTimeLabel ?? "—"}</span>
               </div>
             </div>
           </section>
@@ -549,6 +571,62 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
       </div>
     </div>
   );
+}
+
+function computeResponseSamples(
+  rows: Array<{ conversation_id: string; sender_id: string; created_at: string }>,
+  userId: string,
+) {
+  const byConversation = new Map<string, Array<{ sender_id: string; created_at: string }>>();
+  for (const row of rows) {
+    if (!row?.conversation_id || !row?.sender_id || !row?.created_at) continue;
+    if (!byConversation.has(row.conversation_id)) byConversation.set(row.conversation_id, []);
+    byConversation.get(row.conversation_id)!.push({ sender_id: row.sender_id, created_at: row.created_at });
+  }
+
+  const samples: number[] = [];
+  for (const messages of byConversation.values()) {
+    let waitingSince: number | null = null;
+    for (const message of messages) {
+      const ts = new Date(message.created_at).getTime();
+      if (!Number.isFinite(ts)) continue;
+
+      if (message.sender_id === userId) {
+        if (waitingSince != null && ts > waitingSince) {
+          samples.push(ts - waitingSince);
+          waitingSince = null;
+        }
+        continue;
+      }
+
+      if (waitingSince == null) {
+        waitingSince = ts;
+      }
+    }
+  }
+
+  return samples;
+}
+
+function formatResponseTime(samplesMs: number[]) {
+  const sorted = [...samplesMs].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const medianMs = sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+
+  const minutes = medianMs / 60000;
+  if (minutes < 60) return `${Math.max(1, Math.round(minutes))} min`;
+
+  const hours = minutes / 60;
+  if (hours < 24) {
+    const roundedHours = Math.round(hours * 10) / 10;
+    return `${roundedHours % 1 === 0 ? roundedHours.toFixed(0) : roundedHours.toFixed(1)} hrs`;
+  }
+
+  const days = hours / 24;
+  const roundedDays = Math.round(days * 10) / 10;
+  return `${roundedDays % 1 === 0 ? roundedDays.toFixed(0) : roundedDays.toFixed(1)} days`;
 }
 
 function EditPanel({ profile, student, company, onDone }: any) {
