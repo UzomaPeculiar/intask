@@ -137,7 +137,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
-    return new Response(JSON.stringify({ success: false, error: err?.message ?? "Unknown error" }), {
+    console.error("[verify-wallet-funding]", err);
+    return new Response(JSON.stringify({ success: false, error: "An unexpected error occurred. Please try again." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -59,8 +59,9 @@ serve(async (req) => {
     );
 
   } catch (err) {
+    console.error("[verify-account]", err);
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

@@ -66,8 +66,16 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "Too many failed attempts. Request a new code." }, 429);
     }
 
-    const secret = Deno.env.get("COMPANY_EMAIL_CODE_SECRET") ?? "intask-company-email-code-secret";
-    const expectedHash = await sha256(`${code}:${secret}`);
+    const codeSecret = Deno.env.get("COMPANY_EMAIL_CODE_SECRET");
+    if (!codeSecret) {
+      return jsonResponse({
+        success: false,
+        code: "EMAIL_VERIFICATION_NOT_CONFIGURED",
+        error: "Email verification is temporarily unavailable. Please try again later.",
+      }, 503);
+    }
+
+    const expectedHash = await sha256(`${code}:${codeSecret}`);
 
     if (expectedHash !== rec.code_hash) {
       await supabase
@@ -110,6 +118,7 @@ serve(async (req) => {
 
     return jsonResponse({ success: true, message: "Email verified successfully" });
   } catch (err: any) {
-    return jsonResponse({ success: false, error: err?.message ?? "Unknown error" }, 500);
+    console.error("[confirm-company-verification-email]", err);
+    return jsonResponse({ success: false, error: "An unexpected error occurred. Please try again." }, 500);
   }
 });

@@ -48,7 +48,9 @@ serve(async (req) => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     const resendFrom = Deno.env.get("COMPANY_VERIFICATION_FROM_EMAIL") ?? "InTask <onboarding@resend.dev>";
 
-    if (!resendApiKey) {
+    const codeSecret = Deno.env.get("COMPANY_EMAIL_CODE_SECRET");
+
+    if (!resendApiKey || !codeSecret) {
       return jsonResponse({
         success: false,
         code: "EMAIL_VERIFICATION_NOT_CONFIGURED",
@@ -80,8 +82,7 @@ serve(async (req) => {
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const secret = Deno.env.get("COMPANY_EMAIL_CODE_SECRET") ?? "intask-company-email-code-secret";
-    const codeHash = await sha256(`${code}:${secret}`);
+    const codeHash = await sha256(`${code}:${codeSecret}`);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
     const { error: upsertErr } = await supabase
@@ -149,6 +150,7 @@ serve(async (req) => {
 
     return jsonResponse({ success: true, message: "Verification code sent" });
   } catch (err: any) {
-    return jsonResponse({ success: false, error: err?.message ?? "Unknown error" }, 500);
+    console.error("[send-company-verification-email]", err);
+    return jsonResponse({ success: false, error: "An unexpected error occurred. Please try again." }, 500);
   }
 });
