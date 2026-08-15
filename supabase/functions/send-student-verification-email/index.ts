@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkVerificationSendRateLimit } from "../_shared/verification-send-rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,6 +75,18 @@ serve(async (req) => {
       return jsonResponse({ success: false, error: "Student profile not found" }, 404);
     }
 
+    // Rate limit: enforce 60s cooldown + hourly cap on OTP sends
+    const { data: rateState } = await supabase
+      .from("student_email_verifications")
+      .select("last_sent_at, sends_in_hour, send_hour_started_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const rateCheck = checkVerificationSendRateLimit(rateState);
+    if (!rateCheck.allowed) {
+      return jsonResponse({ success: false, error: rateCheck.error }, rateCheck.status);
+    }
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const secret = Deno.env.get("STUDENT_EMAIL_CODE_SECRET") ?? "intask-student-email-code-secret";
     const codeHash = await sha256(`${code}:${secret}`);
@@ -88,6 +101,9 @@ serve(async (req) => {
         code_expires_at: expiresAt,
         attempts: 0,
         verified_at: null,
+        last_sent_at: new Date().toISOString(),
+        sends_in_hour: rateCheck.sendsInHour,
+        send_hour_started_at: rateCheck.sendHourStartedAt,
       }, { onConflict: "user_id" });
 
     if (upsertErr) {

@@ -1,16 +1,27 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createHmac } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { timingSafeEqual } from "https://deno.land/std@0.168.0/crypto/timing_safe_equal.ts";
+
+function verifyPaystackSignature(body: string, signature: string, secret: string): boolean {
+  const expected = createHmac("sha512", secret).update(body).toString("hex");
+  const encoder = new TextEncoder();
+  const sigBytes = encoder.encode(signature);
+  const expectedBytes = encoder.encode(expected);
+  if (sigBytes.length !== expectedBytes.length) return false;
+  return timingSafeEqual(sigBytes, expectedBytes);
+}
 
 serve(async (req) => {
   try {
     const body = await req.text();
-    const signature = req.headers.get("x-paystack-signature");
-    const secret = Deno.env.get("PAYSTACK_SECRET_KEY")!;
+    const signature = req.headers.get("x-paystack-signature") ?? "";
+    const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
+    if (!secret) {
+      return new Response("Server not configured", { status: 500 });
+    }
 
-    // Verify webhook signature
-    const hash = createHmac("sha512", secret).update(body).toString("hex");
-    if (hash !== signature) {
+    if (!verifyPaystackSignature(body, signature, secret)) {
       return new Response("Invalid signature", { status: 401 });
     }
 
