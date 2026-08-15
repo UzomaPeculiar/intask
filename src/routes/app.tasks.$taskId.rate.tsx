@@ -82,16 +82,8 @@ function RatePage() {
       })) as any,
     );
     if (error) { toast.error(error.message); setBusy(false); return; }
-    for (const revieweeId of revieweeIds) {
-      const { data: rows } = await supabase.from("reviews").select("rating").eq("reviewee_id", revieweeId);
-      if (rows && rows.length) {
-        const avg = rows.reduce((s, r) => s + (r.rating as number), 0) / rows.length;
-        await supabase.from("student_profiles").update({
-          rating_average: Math.round(avg * 100) / 100,
-          rating_count: rows.length,
-        }).eq("user_id", revieweeId);
-      }
-    }
+    // Rating stats are recomputed server-side by the recompute_student_rating
+    // trigger on reviews (student_profiles RLS only allows own-row updates).
     toast.success("Thanks for your review");
     qc.invalidateQueries({ queryKey: ["profile"] });
     nav({ to: "/app/tasks/$taskId", params: { taskId }, replace: true });

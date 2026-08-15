@@ -373,7 +373,9 @@ export const adminSaveModerationRules = createServerFn({ method: "POST" })
 
 export const getModerationRules = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    await ensureAdmin(userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const db = supabaseAdmin as any;
 
