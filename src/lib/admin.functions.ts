@@ -61,6 +61,123 @@ function sumLedger(rows: any[] | null | undefined, amountField: string, predicat
   }, 0);
 }
 
+// Refund an escrow back to its poster by its actual funding legs.
+// An escrow can be funded from two sources:
+//   * Paystack -> the charge recorded on transactions.paystack_reference
+//   * wallet   -> a wallet_transactions debit with reference ESCROW_WALLET_DEBIT_<task_id>
+// A refund must move BOTH legs back before the transaction is considered
+// refunded: the wallet portion is credited to the poster's wallet (credit_wallet,
+// idempotent by reference) and the Paystack portion is refunded via Paystack's
+// /refund API. The label is claimed first (same pattern as escrow release) so a
+// concurrent release/refund cannot double-spend; if a money leg fails the label
+// is reverted and the error surfaces, and because each leg is idempotent a retry
+// is safe.
+async function refundEscrowToPoster(
+  db: any,
+  tx: {
+    id: string;
+    task_id: string;
+    poster_id: string;
+    amount: number;
+    status: string;
+    paystack_reference?: string | null;
+  },
+) {
+  // Wallet portion = the exact amount debited to fund the wallet leg.
+  const { data: walletDebits, error: wErr } = await db
+    .from("wallet_transactions")
+    .select("amount")
+    .eq("reference", `ESCROW_WALLET_DEBIT_${tx.task_id}`)
+    .eq("transaction_type", "debit")
+    .eq("status", "completed");
+  if (wErr) throw new Error(wErr.message ?? "Could not read wallet funding records");
+
+  const walletPortion = (walletDebits ?? []).reduce(
+    (sum: number, row: any) => sum + Number(row.amount ?? 0),
+    0,
+  );
+  const total = Number(tx.amount);
+  const paystackPortion = tx.paystack_reference ? Math.max(total - walletPortion, 0) : 0;
+
+  // Claim the escrow atomically before moving money.
+  const { data: claimed } = await db
+    .from("transactions")
+    .update({ status: "refunded" })
+    .eq("id", tx.id)
+    .eq("status", tx.status)
+    .select("id")
+    .maybeSingle();
+  if (!claimed) throw new Error("Escrow was already released or refunded");
+
+  let paystackRefundId: string | null = null;
+
+  try {
+    // 1) Wallet leg first (reversible/idempotent): credit_wallet dedupes by
+    //    (user_id, reference) so a retry never double-credits.
+    if (walletPortion > 0) {
+      const creditRes = await db.rpc("credit_wallet", {
+        p_user_id: tx.poster_id,
+        p_amount: walletPortion,
+        p_description: `Escrow refund: wallet portion for task ${tx.task_id}`,
+        p_reference: `ESCROW_REFUND_WALLET_${tx.task_id}`,
+      });
+      const payload = normalizeCreditWalletResult(creditRes.data);
+      if (creditRes.error || payload?.success === false || payload?.error) {
+        throw new Error(creditRes.error?.message ?? payload?.error ?? "Could not credit wallet refund");
+      }
+    }
+
+    // 2) Paystack leg last (irreversible).
+    if (paystackPortion > 0 && tx.paystack_reference) {
+      const secret = process.env.PAYSTACK_SECRET_KEY;
+      if (!secret) throw new Error("Paystack is not configured on this server");
+
+      // A 'pending' transaction means the Paystack charge may never have
+      // completed (webhook never fired). Verify first so an abandoned checkout
+      // does not fail the whole cancellation on a refund of a non-existent charge.
+      if (tx.status === "pending") {
+        const verifyRes = await fetch(
+          `https://api.paystack.co/transaction/verify/${encodeURIComponent(tx.paystack_reference)}`,
+          { headers: { Authorization: `Bearer ${secret}` } },
+        );
+        const verifyJson = (await verifyRes.json()) as any;
+        if (!verifyRes.ok || !verifyJson?.status || verifyJson?.data?.status !== "success") {
+          // Nothing was charged on Paystack — nothing to refund there.
+          return { walletPortion, paystackPortion, paystackRefundId };
+        }
+      }
+
+      const paystackRes = await fetch("https://api.paystack.co/refund", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          transaction: tx.paystack_reference,
+          amount: Math.round(paystackPortion * 100),
+          currency: "NGN",
+        }),
+      });
+      const paystackJson = (await paystackRes.json()) as any;
+      if (!paystackRes.ok || !paystackJson?.status) {
+        throw new Error(paystackJson?.message ?? "Paystack refund failed");
+      }
+      paystackRefundId = paystackJson?.data?.id ?? null;
+    }
+  } catch (error) {
+    // Revert the label; both legs are idempotent so a retry completes cleanly.
+    await db
+      .from("transactions")
+      .update({ status: tx.status })
+      .eq("id", tx.id)
+      .eq("status", "refunded");
+    throw error;
+  }
+
+  return { walletPortion, paystackPortion, paystackRefundId };
+}
+
 function deriveWalletSummary(
   wallet: any | null,
   earnedFromLedger: number,
@@ -854,7 +971,7 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
 
     const { data: tx, error: txErr } = await db
       .from("transactions")
-      .select("id, amount, platform_fee, status, poster_id, student_id")
+      .select("id, task_id, amount, platform_fee, status, poster_id, student_id, paystack_reference")
       .eq("task_id", task.id)
       .maybeSingle();
     if (txErr || !tx) throw new Error("Transaction not found for disputed task");
@@ -870,6 +987,8 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
     if (tx.status !== "in_escrow") {
       throw new Error(`Escrow is not available for dispute resolution (status: ${tx.status})`);
     }
+
+    let refundSplitResult: any = null;
 
     if (data.releaseToStudent) {
       const payout = Number(tx.amount) - Number(tx.platform_fee);
@@ -958,14 +1077,14 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
         throw error;
       }
     } else {
-      await db.from("transactions").update({ status: "refunded" }).eq("id", tx.id);
+      refundSplitResult = await refundEscrowToPoster(db, tx);
       await db.from("tasks").update({ status: "cancelled" }).eq("id", task.id);
 
       await db.from("notifications").insert([
         {
           user_id: tx.poster_id,
           type: "dispute_resolved",
-          message: "Dispute resolved in your favor. Escrow has been marked for refund.",
+          message: "Dispute resolved in your favor. Your payment has been refunded.",
           link: `/app/tasks/${task.id}`,
         },
         {
@@ -991,6 +1110,13 @@ export const adminResolveDispute = createServerFn({ method: "POST" })
         taskId: task.id,
         releaseToStudent: data.releaseToStudent,
         resolution: data.resolution,
+        refundSplit: refundSplitResult
+          ? {
+              wallet: refundSplitResult.walletPortion,
+              paystack: refundSplitResult.paystackPortion,
+              paystackRefundId: refundSplitResult.paystackRefundId,
+            }
+          : null,
       },
     });
 
@@ -1020,9 +1146,11 @@ export const adminForceCancelTask = createServerFn({ method: "POST" })
 
     const { data: tx } = await db
       .from("transactions")
-      .select("id, status, amount, platform_fee, poster_id, student_id")
+      .select("id, task_id, status, amount, platform_fee, poster_id, student_id, paystack_reference")
       .eq("task_id", task.id)
       .maybeSingle();
+
+    let refundSplitResult: any = null;
 
     if (tx?.status === "released" || tx?.status === "refunded") {
       await db
@@ -1086,10 +1214,10 @@ export const adminForceCancelTask = createServerFn({ method: "POST" })
           throw error;
         }
       } else {
-        await db.from("transactions").update({ status: "refunded" }).eq("id", tx.id);
+        refundSplitResult = await refundEscrowToPoster(db, tx);
       }
     } else if (tx && tx.status === "pending") {
-      await db.from("transactions").update({ status: "refunded" }).eq("id", tx.id);
+      refundSplitResult = await refundEscrowToPoster(db, tx);
     }
 
     await db
@@ -1128,6 +1256,13 @@ export const adminForceCancelTask = createServerFn({ method: "POST" })
         previousTaskStatus: task.status,
         transactionStatus: tx?.status ?? null,
         resolveEscrowAs: resolutionMode,
+        refundSplit: refundSplitResult
+          ? {
+              wallet: refundSplitResult.walletPortion,
+              paystack: refundSplitResult.paystackPortion,
+              paystackRefundId: refundSplitResult.paystackRefundId,
+            }
+          : null,
       },
     });
 
