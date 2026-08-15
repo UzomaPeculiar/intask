@@ -98,26 +98,26 @@ function ProfilePage() {
         student = data as any;
       }
       if (profile?.role === "company") {
-        const companySelect = isOwn
-          ? "*"
-          : "user_id, company_name, industry, location, website, verified, created_at, updated_at";
-        const { data, error } = await supabase
-          .from("company_profiles")
-          .select(companySelect)
-          .eq("user_id", targetId!)
-          .maybeSingle();
+        const companyQuery = isOwn
+          ? (supabase as any).from("my_company_profile").select("*").maybeSingle()
+          : supabase
+              .from("company_profiles")
+              .select("user_id, company_name, industry, location, website, verified, created_at, updated_at")
+              .eq("user_id", targetId!)
+              .maybeSingle();
+        const { data, error } = await companyQuery;
         if (error) throw error;
         company = data as any;
       }
       if (profile?.role === "individual") {
-        const individualSelect = isOwn
-          ? "*"
-          : "user_id, verified, created_at, updated_at";
-        const { data, error } = await supabase
-          .from("individual_profiles")
-          .select(individualSelect)
-          .eq("user_id", targetId!)
-          .maybeSingle();
+        const individualQuery = isOwn
+          ? (supabase as any).from("my_individual_profile").select("*").maybeSingle()
+          : supabase
+              .from("individual_profiles")
+              .select("user_id, verified, created_at, updated_at")
+              .eq("user_id", targetId!)
+              .maybeSingle();
+        const { data, error } = await individualQuery;
         if (!error) individual = data as any;
       }
 

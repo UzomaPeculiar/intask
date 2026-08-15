@@ -61,7 +61,7 @@ export function SettingsTab() {
         (supabase as any).from("platform_settings").select("key, value, description, updated_at, updated_by").order("key", { ascending: true }),
         (supabase as any)
           .from("audit_log")
-          .select("id, action, target_type, target_id, details, created_at, admin:profiles!audit_log_admin_user_id_fkey(full_name, email)")
+          .select("id, action, target_type, target_id, details, created_at, admin:admin_profiles!audit_log_admin_user_id_fkey(full_name, email)")
           .order("created_at", { ascending: false })
           .limit(400),
         (supabase as any)

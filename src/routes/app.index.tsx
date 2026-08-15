@@ -43,17 +43,17 @@ function Dashboard() {
     queryFn: async () => {
       if (!user || !role) return { student: null, company: null, individual: null };
       if (role === "student" || role === "alumni") {
-        const { data, error } = await supabase.from("student_profiles").select("*").eq("user_id", user.id).maybeSingle();
+        const { data, error } = await supabase.from("my_student_profile").select("*").maybeSingle();
         if (error) throw error;
         return { student: data as any, company: null, individual: null };
       }
       if (role === "company") {
-        const { data, error } = await supabase.from("company_profiles").select("*").eq("user_id", user.id).maybeSingle();
+        const { data, error } = await (supabase as any).from("my_company_profile").select("*").maybeSingle();
         if (error) throw error;
         return { student: null, company: data as any, individual: null };
       }
       if (role === "individual") {
-        const { data, error } = await supabase.from("individual_profiles").select("*").eq("user_id", user.id).maybeSingle();
+        const { data, error } = await (supabase as any).from("my_individual_profile").select("*").maybeSingle();
         if (!error) return { student: null, company: null, individual: data as any };
       }
       return { student: null, company: null, individual: null };

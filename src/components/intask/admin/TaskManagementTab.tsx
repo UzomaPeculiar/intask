@@ -21,7 +21,7 @@ export function TaskManagementTab() {
     refetchInterval: 45000,
     queryFn: async () => {
       const [{ data: tasks, error: taskErr }, { data: tx, error: txErr }, { data: disputes, error: disputeErr }, { data: reports, error: reportsErr }] = await Promise.all([
-        (supabase as any).from("tasks").select("id, title, category, budget, status, featured, featured_until, created_at, updated_at, poster_id, matched_student_id, poster:profiles!tasks_poster_id_fkey(id, full_name, email), student:profiles!tasks_matched_student_id_fkey(id, full_name, email)").order("created_at", { ascending: false }),
+        (supabase as any).from("tasks").select("id, title, category, budget, status, featured, featured_until, created_at, updated_at, poster_id, matched_student_id, poster:admin_profiles!tasks_poster_id_fkey(id, full_name, email), student:admin_profiles!tasks_matched_student_id_fkey(id, full_name, email)").order("created_at", { ascending: false }),
         (supabase as any).from("transactions").select("id, task_id, status"),
         (supabase as any).from("disputes").select("id, task_id, status"),
         (supabase as any).from("reports").select("id, reason, details, status, created_at"),

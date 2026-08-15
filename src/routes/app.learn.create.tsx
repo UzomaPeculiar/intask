@@ -44,7 +44,7 @@ function CreateCoursePage() {
     queryKey: ["my-profile", me?.id],
     enabled: !!me?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("role, is_admin").eq("id", me!.id).maybeSingle() as any;
+      const { data } = await supabase.from("my_profile").select("role, is_admin").maybeSingle() as any;
       return data;
     },
   });

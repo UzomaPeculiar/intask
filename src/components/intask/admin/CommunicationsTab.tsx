@@ -16,13 +16,13 @@ export function CommunicationsTab() {
     queryFn: async () => {
       const [profilesRes, notificationsRes] = await Promise.all([
         (supabase as any)
-          .from("profiles")
+          .from("admin_profiles")
           .select("id, full_name, email, role")
           .order("created_at", { ascending: false })
           .limit(1000),
         (supabase as any)
           .from("notifications")
-          .select("id, user_id, type, message, read, created_at, user:profiles!notifications_user_id_fkey(full_name, email, role)")
+          .select("id, user_id, type, message, read, created_at, user:admin_profiles!notifications_user_id_fkey(full_name, email, role)")
           .order("created_at", { ascending: false })
           .limit(300),
       ]);

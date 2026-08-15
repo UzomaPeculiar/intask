@@ -29,7 +29,7 @@ export function AdminUserProfileSheet({
       if (!userId) return null;
 
       const { data: profile } = await (supabase as any)
-        .from("profiles")
+        .from("admin_profiles")
         .select("*")
         .eq("id", userId)
         .maybeSingle();
@@ -37,13 +37,13 @@ export function AdminUserProfileSheet({
 
       const [studentRes, companyRes, individualRes] = await Promise.all([
         profile.role === "student" || profile.role === "alumni"
-          ? supabase.from("student_profiles").select("*").eq("user_id", userId).maybeSingle()
+          ? supabase.from("admin_student_profiles").select("*").eq("user_id", userId).maybeSingle()
           : Promise.resolve({ data: null }),
         profile.role === "company"
-          ? (supabase as any).from("company_profiles").select("*").eq("user_id", userId).maybeSingle()
+          ? (supabase as any).from("admin_company_profiles").select("*").eq("user_id", userId).maybeSingle()
           : Promise.resolve({ data: null }),
         profile.role === "individual"
-          ? (supabase as any).from("individual_profiles").select("*").eq("user_id", userId).maybeSingle()
+          ? (supabase as any).from("admin_individual_profiles").select("*").eq("user_id", userId).maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
 

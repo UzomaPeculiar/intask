@@ -31,9 +31,8 @@ function AppLayout() {
     enabled: !!me?.id,
     queryFn: async () => {
       const { data } = await (supabase as any)
-        .from("profiles")
+        .from("my_profile")
         .select("id, is_admin")
-        .eq("id", me!.id)
         .maybeSingle();
       return data;
     },

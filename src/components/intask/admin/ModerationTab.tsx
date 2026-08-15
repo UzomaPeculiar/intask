@@ -18,12 +18,12 @@ export function ModerationTab() {
       const [tasksRes, messagesRes, convRes, settingsRes] = await Promise.all([
         (supabase as any)
           .from("tasks")
-          .select("id, title, description, created_at, poster:profiles!tasks_poster_id_fkey(full_name, email)")
+          .select("id, title, description, created_at, poster:admin_profiles!tasks_poster_id_fkey(full_name, email)")
           .order("created_at", { ascending: false })
           .limit(500),
         (supabase as any)
           .from("messages")
-          .select("id, conversation_id, content, created_at, sender:profiles!messages_sender_id_fkey(full_name, email)")
+          .select("id, conversation_id, content, created_at, sender:admin_profiles!messages_sender_id_fkey(full_name, email)")
           .order("created_at", { ascending: false })
           .limit(500),
         (supabase as any).from("conversations").select("id, task_id"),

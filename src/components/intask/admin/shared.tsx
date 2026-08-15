@@ -21,7 +21,7 @@ export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: 
     enabled: !!userId && open,
     queryFn: async () => {
       if (!userId) return null;
-      const { data: profile } = await (supabase as any).from("profiles").select("*").eq("id", userId).maybeSingle();
+      const { data: profile } = await (supabase as any).from("admin_profiles").select("*").eq("id", userId).maybeSingle();
       if (!profile) return null;
 
       let student = null;
@@ -29,23 +29,23 @@ export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: 
       let individual = null;
 
       if (profile.role === "student" || profile.role === "alumni") {
-        const { data } = await supabase.from("student_profiles").select("*").eq("user_id", userId).maybeSingle();
+        const { data } = await supabase.from("admin_student_profiles").select("*").eq("user_id", userId).maybeSingle();
         student = data;
       }
       if (profile.role === "company") {
-        const { data } = await (supabase as any).from("company_profiles").select("*").eq("user_id", userId).maybeSingle();
+        const { data } = await (supabase as any).from("admin_company_profiles").select("*").eq("user_id", userId).maybeSingle();
         company = data;
       }
       if (profile.role === "individual") {
-        const { data } = await (supabase as any).from("individual_profiles").select("*").eq("user_id", userId).maybeSingle();
+        const { data } = await (supabase as any).from("admin_individual_profiles").select("*").eq("user_id", userId).maybeSingle();
         individual = data;
       }
 
       const { data: postedTasks } = await supabase.from("tasks").select("id, title, budget, status, created_at").eq("poster_id", userId).order("created_at", { ascending: false }).limit(10);
       const { data: appliedTasks } = await (supabase as any).from("applications").select("id, status, created_at, task:tasks(id, title, budget, status)").eq("student_id", userId).order("created_at", { ascending: false }).limit(10);
-      const { data: reviewsReceived } = await (supabase as any).from("reviews").select("id, rating, comment, created_at, reviewer:profiles!reviews_reviewer_id_fkey(full_name, email)").eq("reviewee_id", userId).order("created_at", { ascending: false }).limit(10);
-      const { data: reportsAgainst } = await (supabase as any).from("reports").select("id, reason, details, status, created_at, reporter:profiles!reports_reporter_id_fkey(full_name, email)").eq("reported_id", userId).order("created_at", { ascending: false }).limit(10);
-      const { data: reportsBy } = await (supabase as any).from("reports").select("id, reason, details, status, created_at, reported:profiles!reports_reported_id_fkey(full_name, email)").eq("reporter_id", userId).order("created_at", { ascending: false }).limit(10);
+      const { data: reviewsReceived } = await (supabase as any).from("reviews").select("id, rating, comment, created_at, reviewer:admin_profiles!reviews_reviewer_id_fkey(full_name, email)").eq("reviewee_id", userId).order("created_at", { ascending: false }).limit(10);
+      const { data: reportsAgainst } = await (supabase as any).from("reports").select("id, reason, details, status, created_at, reporter:admin_profiles!reports_reporter_id_fkey(full_name, email)").eq("reported_id", userId).order("created_at", { ascending: false }).limit(10);
+      const { data: reportsBy } = await (supabase as any).from("reports").select("id, reason, details, status, created_at, reported:admin_profiles!reports_reported_id_fkey(full_name, email)").eq("reporter_id", userId).order("created_at", { ascending: false }).limit(10);
 
       return { profile, student, company, individual, postedTasks: postedTasks ?? [], appliedTasks: appliedTasks ?? [], reviewsReceived: reviewsReceived ?? [], reportsAgainst: reportsAgainst ?? [], reportsBy: reportsBy ?? [] };
     },
@@ -115,18 +115,18 @@ export function AdminTaskDetailSheet({ taskId, open, onOpenChange }: { taskId: s
     enabled: !!taskId && open,
     queryFn: async () => {
       if (!taskId) return null;
-      const { data: task } = await supabase.from("tasks").select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, email, role)").eq("id", taskId).maybeSingle();
+      const { data: task } = await supabase.from("tasks").select("*, poster:admin_profiles!tasks_poster_id_fkey(id, full_name, email, role)").eq("id", taskId).maybeSingle();
       if (!task) return null;
-      const { data: applicants } = await supabase.from("applications").select("id, status, created_at, applicant:profiles!applications_applicant_id_fkey(id, full_name, email)").eq("task_id", taskId).order("created_at", { ascending: false });
+      const { data: applicants } = await supabase.from("applications").select("id, status, created_at, applicant:admin_profiles!applications_applicant_id_fkey(id, full_name, email)").eq("task_id", taskId).order("created_at", { ascending: false });
       const { data: transactions } = await (supabase as any).from("transactions").select("id, amount, platform_fee, status, paystack_reference, created_at, updated_at").eq("task_id", taskId).order("created_at", { ascending: false });
-      const { data: disputes } = await (supabase as any).from("disputes").select("id, reason, details, resolution, status, created_at, updated_at, raiser:profiles!disputes_raised_by_fkey(full_name, email)").eq("task_id", taskId).order("created_at", { ascending: false });
+      const { data: disputes } = await (supabase as any).from("disputes").select("id, reason, details, resolution, status, created_at, updated_at, raiser:admin_profiles!disputes_raised_by_fkey(full_name, email)").eq("task_id", taskId).order("created_at", { ascending: false });
       const { data: conversation } = await (supabase as any).from("conversations").select("id").eq("task_id", taskId).maybeSingle();
       let messages: any[] = [];
       if (conversation?.id) {
-        const { data: msg } = await (supabase as any).from("messages").select("id, content, created_at, sender:profiles!messages_sender_id_fkey(full_name, email)").eq("conversation_id", conversation.id).order("created_at", { ascending: false }).limit(20);
+        const { data: msg } = await (supabase as any).from("messages").select("id, content, created_at, sender:admin_profiles!messages_sender_id_fkey(full_name, email)").eq("conversation_id", conversation.id).order("created_at", { ascending: false }).limit(20);
         messages = msg ?? [];
       }
-      const { data: assignee } = (task as any).assignee_id ? await supabase.from("profiles").select("id, full_name, email").eq("id", (task as any).assignee_id).maybeSingle() : { data: null };
+      const { data: assignee } = (task as any).assignee_id ? await supabase.from("admin_profiles").select("id, full_name, email").eq("id", (task as any).assignee_id).maybeSingle() : { data: null };
       return { task, applicants: applicants ?? [], transactions: transactions ?? [], disputes: disputes ?? [], messages, assignee };
     },
   });
