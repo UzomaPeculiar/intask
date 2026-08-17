@@ -1,12 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { History, Mail, SlidersHorizontal } from "lucide-react";
+import { adminPublishAnnouncement, adminSavePlatformSetting, adminSeedDefaultSettings, getAdminSettingsData } from "@/lib/admin.functions";
 
 export function SettingsTab() {
   const qc = useQueryClient();
+  const loadSettingsData = useServerFn(getAdminSettingsData);
+  const saveSettingServer = useServerFn(adminSavePlatformSetting);
+  const seedDefaultsServer = useServerFn(adminSeedDefaultSettings);
+  const publishAnnouncementServer = useServerFn(adminPublishAnnouncement);
   const [actionFilter, setActionFilter] = useState("");
   const [targetFilter, setTargetFilter] = useState<"all" | "settings" | "user" | "task" | "dispute" | "announcement">("all");
   const [periodFilter, setPeriodFilter] = useState<"all" | "7d" | "30d" | "90d">("30d");
@@ -53,68 +58,34 @@ export function SettingsTab() {
     return null;
   }
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery<{
+    settings: any[];
+    logs: any[];
+    announcements: any[];
+  }>({
     queryKey: ["admin-settings-audit", periodFilter],
     refetchInterval: 30000,
     queryFn: async () => {
-      const [settingsRes, auditRes, announcementsRes] = await Promise.all([
-        (supabase as any).from("platform_settings").select("key, value, description, updated_at, updated_by").order("key", { ascending: true }),
-        (supabase as any)
-          .from("audit_log")
-          .select("id, action, target_type, target_id, details, created_at, admin:admin_profiles!audit_log_admin_user_id_fkey(full_name, email)")
-          .order("created_at", { ascending: false })
-          .limit(400),
-        (supabase as any)
-          .from("announcements")
-          .select("id, title, body, target_role, is_active, published_at, expires_at, created_at")
-          .order("created_at", { ascending: false })
-          .limit(15),
-      ]);
-
-      if (auditRes.error) throw auditRes.error;
-      if (announcementsRes.error) throw announcementsRes.error;
-
-      const allLogs = auditRes.data ?? [];
+      const result = await loadSettingsData();
+      const allLogs = result.logs ?? [];
       const days = periodFilter === "7d" ? 7 : periodFilter === "30d" ? 30 : periodFilter === "90d" ? 90 : null;
       const logs = days == null
         ? allLogs
         : allLogs.filter((log: any) => Date.now() - new Date(log.created_at).getTime() <= days * 24 * 60 * 60 * 1000);
-
       return {
-        settings: settingsRes.error ? [] : (settingsRes.data ?? []),
+        settings: result.settings ?? [],
         logs,
-        announcements: announcementsRes.data ?? [],
-        settingsError: settingsRes.error?.message ?? null,
+        announcements: result.announcements ?? [],
       };
     },
   });
 
   const publishAnnouncement = useMutation({
     mutationFn: async () => {
-      if (!announcementTitle.trim()) throw new Error("Announcement title is required");
-      if (!announcementBody.trim() || announcementBody.trim().length < 8) throw new Error("Announcement body is too short");
-
-      const { data: auth } = await supabase.auth.getUser();
-      const adminId = auth.user?.id;
-      if (!adminId) throw new Error("Could not determine admin account");
-
-      const { error } = await (supabase as any).from("announcements").insert({
-        title: announcementTitle.trim(),
-        body: announcementBody.trim(),
-        target_role: announcementRole === "all" ? null : announcementRole,
-        is_active: true,
-        published_at: new Date().toISOString(),
-        created_by: adminId,
-      });
-      if (error) throw error;
-
-      await (supabase as any).from("audit_log").insert({
-        admin_user_id: adminId,
-        action: "announcement.publish",
-        target_type: "announcement",
-        target_id: null,
-        details: {
-          title: announcementTitle.trim(),
+      await publishAnnouncementServer({
+        data: {
+          title: announcementTitle,
+          body: announcementBody,
           targetRole: announcementRole,
         },
       });
@@ -131,26 +102,7 @@ export function SettingsTab() {
 
   const initializeDefaults = useMutation({
     mutationFn: async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const adminId = auth.user?.id;
-      if (!adminId) throw new Error("Could not determine admin account");
-
-      const rows = defaultSettingsSeed.map((item) => ({
-        ...item,
-        updated_by: adminId,
-        updated_at: new Date().toISOString(),
-      }));
-
-      const { error } = await (supabase as any).from("platform_settings").upsert(rows);
-      if (error) throw error;
-
-      await (supabase as any).from("audit_log").insert({
-        admin_user_id: adminId,
-        action: "settings.seed_defaults",
-        target_type: "settings",
-        target_id: null,
-        details: { count: rows.length },
-      });
+      await seedDefaultsServer({ data: { rows: defaultSettingsSeed } });
     },
     onSuccess: () => {
       toast.success("Default platform settings initialized");
@@ -212,29 +164,15 @@ export function SettingsTab() {
         }
       }
 
-      const { data: auth } = await supabase.auth.getUser();
-      const adminId = auth.user?.id;
-      if (!adminId) throw new Error("Could not determine admin account");
-
-      const { error: settingErr } = await (supabase as any)
-        .from("platform_settings")
-        .upsert({ key, value: parsed, updated_by: adminId, updated_at: new Date().toISOString() });
-      if (settingErr) throw settingErr;
-
-      const { error: logErr } = await (supabase as any).from("audit_log").insert({
-        admin_user_id: adminId,
-        action: "settings.update",
-        target_type: "settings",
-        target_id: key,
-        details: {
+      await saveSettingServer({
+        data: {
           key,
+          value: parsed,
           oldValue: currentValue,
-          newValue: parsed,
-          reason: reason.trim() || null,
+          reason: reason.trim() || undefined,
           highRisk: !!riskNotice,
         },
       });
-      if (logErr) throw logErr;
     },
     onSuccess: () => {
       toast.success("Setting updated");
@@ -322,14 +260,14 @@ export function SettingsTab() {
 
         {isLoading && <p className="text-sm text-muted-foreground">Loading settings...</p>}
 
-        {!isLoading && data?.settingsError && (
+        {!isLoading && error && (
           <div className="mb-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
             <p className="text-sm font-medium text-destructive">Could not load platform settings</p>
-            <p className="text-xs text-muted-foreground mt-1">{data.settingsError}</p>
+            <p className="text-xs text-muted-foreground mt-1">{String((error as any)?.message ?? "Unknown error")}</p>
           </div>
         )}
 
-        {!isLoading && !data?.settingsError && (data?.settings ?? []).length === 0 && (
+        {!isLoading && !error && (data?.settings ?? []).length === 0 && (
           <div className="mb-3 rounded-lg border border-border bg-muted/20 p-3">
             <p className="text-sm font-medium text-foreground">No settings found yet</p>
             <p className="text-xs text-muted-foreground mt-1">Initialize default platform settings to enable this section.</p>

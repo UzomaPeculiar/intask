@@ -131,10 +131,14 @@ serve(async (req) => {
         p_reference: reference,
       });
 
-      await supabase
+      const { error: fundingUpdateErr } = await supabase
         .from("wallet_funding")
         .update({ status: "completed", webhook_processed: true, updated_at: new Date().toISOString() })
         .eq("paystack_reference", reference);
+
+      if (fundingUpdateErr) {
+        console.error("[paystack-webhook] failed to mark wallet funding complete:", fundingUpdateErr);
+      }
 
       await supabase.from("notifications").insert({
         user_id: funding.user_id,

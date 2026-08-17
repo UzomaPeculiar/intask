@@ -2,11 +2,10 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
 import { AdminUserProfileSheet } from "@/components/intask/admin/shared";
-import { getAdminUsersManagementData } from "@/lib/admin.functions";
+import { adminSetUserStatus, getAdminUsersManagementData } from "@/lib/admin.functions";
 
 export function UserManagementTab() {
   const qc = useQueryClient();
@@ -31,7 +30,9 @@ export function UserManagementTab() {
     queryFn: async () => await loadAdminUsersManagementData(),
   });
 
-  const updateAccountStatus = useMutation({ mutationFn: async ({ userId, status, reason }: { userId: string; status: "active" | "suspended" | "banned"; reason: string }) => { const meId = data?.meId; if (!meId) throw new Error("Could not determine current admin user"); if (meId === userId) throw new Error("You cannot change your own admin account status from this panel"); const patch = status === "active" ? { account_status: "active", account_status_reason: null, suspended_at: null } : { account_status: status, account_status_reason: reason || null, suspended_at: new Date().toISOString() }; const { error } = await (supabase as any).from("profiles").update(patch).eq("id", userId); if (error) throw error; await (supabase as any).from("audit_log").insert({ admin_user_id: meId, action: status === "active" ? "user.reactivate" : status === "banned" ? "user.ban" : "user.suspend", target_type: "user", target_id: userId, details: { reason: reason || null, status } }); }, onSuccess: () => { toast.success("User status updated"); qc.invalidateQueries({ queryKey: ["admin-users-management"] }); qc.invalidateQueries({ queryKey: ["admin-user-profile"] }); }, onError: (e: any) => toast.error(e.message ?? "Could not update user status") });
+  const runAdminSetUserStatus = useServerFn(adminSetUserStatus);
+
+  const updateAccountStatus = useMutation({ mutationFn: async ({ userId, status, reason }: { userId: string; status: "active" | "suspended" | "banned"; reason: string }) => { if (data?.meId === userId) throw new Error("You cannot change your own admin account status from this panel"); await runAdminSetUserStatus({ data: { userId, status, reason } }); }, onSuccess: () => { toast.success("User status updated"); qc.invalidateQueries({ queryKey: ["admin-users-management"] }); qc.invalidateQueries({ queryKey: ["admin-user-profile"] }); }, onError: (e: any) => toast.error(e.message ?? "Could not update user status") });
 
   const filtered = useMemo(() => { const rows = data?.rows ?? []; return rows.filter((row: any) => { const q = search.trim().toLowerCase(); if (q && !(row.full_name?.toLowerCase().includes(q) || row.email?.toLowerCase().includes(q))) return false; if (roleFilter !== "all" && row.role !== roleFilter) return false; if (verificationFilter === "verified" && !row.verified) return false; if (verificationFilter === "unverified" && row.verified) return false; if (statusFilter !== "all" && row.accountStatus !== statusFilter) return false; if (joinFilter !== "all") { const days = joinFilter === "7d" ? 7 : joinFilter === "30d" ? 30 : 90; if (!withinDays(row.created_at, days)) return false; } if (activeFilter === "inactive") { if (row.last_active_at && withinDays(row.last_active_at, 30)) return false; } else if (activeFilter !== "all") { const days = activeFilter === "7d" ? 7 : 30; if (!withinDays(row.last_active_at, days)) return false; } return true; }); }, [data?.rows, search, roleFilter, verificationFilter, statusFilter, joinFilter, activeFilter]);
 

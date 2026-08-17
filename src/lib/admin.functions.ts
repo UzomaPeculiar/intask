@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { DEFAULT_BANNED_WORDS, normalizeWords } from "@/lib/moderation";
+import { DEFAULT_BANNED_WORDS, findModerationMatches, normalizeWords } from "@/lib/moderation";
 
 function normalizeCreditWalletResult(data: any) {
   if (Array.isArray(data)) return data[0] ?? null;
@@ -590,7 +590,7 @@ export const getAdminFinancialData = createServerFn({ method: "GET" })
       profilesPayload.error,
       walletsPayload.error,
       tasksPayload.error,
-    ].filter(Boolean);
+    ].filter((e): e is string => Boolean(e));
 
     if (sourceErrors.length === 6) {
       throw new Error(sourceErrors[0]);
@@ -1381,4 +1381,423 @@ export const adminManualRefund = createServerFn({ method: "POST" })
       refundId: paystackJson?.data?.id ?? null,
       status: paystackJson?.data?.status ?? null,
     };
+  });
+
+// ---------------------------------------------------------------------------
+// Task management reads (Tasks tab).
+//
+// The `tasks` RLS policy only exposes open tasks (plus the poster and matched
+// student) to signed-in users, so a query through the user client returns an
+// empty table for admins even though the command center (service role) counts
+// every task. These reads run with the service-role client, matching
+// getAdminCommandCenterStats / getAdminUsersManagementData, and resolve
+// poster/student names from profiles instead of embedding the admin_profiles
+// view (a view has no foreign keys, so `!tasks_poster_id_fkey` hints fail).
+// ---------------------------------------------------------------------------
+
+export const getAdminTasksManagementData = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ rows: any[]; categories: string[]; reports: any[] }> => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    const [tasksRes, txRes, disputesRes, reportsRes, profilesRes] = await Promise.all([
+      db
+        .from("tasks")
+        .select("id, title, category, budget, status, featured, featured_until, created_at, updated_at, poster_id, matched_student_id")
+        .order("created_at", { ascending: false }),
+      db.from("transactions").select("id, task_id, status"),
+      db.from("disputes").select("id, task_id, status"),
+      db.from("reports").select("id, reason, details, status, created_at"),
+      db.from("profiles").select("id, full_name, email, role"),
+    ]);
+
+    if (tasksRes.error) throw tasksRes.error;
+    if (txRes.error) throw txRes.error;
+    if (disputesRes.error) throw disputesRes.error;
+    if (reportsRes.error) throw reportsRes.error;
+    if (profilesRes.error) throw profilesRes.error;
+
+    const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p]));
+    const person = (id: string | null | undefined) =>
+      id && profileMap.has(id)
+        ? { id, full_name: profileMap.get(id).full_name, email: profileMap.get(id).email, role: profileMap.get(id).role }
+        : null;
+
+    const txByTask: Record<string, any[]> = {};
+    for (const row of txRes.data ?? []) {
+      txByTask[row.task_id] = txByTask[row.task_id] ?? [];
+      txByTask[row.task_id].push(row);
+    }
+    const disputesByTask: Record<string, any[]> = {};
+    for (const row of disputesRes.data ?? []) {
+      disputesByTask[row.task_id] = disputesByTask[row.task_id] ?? [];
+      disputesByTask[row.task_id].push(row);
+    }
+
+    const suspiciousTerms = ["bitcoin", "crypto", "gamble", "adult", "sex", "quick money", "loan", "bet"];
+    const rows = (tasksRes.data ?? []).map((task: any) => {
+      const taskText = `${task.title ?? ""}`.toLowerCase();
+      const lowBudget = Number(task.budget ?? 0) < 1000;
+      const keywordFlag = suspiciousTerms.some((word) => taskText.includes(word));
+      const openDisputes = (disputesByTask[task.id] ?? []).filter((d: any) => d.status === "open").length;
+      const hasTx = (txByTask[task.id] ?? []).length > 0;
+      return {
+        ...task,
+        poster: person(task.poster_id),
+        student: person(task.matched_student_id),
+        lowBudget,
+        keywordFlag,
+        openDisputes,
+        hasTx,
+        flagged: lowBudget || keywordFlag || openDisputes > 0,
+        txSummary: txByTask[task.id] ?? [],
+      };
+    });
+
+    const categories = Array.from(new Set(rows.map((r: any) => r.category).filter(Boolean))).sort();
+
+    return { rows, categories, reports: reportsRes.data ?? [] };
+  });
+
+export const getAdminTaskDetailData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { taskId: string }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    const { data: task, error: taskErr } = await db
+      .from("tasks")
+      .select("*")
+      .eq("id", data.taskId)
+      .maybeSingle();
+    if (taskErr) throw taskErr;
+    if (!task) return null;
+
+    const [applicantsRes, txRes, disputesRes, conversationRes, profilesRes] = await Promise.all([
+      db
+        .from("applications")
+        .select("*")
+        .eq("task_id", data.taskId)
+        .order("created_at", { ascending: false }),
+      db
+        .from("transactions")
+        .select("id, amount, platform_fee, status, paystack_reference, created_at, updated_at")
+        .eq("task_id", data.taskId)
+        .order("created_at", { ascending: false }),
+      db
+        .from("disputes")
+        .select("id, reason, details, resolution, status, created_at, updated_at, raised_by")
+        .eq("task_id", data.taskId)
+        .order("created_at", { ascending: false }),
+      db.from("conversations").select("id").eq("task_id", data.taskId).maybeSingle(),
+      db.from("profiles").select("id, full_name, email, role"),
+    ]);
+
+    if (applicantsRes.error) throw applicantsRes.error;
+    if (txRes.error) throw txRes.error;
+    if (disputesRes.error) throw disputesRes.error;
+    if (conversationRes.error) throw conversationRes.error;
+    if (profilesRes.error) throw profilesRes.error;
+
+    const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p]));
+    const person = (id: string | null | undefined) =>
+      id && profileMap.has(id)
+        ? { id, full_name: profileMap.get(id).full_name, email: profileMap.get(id).email, role: profileMap.get(id).role }
+        : null;
+
+    const applicants = (applicantsRes.data ?? []).map((a: any) => ({
+      id: a.id,
+      status: a.status,
+      created_at: a.created_at,
+      applicant: person(a.applicant_id ?? a.student_id),
+    }));
+
+    const disputes = (disputesRes.data ?? []).map((d: any) => ({
+      id: d.id,
+      reason: d.reason,
+      details: d.details,
+      resolution: d.resolution,
+      status: d.status,
+      created_at: d.created_at,
+      updated_at: d.updated_at,
+      raiser: person(d.raised_by),
+    }));
+
+    let messages: any[] = [];
+    if (conversationRes.data?.id) {
+      const { data: msg, error: msgErr } = await db
+        .from("messages")
+        .select("id, content, created_at, sender_id")
+        .eq("conversation_id", conversationRes.data.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (msgErr) throw msgErr;
+      messages = (msg ?? []).map((m: any) => ({
+        id: m.id,
+        content: m.content,
+        created_at: m.created_at,
+        sender: person(m.sender_id),
+      }));
+    }
+
+    return {
+      task: { ...task, poster: person(task.poster_id) },
+      applicants,
+      transactions: txRes.data ?? [],
+      disputes,
+      messages,
+      assignee: person(task.assignee_id),
+    };
+  });
+
+export const adminToggleTaskFeatured = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { taskId: string; featured: boolean }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    const { error } = await db
+      .from("tasks")
+      .update({
+        featured: data.featured,
+        featured_until: data.featured ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null,
+      })
+      .eq("id", data.taskId);
+
+    if (error) throw error;
+
+    await db.from("audit_log").insert({
+      admin_user_id: userId,
+      action: data.featured ? "task.feature" : "task.unfeature",
+      target_type: "task",
+      target_id: data.taskId,
+      details: { featured: data.featured },
+    });
+
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// Settings tab reads/writes.
+//
+// platform_settings / audit_log / announcements are RLS-protected and the
+// user client has no reliable access (the audit_log embed against the
+// admin_profiles view fails because views have no foreign keys, and the
+// platform_settings RLS policies reference the is_admin column which was
+// revoked from authenticated). These run with the service-role client so the
+// admin UI works regardless of policy drift.
+// ---------------------------------------------------------------------------
+
+export const getAdminSettingsData = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    const [settingsRes, auditRes, announcementsRes, profilesRes] = await Promise.all([
+      db.from("platform_settings").select("key, value, description, updated_at, updated_by").order("key", { ascending: true }),
+      db.from("audit_log").select("id, action, target_type, target_id, details, created_at, admin_user_id").order("created_at", { ascending: false }).limit(400),
+      db.from("announcements").select("id, title, body, target_role, is_active, published_at, expires_at, created_at").order("created_at", { ascending: false }).limit(15),
+      db.from("profiles").select("id, full_name, email"),
+    ]);
+
+    if (settingsRes.error) throw settingsRes.error;
+    if (auditRes.error) throw auditRes.error;
+    if (announcementsRes.error) throw announcementsRes.error;
+    if (profilesRes.error) throw profilesRes.error;
+
+    const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p]));
+    const logs = (auditRes.data ?? []).map((log: any) => {
+      const admin = log.admin_user_id && profileMap.has(log.admin_user_id) ? profileMap.get(log.admin_user_id) : null;
+      return {
+        ...log,
+        admin: admin ? { full_name: admin.full_name, email: admin.email } : null,
+      };
+    });
+
+    return {
+      settings: settingsRes.data ?? [],
+      logs,
+      announcements: announcementsRes.data ?? [],
+    };
+  });
+
+export const adminSavePlatformSetting = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { key: string; value: any; oldValue?: any; reason?: string; highRisk?: boolean }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    const { error: settingErr } = await db
+      .from("platform_settings")
+      .upsert({ key: data.key, value: data.value, updated_by: userId, updated_at: new Date().toISOString() });
+    if (settingErr) throw settingErr;
+
+    await db.from("audit_log").insert({
+      admin_user_id: userId,
+      action: "settings.update",
+      target_type: "settings",
+      target_id: data.key,
+      details: {
+        key: data.key,
+        oldValue: data.oldValue ?? null,
+        newValue: data.value,
+        reason: data.reason?.trim() || null,
+        highRisk: !!data.highRisk,
+      },
+    });
+
+    return { ok: true };
+  });
+
+export const adminSeedDefaultSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { rows: Array<{ key: string; value: any; description: string }> }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    const rows = (data.rows ?? []).map((item) => ({
+      ...item,
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
+    }));
+
+    if (rows.length === 0) throw new Error("Nothing to seed");
+
+    const { error } = await db.from("platform_settings").upsert(rows);
+    if (error) throw error;
+
+    await db.from("audit_log").insert({
+      admin_user_id: userId,
+      action: "settings.seed_defaults",
+      target_type: "settings",
+      target_id: null,
+      details: { count: rows.length },
+    });
+
+    return { ok: true };
+  });
+
+export const adminPublishAnnouncement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { title: string; body: string; targetRole: string }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    if (!data.title?.trim()) throw new Error("Announcement title is required");
+    if (!data.body?.trim() || data.body.trim().length < 8) throw new Error("Announcement body is too short");
+
+    const { error: insertErr } = await db.from("announcements").insert({
+      title: data.title.trim(),
+      body: data.body.trim(),
+      target_role: data.targetRole === "all" ? null : data.targetRole,
+      is_active: true,
+      published_at: new Date().toISOString(),
+      created_by: userId,
+    });
+    if (insertErr) throw insertErr;
+
+    await db.from("audit_log").insert({
+      admin_user_id: userId,
+      action: "announcement.publish",
+      target_type: "announcement",
+      target_id: null,
+      details: { title: data.title.trim(), targetRole: data.targetRole },
+    });
+
+    return { ok: true };
+  });
+
+export const getAdminModerationData = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { db } = await ensureAdmin(userId);
+
+    // Runs with the service-role client so the moderation queue sees every
+    // task/message (the user client is RLS-restricted to open tasks) and names
+    // are resolved from profiles instead of embedding the admin_profiles view.
+    const [tasksRes, messagesRes, convRes, settingsRes, profilesRes] = await Promise.all([
+      db.from("tasks").select("id, title, description, created_at, poster_id").order("created_at", { ascending: false }).limit(500),
+      db.from("messages").select("id, conversation_id, content, created_at, sender_id").order("created_at", { ascending: false }).limit(500),
+      db.from("conversations").select("id, task_id"),
+      db.from("platform_settings").select("value").eq("key", "banned_words_rules").maybeSingle(),
+      db.from("profiles").select("id, full_name, email"),
+    ]);
+
+    if (tasksRes.error) throw tasksRes.error;
+    if (messagesRes.error) throw messagesRes.error;
+    if (convRes.error) throw convRes.error;
+    if (settingsRes.error) throw settingsRes.error;
+    if (profilesRes.error) throw profilesRes.error;
+
+    const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p]));
+    const person = (id: string | null | undefined) =>
+      id && profileMap.has(id) ? { full_name: profileMap.get(id).full_name, email: profileMap.get(id).email } : null;
+
+    const rawSetting = settingsRes.data?.value;
+    const words = Array.isArray(rawSetting)
+      ? normalizeWords(rawSetting.map((w: any) => String(w ?? "")))
+      : DEFAULT_BANNED_WORDS;
+
+    const taskByConversation = new Map((convRes.data ?? []).map((c: any) => [c.id, c.task_id]));
+    const taskMap = new Map((tasksRes.data ?? []).map((t: any) => [t.id, t]));
+
+    const flaggedTasks = (tasksRes.data ?? [])
+      .map((task: any) => {
+        const combined = `${task.title ?? ""} ${task.description ?? ""}`;
+        const matches = findModerationMatches(combined, words);
+        return { ...task, poster: person(task.poster_id), matches };
+      })
+      .filter((task: any) => task.matches.length > 0);
+
+    const flaggedMessages = (messagesRes.data ?? [])
+      .map((msg: any) => {
+        const matches = findModerationMatches(`${msg.content ?? ""}`, words);
+        const taskId = taskByConversation.get(msg.conversation_id);
+        const task = taskId ? taskMap.get(taskId) : null;
+        return { ...msg, sender: person(msg.sender_id), matches, task };
+      })
+      .filter((msg: any) => msg.matches.length > 0);
+
+    return { words, flaggedTasks, flaggedMessages };
+  });
+
+export const adminSetUserStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { userId: string; status: "active" | "suspended" | "banned"; reason?: string }) => input)
+  .handler(async ({ context, data }) => {
+    const { userId: adminUserId } = context;
+    const { db } = await ensureAdmin(adminUserId);
+
+    if (!data.userId) throw new Error("No user selected");
+    if (adminUserId === data.userId) throw new Error("You cannot change your own account status");
+    if (!["active", "suspended", "banned"].includes(data.status)) {
+      throw new Error("Invalid account status");
+    }
+
+    const patch =
+      data.status === "active"
+        ? { account_status: "active", account_status_reason: null, suspended_at: null }
+        : { account_status: data.status, account_status_reason: data.reason || null, suspended_at: new Date().toISOString() };
+
+    const { error: updateErr } = await db.from("profiles").update(patch).eq("id", data.userId);
+    if (updateErr) throw updateErr;
+
+    const { error: auditErr } = await db.from("audit_log").insert({
+      admin_user_id: adminUserId,
+      action: data.status === "active" ? "user.reactivate" : data.status === "banned" ? "user.ban" : "user.suspend",
+      target_type: "user",
+      target_id: data.userId,
+      details: { reason: data.reason || null, status: data.status },
+    });
+    if (auditErr) throw auditErr;
+
+    return { ok: true };
   });

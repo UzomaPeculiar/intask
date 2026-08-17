@@ -794,10 +794,13 @@ export const verifyWalletFunding = createServerFn({ method: "POST" })
       throw new Error(creditRes.error?.message ?? creditRes.data?.error ?? "Could not credit wallet");
     }
 
-    await supabaseAdmin
+    const { error: fundingUpdateErr } = await supabaseAdmin
       .from("wallet_funding")
       .update({ status: "completed", webhook_processed: true, updated_at: new Date().toISOString() })
       .eq("id", funding.id);
+    if (fundingUpdateErr) {
+      throw new Error(`Wallet credited but funding record could not be marked complete: ${fundingUpdateErr.message}`);
+    }
 
     await supabaseAdmin.from("notifications").insert({
       user_id: funding.user_id,

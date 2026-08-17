@@ -2,69 +2,23 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { adminSaveModerationRules } from "@/lib/admin.functions";
-import { DEFAULT_BANNED_WORDS, findModerationMatches, normalizeWords } from "@/lib/moderation";
+import { adminSaveModerationRules, getAdminModerationData } from "@/lib/admin.functions";
+import { normalizeWords } from "@/lib/moderation";
 import { toast } from "sonner";
 
 export function ModerationTab() {
   const [keywordsInput, setKeywordsInput] = useState("");
   const saveModerationRules = useServerFn(adminSaveModerationRules);
+  const loadModerationData = useServerFn(getAdminModerationData);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch } = useQuery<{
+    words: string[];
+    flaggedTasks: any[];
+    flaggedMessages: any[];
+  }>({
     queryKey: ["admin-moderation"],
     refetchInterval: 60000,
-    queryFn: async () => {
-      const [tasksRes, messagesRes, convRes, settingsRes] = await Promise.all([
-        (supabase as any)
-          .from("tasks")
-          .select("id, title, description, created_at, poster:admin_profiles!tasks_poster_id_fkey(full_name, email)")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        (supabase as any)
-          .from("messages")
-          .select("id, conversation_id, content, created_at, sender:admin_profiles!messages_sender_id_fkey(full_name, email)")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        (supabase as any).from("conversations").select("id, task_id"),
-        (supabase as any).from("platform_settings").select("value").eq("key", "banned_words_rules").maybeSingle(),
-      ]);
-
-      if (tasksRes.error) throw tasksRes.error;
-      if (messagesRes.error) throw messagesRes.error;
-      if (convRes.error) throw convRes.error;
-
-      const rawSetting = settingsRes.data?.value;
-      const words = Array.isArray(rawSetting)
-        ? normalizeWords(rawSetting.map((w: any) => String(w ?? "")))
-        : DEFAULT_BANNED_WORDS;
-
-      const taskByConversation = new Map((convRes.data ?? []).map((c: any) => [c.id, c.task_id]));
-      const taskMap = new Map((tasksRes.data ?? []).map((t: any) => [t.id, t]));
-
-      const flaggedTasks = (tasksRes.data ?? [])
-        .map((task: any) => {
-          const combined = `${task.title ?? ""} ${task.description ?? ""}`;
-          const matches = findModerationMatches(combined, words);
-          return { ...task, matches };
-        })
-        .filter((task: any) => task.matches.length > 0);
-
-      const flaggedMessages = (messagesRes.data ?? [])
-        .map((msg: any) => {
-          const matches = findModerationMatches(`${msg.content ?? ""}`, words);
-          const taskId = taskByConversation.get(msg.conversation_id);
-          const task = taskId ? taskMap.get(taskId) : null;
-          return { ...msg, matches, task };
-        })
-        .filter((msg: any) => msg.matches.length > 0);
-
-      return {
-        words,
-        flaggedTasks,
-        flaggedMessages,
-      };
-    },
+    queryFn: async () => await loadModerationData(),
   });
 
   useEffect(() => {

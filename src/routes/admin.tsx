@@ -9,7 +9,7 @@ import { ShieldCheck, Users, Briefcase, DollarSign, CheckCircle2, XCircle, Clock
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
-import { adminForceCancelTask, adminManualRefund, getAdminCommandCenterStats } from "@/lib/admin.functions";
+import { adminForceCancelTask, adminManualRefund, adminSetUserStatus, getAdminCommandCenterStats, getAdminTaskDetailData } from "@/lib/admin.functions";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const loadCommunicationsTab = () => import("@/components/intask/admin/CommunicationsTab");
@@ -544,7 +544,7 @@ function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string 
       let individual = null;
 
       if (profile.role === "student" || profile.role === "alumni") {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from("admin_student_profiles")
           .select("*")
           .eq("user_id", userId)
@@ -595,26 +595,35 @@ function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string 
         .order("created_at", { ascending: false })
         .limit(10);
 
-      const { data: reviewsReceived } = await (supabase as any)
-        .from("reviews")
-        .select("id, rating, comment, created_at, reviewer:admin_profiles!reviews_reviewer_id_fkey(full_name, email)")
-        .eq("reviewee_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      const { data: reportsAgainst } = await (supabase as any)
-        .from("reports")
-        .select("id, reason, details, status, created_at, reporter:admin_profiles!reports_reporter_id_fkey(full_name, email)")
-        .eq("reported_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      const { data: reportsBy } = await (supabase as any)
-        .from("reports")
-        .select("id, reason, details, status, created_at, reported:admin_profiles!reports_reported_id_fkey(full_name, email)")
-        .eq("reporter_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10);
+      // admin_profiles is a view (no foreign keys), so embedding via FK hints
+      // fails. Fetch names separately and merge.
+      const [reviewsRes, reportsAgainstRes, reportsByRes, namesRes] = await Promise.all([
+        (supabase as any)
+          .from("reviews")
+          .select("id, rating, comment, created_at, reviewer_id")
+          .eq("reviewee_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        (supabase as any)
+          .from("reports")
+          .select("id, reason, details, status, created_at, reporter_id")
+          .eq("reported_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        (supabase as any)
+          .from("reports")
+          .select("id, reason, details, status, created_at, reported_id")
+          .eq("reporter_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        (supabase as any).from("admin_profiles").select("id, full_name, email"),
+      ]);
+      if (namesRes.error) throw namesRes.error;
+      const nameMap = new Map((namesRes.data ?? []).map((p: any) => [p.id, p]));
+      const resolveName = (id: string | null | undefined) => (id && nameMap.has(id) ? nameMap.get(id) : null);
+      const reviewsReceived = (reviewsRes.data ?? []).map((r: any) => ({ ...r, reviewer: resolveName(r.reviewer_id) }));
+      const reportsAgainst = (reportsAgainstRes.data ?? []).map((r: any) => ({ ...r, reporter: resolveName(r.reporter_id) }));
+      const reportsBy = (reportsByRes.data ?? []).map((r: any) => ({ ...r, reported: resolveName(r.reported_id) }));
 
       return {
         profile,
@@ -632,28 +641,12 @@ function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string 
     },
   });
 
+  const runAdminSetUserStatus = useServerFn(adminSetUserStatus);
+
   const setAccountStatus = useMutation({
     mutationFn: async ({ status, reason }: { status: "active" | "suspended" | "banned"; reason?: string }) => {
       if (!userId) throw new Error("No user selected");
-      const { data: auth } = await supabase.auth.getUser();
-      const meId = auth.user?.id;
-      if (!meId) throw new Error("Could not identify current admin");
-      if (meId === userId) throw new Error("You cannot change your own status here");
-
-      const patch = status === "active"
-        ? { account_status: "active", account_status_reason: null, suspended_at: null }
-        : { account_status: status, account_status_reason: reason ?? null, suspended_at: new Date().toISOString() };
-
-      const { error } = await (supabase as any).from("profiles").update(patch).eq("id", userId);
-      if (error) throw error;
-
-      await (supabase as any).from("audit_log").insert({
-        admin_user_id: meId,
-        action: status === "active" ? "user.reactivate" : status === "banned" ? "user.ban" : "user.suspend",
-        target_type: "user",
-        target_id: userId,
-        details: { reason: reason ?? null, status },
-      });
+      await runAdminSetUserStatus({ data: { userId, status, reason } });
     },
     onSuccess: () => {
       toast.success("Account status updated");
@@ -1025,59 +1018,14 @@ function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string 
 
 function AdminTaskDetailSheet({ taskId, open, onOpenChange }: { taskId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const isMobile = useIsMobile();
+  const loadTaskDetail = useServerFn(getAdminTaskDetailData);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-task-detail", taskId],
     enabled: !!taskId && open,
     queryFn: async () => {
       if (!taskId) return null;
-      const { data: task } = await supabase
-        .from("tasks")
-        .select("*, poster:admin_profiles!tasks_poster_id_fkey(id, full_name, email, role)")
-        .eq("id", taskId)
-        .maybeSingle();
-      if (!task) return null;
-
-      const { data: applicants } = await supabase
-        .from("applications")
-        .select("id, status, created_at, applicant:admin_profiles!applications_applicant_id_fkey(id, full_name, email)")
-        .eq("task_id", taskId)
-        .order("created_at", { ascending: false });
-
-      const { data: transactions } = await (supabase as any)
-        .from("transactions")
-        .select("id, amount, platform_fee, status, paystack_reference, created_at, updated_at")
-        .eq("task_id", taskId)
-        .order("created_at", { ascending: false });
-
-      const { data: disputes } = await (supabase as any)
-        .from("disputes")
-        .select("id, reason, details, resolution, status, created_at, updated_at, raiser:admin_profiles!disputes_raised_by_fkey(full_name, email)")
-        .eq("task_id", taskId)
-        .order("created_at", { ascending: false });
-
-      const { data: conversation } = await (supabase as any)
-        .from("conversations")
-        .select("id")
-        .eq("task_id", taskId)
-        .maybeSingle();
-
-      let messages: any[] = [];
-      if (conversation?.id) {
-        const { data: msg } = await (supabase as any)
-          .from("messages")
-          .select("id, content, created_at, sender:admin_profiles!messages_sender_id_fkey(full_name, email)")
-          .eq("conversation_id", conversation.id)
-          .order("created_at", { ascending: false })
-          .limit(20);
-        messages = msg ?? [];
-      }
-
-      const { data: assignee } = (task as any).assignee_id
-        ? await supabase.from("admin_profiles").select("id, full_name, email").eq("id", (task as any).assignee_id).maybeSingle()
-        : { data: null };
-
-      return { task, applicants: applicants ?? [], transactions: transactions ?? [], disputes: disputes ?? [], messages, assignee };
+      return await loadTaskDetail({ data: { taskId } });
     },
   });
 

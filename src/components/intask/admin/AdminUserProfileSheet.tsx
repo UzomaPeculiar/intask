@@ -37,7 +37,7 @@ export function AdminUserProfileSheet({
 
       const [studentRes, companyRes, individualRes] = await Promise.all([
         profile.role === "student" || profile.role === "alumni"
-          ? supabase.from("admin_student_profiles").select("*").eq("user_id", userId).maybeSingle()
+          ? (supabase as any).from("admin_student_profiles").select("*").eq("user_id", userId).maybeSingle()
           : Promise.resolve({ data: null }),
         profile.role === "company"
           ? (supabase as any).from("admin_company_profiles").select("*").eq("user_id", userId).maybeSingle()

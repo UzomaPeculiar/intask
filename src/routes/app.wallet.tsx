@@ -501,11 +501,27 @@ function WalletPage() {
       return;
     }
 
-    if (lastWithdrawalSyncKeyRef.current === pendingWithdrawalSyncKey) return;
-    if (syncPendingWithdrawals.isPending) return;
+    let stopped = false;
 
-    lastWithdrawalSyncKeyRef.current = pendingWithdrawalSyncKey;
-    syncPendingWithdrawals.mutate(pendingWithdrawalRefs);
+    const runSync = () => {
+      if (stopped) return;
+      if (lastWithdrawalSyncKeyRef.current !== pendingWithdrawalSyncKey) {
+        lastWithdrawalSyncKeyRef.current = pendingWithdrawalSyncKey;
+      }
+      syncPendingWithdrawals.mutate(pendingWithdrawalRefs);
+    };
+
+    // Sync immediately, then keep polling while any withdrawal is still
+    // pending. Paystack transfers can take a while to confirm, and if the
+    // charge webhook is not configured the status would otherwise stay
+    // "pending" forever after the one-shot sync below.
+    runSync();
+    const timer = window.setInterval(runSync, 20000);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
   }, [me?.id, pendingWithdrawalSyncKey]);
 
   useEffect(() => {

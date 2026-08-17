@@ -133,8 +133,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: debitResult?.error ?? "Could not debit wallet" }), { status: 400, headers: corsHeaders });
     }
 
-    // Create withdrawal record
-    const { data: withdrawal, error: withdrawalError } = await supabaseUser
+    // Create withdrawal record. Runs with the service-role client: the caller
+    // was already authenticated (auth.getUser above) and the bank account was
+    // validated to belong to this user, so the user JWT adds no extra check
+    // here — and avoids failing on environments with drifted RLS/grants.
+    const { data: withdrawal, error: withdrawalError } = await supabase
       .from("withdrawal_requests")
       .insert({
         user_id: user.id,
@@ -161,7 +164,7 @@ serve(async (req) => {
         p_description: "Withdrawal failed - refunded",
         p_reference: reference,
       });
-      throw withdrawalError;
+      return new Response(JSON.stringify({ error: withdrawalError.message ?? "Could not create withdrawal record" }), { status: 500, headers: corsHeaders });
     }
 
     // Initiate Paystack transfer

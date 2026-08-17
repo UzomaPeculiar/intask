@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Building2, CheckCircle2, Clock, ExternalLink, Eye, Globe, GraduationCap, Mail, MapPin, Phone, XCircle } from "lucide-react";
-import { getAdminUserWalletData } from "@/lib/admin.functions";
+import { adminSetUserStatus, adminToggleTaskFeatured, getAdminTaskDetailData, getAdminUserWalletData } from "@/lib/admin.functions";
 
 export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const isMobile = useIsMobile();
@@ -29,7 +28,7 @@ export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: 
       let individual = null;
 
       if (profile.role === "student" || profile.role === "alumni") {
-        const { data } = await supabase.from("admin_student_profiles").select("*").eq("user_id", userId).maybeSingle();
+        const { data } = await (supabase as any).from("admin_student_profiles").select("*").eq("user_id", userId).maybeSingle();
         student = data;
       }
       if (profile.role === "company") {
@@ -42,10 +41,35 @@ export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: 
       }
 
       const { data: postedTasks } = await supabase.from("tasks").select("id, title, budget, status, created_at").eq("poster_id", userId).order("created_at", { ascending: false }).limit(10);
-      const { data: appliedTasks } = await (supabase as any).from("applications").select("id, status, created_at, task:tasks(id, title, budget, status)").eq("student_id", userId).order("created_at", { ascending: false }).limit(10);
-      const { data: reviewsReceived } = await (supabase as any).from("reviews").select("id, rating, comment, created_at, reviewer:admin_profiles!reviews_reviewer_id_fkey(full_name, email)").eq("reviewee_id", userId).order("created_at", { ascending: false }).limit(10);
-      const { data: reportsAgainst } = await (supabase as any).from("reports").select("id, reason, details, status, created_at, reporter:admin_profiles!reports_reporter_id_fkey(full_name, email)").eq("reported_id", userId).order("created_at", { ascending: false }).limit(10);
-      const { data: reportsBy } = await (supabase as any).from("reports").select("id, reason, details, status, created_at, reported:admin_profiles!reports_reported_id_fkey(full_name, email)").eq("reporter_id", userId).order("created_at", { ascending: false }).limit(10);
+      const { data: appliedTasks } = await (supabase as any).from("applications").select("id, status, created_at, task:tasks(id, title, budget, status)").eq("student_id", userId).order("created_at", { ascending: false }).limit(10);      // admin_profiles is a view (no foreign keys), so embedding via FK hints
+      // fails. Fetch names separately and merge.
+      const [reviewsRes, reportsAgainstRes, reportsByRes, namesRes] = await Promise.all([
+        (supabase as any)
+          .from("reviews")
+          .select("id, rating, comment, created_at, reviewer_id")
+          .eq("reviewee_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        (supabase as any)
+          .from("reports")
+          .select("id, reason, details, status, created_at, reporter_id")
+          .eq("reported_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        (supabase as any)
+          .from("reports")
+          .select("id, reason, details, status, created_at, reported_id")
+          .eq("reporter_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        (supabase as any).from("admin_profiles").select("id, full_name, email"),
+      ]);
+      if (namesRes.error) throw namesRes.error;
+      const nameMap = new Map((namesRes.data ?? []).map((p: any) => [p.id, p]));
+      const resolveName = (id: string | null | undefined) => (id && nameMap.has(id) ? nameMap.get(id) : null);
+      const reviewsReceived = (reviewsRes.data ?? []).map((r: any) => ({ ...r, reviewer: resolveName(r.reviewer_id) }));
+      const reportsAgainst = (reportsAgainstRes.data ?? []).map((r: any) => ({ ...r, reporter: resolveName(r.reporter_id) }));
+      const reportsBy = (reportsByRes.data ?? []).map((r: any) => ({ ...r, reported: resolveName(r.reported_id) }));
 
       return { profile, student, company, individual, postedTasks: postedTasks ?? [], appliedTasks: appliedTasks ?? [], reviewsReceived: reviewsReceived ?? [], reportsAgainst: reportsAgainst ?? [], reportsBy: reportsBy ?? [] };
     },
@@ -60,17 +84,12 @@ export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: 
     },
   });
 
+  const runAdminSetUserStatus = useServerFn(adminSetUserStatus);
+
   const setAccountStatus = useMutation({
     mutationFn: async ({ status, reason }: { status: "active" | "suspended" | "banned"; reason?: string }) => {
       if (!userId) throw new Error("No user selected");
-      const { data: auth } = await supabase.auth.getUser();
-      const meId = auth.user?.id;
-      if (!meId) throw new Error("Could not identify current admin");
-      if (meId === userId) throw new Error("You cannot change your own status here");
-      const patch = status === "active" ? { account_status: "active", account_status_reason: null, suspended_at: null } : { account_status: status, account_status_reason: reason ?? null, suspended_at: new Date().toISOString() };
-      const { error } = await (supabase as any).from("profiles").update(patch).eq("id", userId);
-      if (error) throw error;
-      await (supabase as any).from("audit_log").insert({ admin_user_id: meId, action: status === "active" ? "user.reactivate" : status === "banned" ? "user.ban" : "user.suspend", target_type: "user", target_id: userId, details: { reason: reason ?? null, status } });
+      await runAdminSetUserStatus({ data: { userId, status, reason } });
     },
     onSuccess: () => {
       toast.success("Account status updated");
@@ -110,24 +129,13 @@ export function AdminUserProfileSheet({ userId, open, onOpenChange }: { userId: 
 
 export function AdminTaskDetailSheet({ taskId, open, onOpenChange }: { taskId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   const isMobile = useIsMobile();
+  const loadTaskDetail = useServerFn(getAdminTaskDetailData);
   const { data, isLoading } = useQuery({
     queryKey: ["admin-task-detail", taskId],
     enabled: !!taskId && open,
     queryFn: async () => {
       if (!taskId) return null;
-      const { data: task } = await supabase.from("tasks").select("*, poster:admin_profiles!tasks_poster_id_fkey(id, full_name, email, role)").eq("id", taskId).maybeSingle();
-      if (!task) return null;
-      const { data: applicants } = await supabase.from("applications").select("id, status, created_at, applicant:admin_profiles!applications_applicant_id_fkey(id, full_name, email)").eq("task_id", taskId).order("created_at", { ascending: false });
-      const { data: transactions } = await (supabase as any).from("transactions").select("id, amount, platform_fee, status, paystack_reference, created_at, updated_at").eq("task_id", taskId).order("created_at", { ascending: false });
-      const { data: disputes } = await (supabase as any).from("disputes").select("id, reason, details, resolution, status, created_at, updated_at, raiser:admin_profiles!disputes_raised_by_fkey(full_name, email)").eq("task_id", taskId).order("created_at", { ascending: false });
-      const { data: conversation } = await (supabase as any).from("conversations").select("id").eq("task_id", taskId).maybeSingle();
-      let messages: any[] = [];
-      if (conversation?.id) {
-        const { data: msg } = await (supabase as any).from("messages").select("id, content, created_at, sender:admin_profiles!messages_sender_id_fkey(full_name, email)").eq("conversation_id", conversation.id).order("created_at", { ascending: false }).limit(20);
-        messages = msg ?? [];
-      }
-      const { data: assignee } = (task as any).assignee_id ? await supabase.from("admin_profiles").select("id, full_name, email").eq("id", (task as any).assignee_id).maybeSingle() : { data: null };
-      return { task, applicants: applicants ?? [], transactions: transactions ?? [], disputes: disputes ?? [], messages, assignee };
+      return await loadTaskDetail({ data: { taskId } });
     },
   });
   const task = data?.task; const applicants = data?.applicants ?? []; const transactions = data?.transactions ?? []; const disputes = data?.disputes ?? []; const messages = data?.messages ?? []; const assignee = data?.assignee;
@@ -136,15 +144,18 @@ export function AdminTaskDetailSheet({ taskId, open, onOpenChange }: { taskId: s
 
 export function FeaturedTaskRow({ task }: { task: any }) {
   const qc = useQueryClient();
-  const [loading, setLoading] = useState(false);
-  async function toggleFeatured() {
-    setLoading(true);
-    const nowFeatured = !task.featured;
-    await (supabase as any).from("tasks").update({ featured: nowFeatured, featured_until: nowFeatured ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null }).eq("id", task.id);
-    setLoading(false);
-    qc.invalidateQueries({ queryKey: ["admin-command-center"] });
-    qc.invalidateQueries({ queryKey: ["admin-task-management"] });
-    toast.success(nowFeatured ? "Task featured for 7 days" : "Task unfeatured");
-  }
-  return <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3"><div className="min-w-0"><p className="truncate text-sm font-medium text-foreground">{task.title}</p><p className="text-xs text-muted-foreground">{task.poster?.full_name}</p>{task.featured && task.featured_until && <p className="text-xs text-warning">Featured until {new Date(task.featured_until).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</p>}</div><Button size="sm" variant={task.featured ? "outline" : "default"} disabled={loading} onClick={toggleFeatured} className={task.featured ? "text-muted-foreground" : ""}>{loading ? "..." : task.featured ? "Unfeature" : "⭐ Feature"}</Button></div>;
+  const toggleFeaturedServer = useServerFn(adminToggleTaskFeatured);
+  const toggleFeatured = useMutation({
+    mutationFn: async ({ taskId, featured }: { taskId: string; featured: boolean }) => {
+      await toggleFeaturedServer({ data: { taskId, featured } });
+    },
+    onSuccess: (_result, vars) => {
+      qc.invalidateQueries({ queryKey: ["admin-command-center"] });
+      qc.invalidateQueries({ queryKey: ["admin-task-management"] });
+      toast.success(vars.featured ? "Task featured for 7 days" : "Task unfeatured");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not update featured state"),
+  });
+  const loading = toggleFeatured.isPending;
+  return <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3"><div className="min-w-0"><p className="truncate text-sm font-medium text-foreground">{task.title}</p><p className="text-xs text-muted-foreground">{task.poster?.full_name}</p>{task.featured && task.featured_until && <p className="text-xs text-warning">Featured until {new Date(task.featured_until).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</p>}</div><Button size="sm" variant={task.featured ? "outline" : "default"} disabled={loading} onClick={() => toggleFeatured.mutate({ taskId: task.id, featured: !task.featured })} className={task.featured ? "text-muted-foreground" : ""}>{loading ? "..." : task.featured ? "Unfeature" : "⭐ Feature"}</Button></div>;
 }

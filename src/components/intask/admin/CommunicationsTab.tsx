@@ -20,9 +20,11 @@ export function CommunicationsTab() {
           .select("id, full_name, email, role")
           .order("created_at", { ascending: false })
           .limit(1000),
+        // admin_profiles is a view (no foreign keys), so the FK-hint embed
+        // fails; resolve the user from the profiles fetched above.
         (supabase as any)
           .from("notifications")
-          .select("id, user_id, type, message, read, created_at, user:admin_profiles!notifications_user_id_fkey(full_name, email, role)")
+          .select("id, user_id, type, message, read, created_at")
           .order("created_at", { ascending: false })
           .limit(300),
       ]);
@@ -30,9 +32,15 @@ export function CommunicationsTab() {
       if (profilesRes.error) throw profilesRes.error;
       if (notificationsRes.error) throw notificationsRes.error;
 
+      const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p]));
+      const notifications = (notificationsRes.data ?? []).map((n: any) => ({
+        ...n,
+        user: n.user_id && profileMap.has(n.user_id) ? profileMap.get(n.user_id) : null,
+      }));
+
       return {
         profiles: profilesRes.data ?? [],
-        notifications: notificationsRes.data ?? [],
+        notifications,
       };
     },
   });

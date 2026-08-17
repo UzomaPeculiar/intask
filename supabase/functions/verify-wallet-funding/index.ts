@@ -133,6 +133,25 @@ serve(async (req) => {
       );
     }
 
+    // Mark the funding record complete so the admin financial tab reflects the
+    // payment even when the charge.success webhook is delayed or points at a
+    // different endpoint. credit_wallet is idempotent by reference, so a retry
+    // after an error here is safe.
+    const { error: fundingUpdateErr } = await supabase
+      .from("wallet_funding")
+      .update({ status: "completed", webhook_processed: true, updated_at: new Date().toISOString() })
+      .eq("paystack_reference", ref);
+
+    if (fundingUpdateErr) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Wallet credited but funding record could not be marked complete: ${fundingUpdateErr.message}`,
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     return new Response(JSON.stringify({ success: true, credited: true, amount }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
