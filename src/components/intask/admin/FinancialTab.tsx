@@ -169,6 +169,12 @@ export function FinancialTab() {
         </div>
       )}
 
+      {data?.reconcileWarning && (
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
+          {data.reconcileWarning}
+        </div>
+      )}
+
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

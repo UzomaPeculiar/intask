@@ -811,3 +811,25 @@ export const verifyWalletFunding = createServerFn({ method: "POST" })
 
     return { ok: true, credited: true, amount: expectedAmount };
   });
+
+// Reads the current user's withdrawals through the service-role client.
+// Direct client-side reads of withdrawal_requests can fail with 403 on
+// environments where the authenticated role is missing the SELECT grant
+// (drifted Lovable-managed databases), which silently disabled the wallet
+// page's pending-withdrawal sync.
+export const getMyWithdrawals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data, error } = await (supabaseAdmin as any)
+      .from("withdrawal_requests")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) throw new Error(error.message ?? "Could not load withdrawals");
+    return (data ?? []) as any[];
+  });

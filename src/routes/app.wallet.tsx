@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
+import { getMyWithdrawals } from "@/lib/paystack.functions";
 
 export const Route = createFileRoute("/app/wallet")({
   head: () => ({ meta: [{ title: "Wallet — InTask" }] }),
@@ -32,6 +33,7 @@ function WalletPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
+  const loadMyWithdrawals = useServerFn(getMyWithdrawals);
   const setDefaultBankAccount = useServerFn(async ({ data }: { data: { bankAccountId: string } }) => {
     const { data: result, error } = await supabase.rpc("set_default_bank_account", {
       p_bank_account_id: data.bankAccountId,
@@ -88,6 +90,9 @@ function WalletPage() {
   const { data: transactions } = useQuery({
     queryKey: ["wallet-transactions", me?.id],
     enabled: !!me?.id,
+    // Keep wallet activity fresh while withdrawals are pending so status
+    // changes (webhook / admin reconciliation) appear without manual refresh.
+    refetchInterval: 30000,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("wallet_transactions")
@@ -133,14 +138,12 @@ function WalletPage() {
   const { data: withdrawals } = useQuery({
     queryKey: ["withdrawals", me?.id],
     enabled: !!me?.id,
+    // Read through the service-role server fn: direct client reads of
+    // withdrawal_requests 403 on environments where the authenticated role is
+    // missing the SELECT grant (drifted databases), which silently disabled
+    // the pending-withdrawal sync below.
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("withdrawal_requests")
-        .select("*")
-        .eq("user_id", me!.id)
-        .order("created_at", { ascending: false })
-        .limit(10);
-      return data ?? [];
+      return await loadMyWithdrawals();
     },
   });
 
@@ -462,7 +465,10 @@ function WalletPage() {
       return { updatedCount, completedCount, failedCount, pendingCount };
     },
     onSuccess: (result) => {
-      if (result.updatedCount > 0) {
+      // Refresh whenever anything changed — including when the status was
+      // already flipped by the webhook or admin reconciliation (updated:false,
+      // status:"completed"), otherwise the wallet activity list stays stale.
+      if (result.updatedCount > 0 || result.completedCount > 0 || result.failedCount > 0) {
         refetchWallet();
         qc.invalidateQueries({ queryKey: ["withdrawals"] });
         qc.invalidateQueries({ queryKey: ["wallet-transactions"] });

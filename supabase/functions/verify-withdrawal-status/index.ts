@@ -103,11 +103,13 @@ serve(async (req) => {
         .maybeSingle();
 
       if (claimed) {
-        await supabase
-          .from("wallet_transactions")
-          .update({ status: "completed" })
-          .eq("reference", ref)
-          .eq("user_id", user.id);
+        // Route through the SECURITY DEFINER function: direct UPDATEs on
+        // wallet_transactions can fail on environments with drifted grants.
+        await supabase.rpc("mark_wallet_transaction_status", {
+          p_user_id: user.id,
+          p_reference: ref,
+          p_status: "completed",
+        });
       }
 
       return new Response(JSON.stringify({ success: true, updated: !!claimed, status: "completed" }), {
@@ -138,6 +140,11 @@ serve(async (req) => {
           p_amount: withdrawal.amount,
           p_description: `Withdrawal ${newStatus} - funds returned`,
           p_reference: ref,
+        });
+        await supabase.rpc("mark_wallet_transaction_status", {
+          p_user_id: user.id,
+          p_reference: ref,
+          p_status: newStatus,
         });
       }
 

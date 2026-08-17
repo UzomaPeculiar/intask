@@ -69,11 +69,13 @@ serve(async (req) => {
 
       console.log("[paystack-webhook] withdrawal completed:", reference, "id:", claimedWithdrawal.id);
 
-      await supabase
-        .from("wallet_transactions")
-        .update({ status: "completed" })
-        .eq("reference", reference)
-        .eq("user_id", withdrawal.user_id);
+      // Route through the SECURITY DEFINER function: direct UPDATEs on
+      // wallet_transactions can fail on environments with drifted grants.
+      await supabase.rpc("mark_wallet_transaction_status", {
+        p_user_id: withdrawal.user_id,
+        p_reference: reference,
+        p_status: "completed",
+      });
 
       await supabase.from("notifications").insert({
         user_id: withdrawal.user_id,
@@ -116,6 +118,12 @@ serve(async (req) => {
         p_amount: withdrawal.amount,
         p_description: `Withdrawal ${newStatus} - funds returned`,
         p_reference: reference,
+      });
+
+      await supabase.rpc("mark_wallet_transaction_status", {
+        p_user_id: withdrawal.user_id,
+        p_reference: reference,
+        p_status: newStatus,
       });
 
       await supabase.from("notifications").insert({

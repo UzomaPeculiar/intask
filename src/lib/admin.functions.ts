@@ -520,6 +520,107 @@ export const getAdminFinancialData = createServerFn({ method: "GET" })
     const { userId } = context;
     const { db } = await ensureAdmin(userId);
 
+    // Reconcile pending withdrawals against Paystack before returning, so the
+    // financial tab self-corrects on every refetch even if the transfer webhook
+    // is not configured or was not delivered. Mirrors verify-withdrawal-status.
+    let reconcileWarning: string | null = null;
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecret) {
+      reconcileWarning =
+        "Withdrawal auto-reconciliation is off: the app server is missing PAYSTACK_SECRET_KEY. Pending withdrawals will only update via webhook.";
+    }
+    if (paystackSecret) {
+      try {
+        const { data: pendingWithdrawals } = await db
+          .from("withdrawal_requests")
+          .select("id, user_id, amount, net_amount, reference, paystack_transfer_code, status, webhook_processed")
+          .eq("status", "pending")
+          .eq("webhook_processed", false)
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        for (const w of pendingWithdrawals ?? []) {
+          const ref = String(w.reference ?? "").trim();
+          if (!ref || !ref.startsWith("WD_")) continue;
+
+          let verifyData: any = null;
+          try {
+            const verifyRes = await fetch(`https://api.paystack.co/transfer/verify/${encodeURIComponent(ref)}`, {
+              headers: { Authorization: `Bearer ${paystackSecret}` },
+            });
+            verifyData = await verifyRes.json().catch(() => null);
+
+            // Fall back to the transfer code if the reference lookup failed.
+            if ((!verifyData?.status || verifyData?.message?.toLowerCase().includes("not found")) && w.paystack_transfer_code) {
+              const codeRes = await fetch(`https://api.paystack.co/transfer/verify/${encodeURIComponent(w.paystack_transfer_code)}`, {
+                headers: { Authorization: `Bearer ${paystackSecret}` },
+              });
+              verifyData = await codeRes.json().catch(() => null);
+            }
+          } catch (fetchErr) {
+            console.error("[admin] Paystack verify fetch failed for", ref, fetchErr);
+            continue;
+          }
+
+          const transferStatus = String(verifyData?.data?.status ?? "").toLowerCase();
+
+          if (transferStatus === "success") {
+            const { data: claimed } = await db
+              .from("withdrawal_requests")
+              .update({ status: "completed", processed_at: new Date().toISOString(), webhook_processed: true })
+              .eq("id", w.id)
+              .eq("webhook_processed", false)
+              .select("id")
+              .maybeSingle();
+
+            if (claimed) {
+              const { error: txErr } = await (db as any).rpc("mark_wallet_transaction_status", {
+                p_user_id: w.user_id,
+                p_reference: ref,
+                p_status: "completed",
+              });
+              if (txErr) {
+                console.error("[admin] failed to mark wallet transaction completed for", ref, txErr);
+              } else {
+                console.log("[admin] reconciled withdrawal to completed:", ref);
+              }
+            }
+          } else if (transferStatus === "failed" || transferStatus === "reversed") {
+            const newStatus = transferStatus === "failed" ? "failed" : "reversed";
+            const { data: claimed } = await db
+              .from("withdrawal_requests")
+              .update({
+                status: newStatus,
+                processed_at: new Date().toISOString(),
+                webhook_processed: true,
+                failure_reason: verifyData?.data?.reason ?? transferStatus,
+              })
+              .eq("id", w.id)
+              .eq("webhook_processed", false)
+              .select("id")
+              .maybeSingle();
+
+            if (claimed) {
+              await db.rpc("reverse_wallet_debit", {
+                p_user_id: w.user_id,
+                p_amount: w.amount,
+                p_description: `Withdrawal ${newStatus} - funds returned`,
+                p_reference: ref,
+              });
+              await (db as any).rpc("mark_wallet_transaction_status", {
+                p_user_id: w.user_id,
+                p_reference: ref,
+                p_status: newStatus,
+              });
+              console.log("[admin] reconciled withdrawal to", newStatus + ":", ref);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("[admin] withdrawal reconciliation failed:", err);
+      }
+    }
+
     // Some environments may not yet have updated_at/processed_at on withdrawal_requests.
     // Use a compatible fallback select so financial tab remains functional.
     let withdrawalsQueryResult = await db
@@ -648,6 +749,7 @@ export const getAdminFinancialData = createServerFn({ method: "GET" })
       profiles,
       wallets: walletsPayload.data ?? [],
       sourceErrors,
+      reconcileWarning,
     };
   });
 
