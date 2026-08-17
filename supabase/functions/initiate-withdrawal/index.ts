@@ -21,7 +21,6 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
     if (!supabaseUrl || !serviceRoleKey) {
       return new Response(
@@ -36,9 +35,11 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (authError || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
 
-    const supabaseUser = createClient(supabaseUrl, anonKey ?? serviceRoleKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Bank accounts are read via the service-role client: the caller was
+    // already authenticated above, and every query below is scoped to
+    // user.id, so no extra RLS check is needed here — and it avoids 403s on
+    // environments where the authenticated role lacks the SELECT grant
+    // (drifted Lovable-managed databases).
 
     const { data: minWithdrawalSetting } = await supabase
       .from("platform_settings")
@@ -65,7 +66,7 @@ serve(async (req) => {
     }
 
     // Get bank account and recipient code
-    const { data: bankAccount, error: bankError } = await supabaseUser
+    const { data: bankAccount, error: bankError } = await supabase
       .from("bank_accounts")
       .select("*")
       .eq("id", bank_account_id)
@@ -75,7 +76,7 @@ serve(async (req) => {
     let resolvedBankAccount = bankAccount;
 
     if (bankError || !resolvedBankAccount) {
-      const { data: fallbackBankAccount, error: fallbackError } = await supabaseUser
+      const { data: fallbackBankAccount, error: fallbackError } = await supabase
         .from("bank_accounts")
         .select("*")
         .eq("user_id", user.id)

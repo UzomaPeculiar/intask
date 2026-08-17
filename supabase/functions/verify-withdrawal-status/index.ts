@@ -12,7 +12,6 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const paystackSecret = Deno.env.get("PAYSTACK_SECRET_KEY");
 
     if (!supabaseUrl || !serviceRoleKey) {
@@ -45,10 +44,6 @@ serve(async (req) => {
       });
     }
 
-    const supabaseUser = createClient(supabaseUrl, anonKey ?? serviceRoleKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
     const { reference } = await req.json();
     const ref = String(reference ?? "").trim();
     if (!ref || !ref.startsWith("WD_")) {
@@ -58,7 +53,11 @@ serve(async (req) => {
       });
     }
 
-    const { data: withdrawal, error: withdrawalError } = await supabaseUser
+    // The withdrawal is looked up via the service-role client: the caller was
+    // already authenticated above, and the reference is scoped to their user_id,
+    // so no extra RLS check is needed here — and it avoids 403s on environments
+    // where the authenticated role lacks the SELECT grant (drifted databases).
+    const { data: withdrawal, error: withdrawalError } = await supabase
       .from("withdrawal_requests")
       .select("id, user_id, amount, net_amount, reference, status, webhook_processed")
       .eq("reference", ref)
