@@ -308,7 +308,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
 
               <Link
                 to="/app/internships"
-                className="block rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50"
+                className="block rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm active:bg-accent/50"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -326,7 +326,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
 
               <div
                 onClick={() => nav({ to: "/app/learn" as any })}
-                className="cursor-pointer rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50"
+                className="cursor-pointer rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm active:bg-accent/50"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">

@@ -161,7 +161,7 @@ function MentorshipPage() {
         <div className="space-y-4">
           {services?.map((s: any) => (
             <Link key={s.id} to="/app/mentorship/$serviceId" params={{ serviceId: s.id }} className="block">
-              <div className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:bg-accent/50">
+              <div className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm active:bg-accent/50">
                 <div className="flex items-start gap-3">
                   <InitialsAvatar name={s.mentor?.full_name} size={44} />
                   <div className="min-w-0 flex-1">

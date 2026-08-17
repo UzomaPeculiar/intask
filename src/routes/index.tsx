@@ -158,7 +158,7 @@ function MobileLanding() {
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Who is InTask for?</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {WHO_IS_IT_FOR.map((w) => (
-              <div key={w.title} className="rounded-2xl border border-border/80 bg-background p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+              <div key={w.title} className="rounded-2xl border border-border/80 bg-background p-5 shadow-sm">
                 <div className={`grid size-9 place-items-center rounded-lg ${w.color}`}>
                   <w.icon className="size-5" />
                 </div>
@@ -178,7 +178,7 @@ function MobileLanding() {
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">How it works</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {HOW_IT_WORKS.map((s) => (
-              <div key={s.n} className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+              <div key={s.n} className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
                 <div className="grid size-8 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{s.n}</div>
                 <h3 className="mt-3 font-medium text-foreground">{s.title}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{s.body}</p>
@@ -211,7 +211,7 @@ function MobileLanding() {
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Why InTask?</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {TRUST.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+              <div key={title} className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
                 <div className="grid size-9 place-items-center rounded-lg bg-success/15 text-success">
                   <Icon className="size-5" />
                 </div>

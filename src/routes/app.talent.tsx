@@ -2,27 +2,20 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureMvpFeatureEnabled } from "@/lib/mvp-features";
+import { MVP_FEATURES } from "@/lib/mvp-features";
+import { SKILLS } from "@/lib/constants";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Search, Star, Lock, Unlock, Filter, Award } from "lucide-react";
+import { ArrowLeft, Search, Star, Lock, Unlock, Award } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/talent")({
-  beforeLoad: () => ensureMvpFeatureEnabled("advancedTalentDiscovery"),
   head: () => ({ meta: [{ title: "Talent Search — InTask" }] }),
   component: TalentSearchPage,
 });
-
-const SKILLS = [
-  "All Skills", "Web Design", "Mobile App Dev", "UI/UX Design", "Graphic Design",
-  "Content Writing", "Copywriting", "Social Media", "Video Editing", "Photography",
-  "Data Analysis", "Research", "Python", "JavaScript", "Excel/Spreadsheets",
-  "Math Tutoring", "Business Analysis", "Product Management", "Virtual Assistant",
-];
 
 const UNIVERSITIES = [
   "All Universities", "UNILAG", "University of Ibadan", "OAU", "ABU Zaria",
@@ -36,12 +29,12 @@ function TalentSearchPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [submittedQ, setSubmittedQ] = useState("");
   const [skill, setSkill] = useState("All Skills");
   const [university, setUniversity] = useState("All Universities");
   const [yearLevel, setYearLevel] = useState("All Levels");
   const [minRating, setMinRating] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(true);
 
   const { data: me } = useQuery({
     queryKey: ["me-id"],
@@ -87,26 +80,15 @@ function TalentSearchPage() {
     },
   });
 
-  const { data: results, isLoading, refetch } = useQuery({
-    queryKey: ["talent-search", q, skill, university, yearLevel, minRating],
-    enabled: false,
+  const { data: results, isLoading } = useQuery({
+    queryKey: ["talent-search", submittedQ, skill, university, yearLevel, minRating],
+    enabled: !!me?.id,
     queryFn: async () => {
-      let profilesQuery = supabase
-        .from("profiles")
-        .select("id, full_name, role")
-        .in("role", ["student", "alumni"])
-        .neq("id", me?.id ?? "")
-        .limit(50);
-
-      if (q.trim()) profilesQuery = profilesQuery.ilike("full_name", `%${q.trim()}%`);
-
-      const { data: profiles } = await profilesQuery;
-      if (!profiles || profiles.length === 0) return [];
-
+      // Apply filters directly on student_profiles (no 50-row truncation), then
+      // fetch the matching profiles by id so filters work against all students.
       let spQuery = supabase
         .from("student_profiles")
-        .select("user_id, university, year_of_study, skills, rating_average, rating_count, tasks_completed, verified")
-        .in("user_id", profiles.map((p) => p.id));
+        .select("user_id, university, year_of_study, skills, rating_average, rating_count, tasks_completed, verified");
 
       if (university !== "All Universities") spQuery = spQuery.ilike("university", `%${university}%`);
       if (yearLevel !== "All Levels") spQuery = spQuery.eq("year_of_study", yearLevel);
@@ -114,8 +96,19 @@ function TalentSearchPage() {
       if (skill !== "All Skills") spQuery = spQuery.contains("skills", [skill]);
 
       const { data: studentProfiles } = await spQuery;
-      const spMap: Record<string, any> = {};
-      for (const sp of studentProfiles ?? []) spMap[sp.user_id] = sp;
+      const userIds = (studentProfiles ?? []).map((sp) => sp.user_id);
+      if (userIds.length === 0) return [];
+
+      let profilesQuery = supabase
+        .from("profiles")
+        .select("id, full_name, role")
+        .in("id", userIds)
+        .in("role", ["student", "alumni"]);
+
+      if (submittedQ.trim()) profilesQuery = profilesQuery.ilike("full_name", `%${submittedQ.trim()}%`);
+
+      const { data: profiles } = await profilesQuery;
+      if (!profiles || profiles.length === 0) return [];
 
       const { data: badges } = await (supabase as any)
         .from("student_skill_badges")
@@ -128,6 +121,9 @@ function TalentSearchPage() {
         if (!badgeMap[b.user_id]) badgeMap[b.user_id] = [];
         badgeMap[b.user_id].push(b.skill);
       }
+
+      const spMap: Record<string, any> = {};
+      for (const sp of studentProfiles ?? []) spMap[sp.user_id] = sp;
 
       return profiles
         .filter((p) => spMap[p.id])
@@ -160,13 +156,13 @@ function TalentSearchPage() {
     onError: (e: any) => toast.error(e.message ?? "Could not unlock profile"),
   });
 
-  const canSearchTalent = mySub?.plan?.can_search_talent === true;
+  const canSearchTalent = !MVP_FEATURES.subscriptions || mySub?.plan?.can_search_talent === true;
   const role = myProfile?.role;
   const canAccess = role === "company" || role === "individual" || role === "alumni";
 
   function handleSearch() {
     setHasSearched(true);
-    refetch();
+    setSubmittedQ(q);
     if (me) {
       (supabase as any).from("talent_searches").insert({
         searcher_id: me.id,
@@ -176,219 +172,254 @@ function TalentSearchPage() {
     }
   }
 
+  function clearFilters() {
+    setSkill("All Skills");
+    setUniversity("All Universities");
+    setYearLevel("All Levels");
+    setMinRating("");
+  }
+
+  const filtersActive = skill !== "All Skills" || university !== "All Universities" || yearLevel !== "All Levels" || !!minRating;
+
   if (!canAccess) {
     return (
-      <div className="mx-auto max-w-md px-4 pt-10 pb-10 text-center">
-        <Lock className="size-10 text-muted-foreground mx-auto mb-4" />
-        <h1 className="text-xl font-semibold">Talent Search</h1>
-        <p className="mt-2 text-muted-foreground text-sm">
-          Talent search is available for companies, businesses, and alumni only.
-        </p>
-        <Button className="mt-4" onClick={() => window.history.back()}>Go back</Button>
+      <div className="mx-auto min-h-screen w-full max-w-[1240px] bg-[#eff8ea] px-5 py-7 text-[#1a1e16] lg:px-9">
+        <div className="mx-auto max-w-md rounded-[14px] border border-[#c4deb8] bg-white p-8 text-center">
+          <Lock className="mx-auto mb-4 size-10 text-[#6a8064]" />
+          <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">Talent Search</h1>
+          <p className="mt-2 text-[0.85rem] leading-relaxed text-[#6a8064]">
+            Talent search is available for companies, businesses, and alumni only.
+          </p>
+          <Button className="mt-5 rounded-[10px] bg-[#3dcb6c] px-5 text-[0.85rem] font-semibold text-white hover:bg-[#35b860]" onClick={() => window.history.back()}>
+            Go back
+          </Button>
+        </div>
       </div>
     );
   }
 
+  const countLabel = isLoading
+    ? "Searching talent…"
+    : results
+      ? `${results.length} student${results.length === 1 ? "" : "s"} found`
+      : "Find verified student talent";
+
   return (
-    <div className="mx-auto max-w-md pb-10">
-      <header className="flex items-center justify-between px-4 pt-4">
-        <div className="flex items-center gap-2">
-          <button onClick={() => window.history.back()} className="grid size-9 place-items-center rounded-full border border-border bg-card shadow-sm">
+    <div className="mx-auto min-h-screen w-full max-w-[1240px] bg-[#eff8ea] px-5 py-7 text-[#1a1e16] lg:px-9">
+      <header className="mb-6 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => window.history.back()}
+            className="grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white"
+            aria-label="Back"
+          >
             <ArrowLeft className="size-4" />
           </button>
-          <div className="it-hero-surface rounded-2xl border px-4 py-3 shadow-sm">
-            <h1 className="text-lg font-semibold">Talent Search</h1>
-          </div>
+          <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">Talent Search</h1>
         </div>
-        <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowFilters(!showFilters)}>
-          <Filter className="size-3.5" /> Filters
-        </Button>
+        <p className="text-[0.8rem] text-[#6a8064]">{countLabel}</p>
       </header>
 
-      <div className="px-4 pt-4 space-y-3">
-        {!canSearchTalent && (
-          <div className="it-note-warning rounded-2xl border p-3 flex items-start justify-between gap-3 shadow-sm">
-            <div>
-              <p className="text-sm font-medium text-warning">Pro feature</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Upgrade to the Pro plan to unlock full talent search with direct contact details.
-              </p>
-            </div>
-            <Button size="sm" onClick={() => nav({ to: "/app/subscription" as any })}>
-              Upgrade
-            </Button>
+      {MVP_FEATURES.subscriptions && !canSearchTalent && (
+        <div className="mb-4 flex items-start justify-between gap-3 rounded-[14px] border border-[#e6c79a] bg-[#f7ecd9] p-4 shadow-sm">
+          <div>
+            <p className="text-[0.85rem] font-semibold text-[#8b5f17]">Pro feature</p>
+            <p className="mt-0.5 text-[0.8rem] text-[#8b5f17]/90">
+              Upgrade to the Pro plan to unlock full talent search with direct contact details.
+            </p>
           </div>
-        )}
-
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by name..."
-              className="pl-9"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
-          </div>
-          <Button onClick={handleSearch} disabled={isLoading}>
-            {isLoading ? "..." : "Search"}
+          <Button
+            size="sm"
+            onClick={() => nav({ to: "/app/subscription" as any })}
+            className="shrink-0 rounded-[10px] bg-[#3dcb6c] px-4 text-[0.8rem] font-semibold text-white hover:bg-[#35b860]"
+          >
+            Upgrade
           </Button>
         </div>
+      )}
 
-        {showFilters && (
-          <div className="rounded-2xl border border-border/80 bg-card/90 p-4 space-y-3 shadow-sm">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Skill</label>
-              <select value={skill} onChange={(e) => setSkill(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                {SKILLS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">University</label>
-              <select value={university} onChange={(e) => setUniversity(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                {UNIVERSITIES.map((u) => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Year level</label>
-                <select value={yearLevel} onChange={(e) => setYearLevel(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                  {YEAR_LEVELS.map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Min rating</label>
-                <select value={minRating} onChange={(e) => setMinRating(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                  <option value="">Any rating</option>
-                  <option value="3">3+ stars</option>
-                  <option value="4">4+ stars</option>
-                  <option value="4.5">4.5+ stars</option>
-                </select>
-              </div>
-            </div>
-            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setSkill("All Skills"); setUniversity("All Universities"); setYearLevel("All Levels"); setMinRating(""); }}>
-              Clear filters
-            </Button>
-          </div>
+      <div className="mb-4 flex gap-2.5">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#6a8064]" />
+          <Input
+            placeholder="Search by name, skill, or keyword..."
+            className="h-11 rounded-[10px] border-[#c4deb8] bg-white pl-10 text-[0.9rem]"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          />
+        </div>
+        <Button
+          type="button"
+          onClick={handleSearch}
+          disabled={isLoading}
+          className="h-11 min-w-[106px] rounded-[10px] bg-[#3dcb6c] px-5 text-[0.85rem] font-semibold text-white hover:bg-[#35b860]"
+        >
+          {isLoading ? "Searching…" : "Search"}
+        </Button>
+      </div>
+
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <select
+          value={skill}
+          onChange={(e) => setSkill(e.target.value)}
+          className="h-9 rounded-lg border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+        >
+          <option value="All Skills">All Skills</option>
+          {SKILLS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select
+          value={university}
+          onChange={(e) => setUniversity(e.target.value)}
+          className="h-9 rounded-lg border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+        >
+          {UNIVERSITIES.map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+        <select
+          value={yearLevel}
+          onChange={(e) => setYearLevel(e.target.value)}
+          className="h-9 rounded-lg border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+        >
+          {YEAR_LEVELS.map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select
+          value={minRating}
+          onChange={(e) => setMinRating(e.target.value)}
+          className="h-9 rounded-lg border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+        >
+          <option value="">Rating: Any</option>
+          <option value="3">3+ stars</option>
+          <option value="4">4+ stars</option>
+          <option value="4.5">4.5+ stars</option>
+        </select>
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="text-[0.8rem] font-medium text-[#1a7a42] hover:underline"
+          >
+            Clear filters
+          </button>
         )}
+      </div>
 
-        {!hasSearched && (
-          <div className="it-hero-surface rounded-3xl border p-6 text-center shadow-sm">
-            <Search className="size-8 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm font-medium text-foreground">Search for talent</p>
-            <p className="text-xs text-muted-foreground mt-1">Filter by skill, university, year level, and rating to find the right student for your needs.</p>
-          </div>
-        )}
+      {isLoading && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-44 animate-pulse rounded-[14px] border border-[#c4deb8] bg-white" />
+          ))}
+        </div>
+      )}
 
-        {isLoading && (
-          <div className="space-y-3">
-            {[0, 1, 2].map((i) => <div key={i} className="h-32 animate-pulse rounded-xl border border-border bg-card" />)}
-          </div>
-        )}
+      {hasSearched && !isLoading && results && results.length === 0 && (
+        <EmptyState icon={Search} title="No talent found" description="Try adjusting your filters or search terms." />
+      )}
 
-        {hasSearched && !isLoading && (results?.length ?? 0) === 0 && (
-          <EmptyState icon={Search} title="No talent found" description="Try adjusting your filters or search terms." />
-        )}
+      {results && results.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {results.map((p: any) => {
+            const isUnlocked = (myUnlocks ?? []).includes(p.id);
+            const showFullProfile = canSearchTalent && isUnlocked;
 
-        {results && results.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">{results.length} student{results.length === 1 ? "" : "s"} found</p>
-            {results.map((p: any) => {
-              const isUnlocked = (myUnlocks ?? []).includes(p.id);
-              const showFullProfile = canSearchTalent && isUnlocked;
-
-              return (
-                <div key={p.id} className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <InitialsAvatar name={showFullProfile ? p.full_name : "??"} size={44} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium text-foreground">
-                          {showFullProfile ? p.full_name : `${p.full_name?.charAt(0) ?? "?"}*** ${p.full_name?.split(" ")[1]?.charAt(0) ?? "?"}***`}
-                        </p>
-                        <VerifiedBadge role={p.role} verified={p.student?.verified} />
-                      </div>
-                      {p.student?.university && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {p.student.university}
-                          {p.student.year_of_study ? ` · ${p.student.year_of_study}` : ""}
-                        </p>
+            return (
+              <div
+                key={p.id}
+                className="flex min-h-[240px] flex-col rounded-[14px] border border-[#c4deb8] bg-white p-[18px]"
+              >
+                <div className="flex items-start gap-3">
+                  <InitialsAvatar name={showFullProfile ? p.full_name : "??"} size={44} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="[font-family:'Space_Grotesk',sans-serif] text-[0.95rem] font-semibold leading-[1.3] text-[#1a1e16]">
+                        {showFullProfile ? p.full_name : `${p.full_name?.charAt(0) ?? "?"}*** ${p.full_name?.split(" ")[1]?.charAt(0) ?? "?"}***`}
+                      </p>
+                      <VerifiedBadge role={p.role} verified={p.student?.verified} />
+                    </div>
+                    {p.student?.university && (
+                      <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">
+                        {p.student.university}
+                        {p.student.year_of_study ? ` · ${p.student.year_of_study}` : ""}
+                      </p>
+                    )}
+                    <div className="mt-1 flex items-center gap-3 text-[0.75rem] text-[#6a8064]">
+                      {(p.student?.rating_count ?? 0) > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Star className="size-3 fill-[#b5771a] text-[#b5771a]" />
+                          <span className="font-semibold text-[#1a1e16]">{Number(p.student.rating_average).toFixed(1)}</span>
+                        </span>
                       )}
-                      <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                        {(p.student?.rating_count ?? 0) > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Star className="size-3 fill-warning text-warning" />
-                            {Number(p.student.rating_average).toFixed(1)}
-                          </span>
-                        )}
-                        {(p.student?.tasks_completed ?? 0) > 0 && (
-                          <span>{p.student.tasks_completed} tasks done</span>
-                        )}
-                      </div>
-                      {p.student?.skills && p.student.skills.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {p.student.skills.slice(0, 3).map((s: string) => (
-                            <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">{s}</span>
-                          ))}
-                          {p.student.skills.length > 3 && (
-                            <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">+{p.student.skills.length - 3}</span>
-                          )}
-                        </div>
-                      )}
-                      {p.badges && p.badges.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {p.badges.slice(0, 2).map((b: string) => (
-                            <span key={b} className="it-note-success inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium">
-                              <Award className="size-2.5" /> {b}
-                            </span>
-                          ))}
-                        </div>
+                      {(p.student?.tasks_completed ?? 0) > 0 && (
+                        <span>{p.student.tasks_completed} tasks done</span>
                       )}
                     </div>
                   </div>
+                </div>
 
-                  <div className="mt-3 flex gap-2">
-                    {showFullProfile ? (
-                      <Link to="/app/profile/$userId" params={{ userId: p.id }} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full gap-1">
-                          <Unlock className="size-3.5" /> View full profile
-                        </Button>
-                      </Link>
-                    ) : canSearchTalent ? (
-                      <Button
-                        size="sm"
-                        className="flex-1 gap-1"
-                        disabled={unlock.isPending}
-                        onClick={() => unlock.mutate(p.id)}
-                      >
-                        <Unlock className="size-3.5" /> Unlock profile
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 gap-1 text-muted-foreground"
-                        onClick={() => nav({ to: "/app/subscription" as any })}
-                      >
-                        <Lock className="size-3.5" /> Upgrade to unlock
-                      </Button>
+                {p.student?.skills && p.student.skills.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {p.student.skills.slice(0, 3).map((s: string) => (
+                      <span key={s} className="rounded-full bg-[#f4fbf0] px-2 py-0.5 text-[0.6rem] font-medium text-[#6a8064]">{s}</span>
+                    ))}
+                    {p.student.skills.length > 3 && (
+                      <span className="rounded-full bg-[#f4fbf0] px-2 py-0.5 text-[0.6rem] font-medium text-[#6a8064]">+{p.student.skills.length - 3}</span>
                     )}
+                  </div>
+                )}
+
+                {p.badges && p.badges.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {p.badges.slice(0, 2).map((b: string) => (
+                      <span key={b} className="inline-flex items-center gap-1 rounded-full border border-[#1a7a42] bg-[#d8f5e4] px-2 py-0.5 text-[0.6rem] font-medium text-[#1a7a42]">
+                        <Award className="size-2.5" /> {b}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-auto flex gap-2 pt-4">
+                  {showFullProfile ? (
+                    <Link to="/app/profile/$userId" params={{ userId: p.id }} className="flex-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 w-full gap-1 rounded-[10px] border-[#c4deb8] bg-transparent text-[0.8rem] font-semibold text-[#1a1e16] hover:border-[#3dcb6c] hover:bg-[#d8f5e4]"
+                      >
+                        <Unlock className="size-3.5" /> View full profile
+                      </Button>
+                    </Link>
+                  ) : canSearchTalent ? (
+                    <Button
+                      size="sm"
+                      className="h-9 flex-1 gap-1 rounded-[10px] bg-[#3dcb6c] text-[0.8rem] font-semibold text-white hover:bg-[#35b860]"
+                      disabled={unlock.isPending}
+                      onClick={() => unlock.mutate(p.id)}
+                    >
+                      <Unlock className="size-3.5" /> Unlock profile
+                    </Button>
+                  ) : (
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => nav({ to: "/app/tasks/create" as any })}
+                      className="h-9 flex-1 gap-1 rounded-[10px] border-[#c4deb8] bg-transparent text-[0.8rem] font-semibold text-[#6a8064] hover:border-[#3dcb6c] hover:bg-[#d8f5e4]"
+                      onClick={() => nav({ to: "/app/subscription" as any })}
                     >
-                      Invite to task
+                      <Lock className="size-3.5" /> Upgrade to unlock
                     </Button>
-                  </div>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 rounded-[10px] border-[#c4deb8] bg-transparent px-3 text-[0.8rem] font-semibold text-[#1a1e16] hover:border-[#3dcb6c] hover:bg-[#d8f5e4]"
+                    onClick={() => nav({ to: "/app/tasks/create" as any })}
+                  >
+                    Invite to task
+                  </Button>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
-

@@ -233,7 +233,7 @@ function LearnPage() {
             const isCompleted = enrollment?.completed;
 
             return (
-              <div key={c.id} className="rounded-2xl border border-border/80 bg-card/90 overflow-hidden shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+              <div key={c.id} className="rounded-2xl border border-border/80 bg-card/90 overflow-hidden shadow-sm">
                 <div className="h-32 bg-gradient-to-br from-primary/20 via-primary/5 to-accent/20 flex items-center justify-center">
                   <div className="grid size-14 place-items-center rounded-2xl bg-background/80 ring-1 ring-border/70">
                     <BookOpen className="size-7 text-primary/70" />

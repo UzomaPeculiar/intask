@@ -13,6 +13,9 @@ import appCss from "../styles.css?url";
 import { getSupabaseClientConfig, hasSupabaseClientConfig } from "@/integrations/supabase/env";
 import { supabase } from "@/integrations/supabase/client";
 import { Toaster } from "@/components/ui/sonner";
+import { InstallPwaButton } from "@/components/intask/InstallPwaButton";
+import { PwaUpdatePrompt } from "@/components/intask/PwaUpdatePrompt";
+import { registerServiceWorker } from "@/lib/pwa";
 
 function NotFoundComponent() {
   return (
@@ -79,7 +82,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#2563EB" },
+      { name: "theme-color", content: "#3dcb6c" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "InTask" },
       { title: "InTask — Work, collaborate, and grow" },
       { name: "description", content: "InTask connects Nigerian students with paid tasks — design, writing, research, tutoring and more. Get hired, get paid safely via escrow." },
       { name: "author", content: "InTask" },
@@ -94,8 +101,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap",
       },
+      // PWA: app manifest, install icons, and favicon.
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", type: "image/svg+xml", href: "/intask-icon.svg" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -146,9 +157,15 @@ function RootComponent() {
     return () => sub.subscription.unsubscribe();
   }, [router, queryClient]);
 
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <InstallPwaButton />
+      <PwaUpdatePrompt />
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );

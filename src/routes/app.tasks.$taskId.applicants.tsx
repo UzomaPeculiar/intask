@@ -203,7 +203,7 @@ function ApplicantsPage() {
                   {visibleApps.map((application: any) => (
                     <li
                       key={application.id}
-                      className="cursor-pointer rounded-[14px] border bg-white p-[18px] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(61,203,108,0.1)]"
+                      className="cursor-pointer rounded-[14px] border bg-white p-[18px]"
                       style={{ borderColor: "#c4deb8" }}
                       onClick={() => nav({ to: "/app/profile/$userId", params: { userId: application.student_id } })}
                     >

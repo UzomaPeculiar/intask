@@ -11,7 +11,6 @@ import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { adminForceCancelTask, adminManualRefund, getAdminCommandCenterStats } from "@/lib/admin.functions";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from "recharts";
 
 const loadCommunicationsTab = () => import("@/components/intask/admin/CommunicationsTab");
 const loadSettingsTab = () => import("@/components/intask/admin/SettingsTab");
@@ -28,6 +27,29 @@ const WithdrawalsTab = lazy(async () => loadWithdrawalsTab().then((mod) => ({ de
 const UserManagementTab = lazy(async () => loadUserManagementTab().then((mod) => ({ default: mod.UserManagementTab })));
 const TaskManagementTab = lazy(async () => loadTaskManagementTab().then((mod) => ({ default: mod.TaskManagementTab })));
 const VerificationsHubTab = lazy(async () => loadVerificationsHubTab().then((mod) => ({ default: mod.VerificationsHubTab })));
+
+// Lazy-load recharts so only the revenue chart (Overview tab) pays for it.
+const RevenueChart = lazy(() =>
+  import("recharts").then(({ ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip }) => ({
+    default: ({ data }: { data: Array<{ label: string; amount: number }> }) => (
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+          <defs>
+            <linearGradient id="feesFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+          <YAxis tickFormatter={(value) => `₦${Number(value).toLocaleString("en-NG")}`} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+          <Tooltip formatter={(value: any) => [`₦${Number(value).toLocaleString("en-NG")}`, "Fees"]} />
+          <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="url(#feesFill)" strokeWidth={2.2} />
+        </AreaChart>
+      </ResponsiveContainer>
+    ),
+  }))
+);
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin — InTask" }] }),
@@ -475,21 +497,9 @@ function OverviewTab() {
             <p className="text-sm text-muted-foreground">No released-fee data yet.</p>
           ) : (
             <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                  <defs>
-                    <linearGradient id="feesFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis tickFormatter={(value) => `₦${Number(value).toLocaleString("en-NG")}`} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                  <RechartsTooltip formatter={(value: any) => [formatCurrency(Number(value)), "Fees"]} />
-                  <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="url(#feesFill)" strokeWidth={2.2} />
-                </AreaChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<div className="h-full w-full animate-pulse rounded-lg bg-muted" />}>
+                <RevenueChart data={trendData} />
+              </Suspense>
             </div>
           )}
         </div>

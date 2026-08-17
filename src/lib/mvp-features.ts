@@ -28,7 +28,7 @@ export const MVP_FEATURES = {
   rooms: true,
   featuredTasks: false,
   advancedAnalytics: false,
-  advancedTalentDiscovery: false,
+  advancedTalentDiscovery: true,
 } as const;
 
 export type MvpFeatureKey = keyof typeof MVP_FEATURES;
