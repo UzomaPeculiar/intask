@@ -34,18 +34,25 @@ serve(async (req) => {
     const eventType = event.event;
     const data = event.data;
 
+    console.log("[paystack-webhook] event received:", eventType, "reference:", data?.reference, "transfer_code:", data?.transfer_code);
+
     // Handle transfer events (withdrawals)
     if (eventType === "transfer.success") {
       const reference = data.reference;
-      const { data: withdrawal } = await supabase
+      const { data: withdrawal, error: lookupErr } = await supabase
         .from("withdrawal_requests")
         .select("*")
         .eq("reference", reference)
         .maybeSingle();
 
-      if (!withdrawal || withdrawal.webhook_processed) return new Response("OK", { status: 200 });
+      if (lookupErr) console.error("[paystack-webhook] transfer.success lookup error:", lookupErr);
 
-      const { data: claimedWithdrawal } = await supabase
+      if (!withdrawal || withdrawal.webhook_processed) {
+        console.log("[paystack-webhook] transfer.success skipped - no pending withdrawal for", reference);
+        return new Response("OK", { status: 200 });
+      }
+
+      const { data: claimedWithdrawal, error: updateErr } = await supabase
         .from("withdrawal_requests")
         .update({ status: "completed", processed_at: new Date().toISOString(), webhook_processed: true })
         .eq("reference", reference)
@@ -53,7 +60,14 @@ serve(async (req) => {
         .select("id")
         .maybeSingle();
 
-      if (!claimedWithdrawal) return new Response("OK", { status: 200 });
+      if (updateErr) console.error("[paystack-webhook] transfer.success update error:", updateErr);
+
+      if (!claimedWithdrawal) {
+        console.log("[paystack-webhook] transfer.success not claimed for", reference);
+        return new Response("OK", { status: 200 });
+      }
+
+      console.log("[paystack-webhook] withdrawal completed:", reference, "id:", claimedWithdrawal.id);
 
       await supabase
         .from("wallet_transactions")
@@ -71,13 +85,18 @@ serve(async (req) => {
 
     if (eventType === "transfer.failed" || eventType === "transfer.reversed") {
       const reference = data.reference;
-      const { data: withdrawal } = await supabase
+      const { data: withdrawal, error: lookupErr } = await supabase
         .from("withdrawal_requests")
         .select("*")
         .eq("reference", reference)
         .maybeSingle();
 
-      if (!withdrawal || withdrawal.webhook_processed) return new Response("OK", { status: 200 });
+      if (lookupErr) console.error("[paystack-webhook] transfer failure lookup error:", lookupErr);
+
+      if (!withdrawal || withdrawal.webhook_processed) {
+        console.log("[paystack-webhook]", eventType, "skipped for", reference);
+        return new Response("OK", { status: 200 });
+      }
 
       const newStatus = eventType === "transfer.failed" ? "failed" : "reversed";
 
@@ -107,45 +126,130 @@ serve(async (req) => {
       });
     }
 
-    // Handle charge success (wallet funding)
+    // Handle charge success (wallet funding OR task escrow)
     if (eventType === "charge.success") {
       const reference = data.reference;
-      if (!reference.startsWith("FUND_")) return new Response("OK", { status: 200 });
 
-      const { data: funding } = await supabase
-        .from("wallet_funding")
-        .select("*")
-        .eq("paystack_reference", reference)
-        .maybeSingle();
+      // Wallet funding
+      if (reference.startsWith("FUND_")) {
+        const { data: funding } = await supabase
+          .from("wallet_funding")
+          .select("*")
+          .eq("paystack_reference", reference)
+          .maybeSingle();
 
-      if (!funding || funding.webhook_processed || funding.status === "completed") {
+        if (!funding || funding.webhook_processed || funding.status === "completed") {
+          console.log("[paystack-webhook] funding skipped - already processed:", reference);
+          return new Response("OK", { status: 200 });
+        }
+
+        const amount = data.amount / 100; // Convert from kobo
+
+        await supabase.rpc("credit_wallet", {
+          p_user_id: funding.user_id,
+          p_amount: amount,
+          p_description: "Wallet top-up via Paystack",
+          p_reference: reference,
+        });
+
+        const { error: fundingUpdateErr } = await supabase
+          .from("wallet_funding")
+          .update({ status: "completed", webhook_processed: true, updated_at: new Date().toISOString() })
+          .eq("paystack_reference", reference);
+
+        if (fundingUpdateErr) {
+          console.error("[paystack-webhook] failed to mark wallet funding complete:", fundingUpdateErr);
+        }
+
+        await supabase.from("notifications").insert({
+          user_id: funding.user_id,
+          type: "wallet_funded",
+          message: `₦${amount.toLocaleString()} has been added to your InTask wallet.`,
+          link: "/app/wallet",
+        });
+
         return new Response("OK", { status: 200 });
       }
 
-      const amount = data.amount / 100; // Convert from kobo
+      // Task escrow payment
+      const metadata = data.metadata ?? {};
+      const taskId = metadata.task_id;
 
-      await supabase.rpc("credit_wallet", {
-        p_user_id: funding.user_id,
-        p_amount: amount,
-        p_description: "Wallet top-up via Paystack",
-        p_reference: reference,
-      });
-
-      const { error: fundingUpdateErr } = await supabase
-        .from("wallet_funding")
-        .update({ status: "completed", webhook_processed: true, updated_at: new Date().toISOString() })
-        .eq("paystack_reference", reference);
-
-      if (fundingUpdateErr) {
-        console.error("[paystack-webhook] failed to mark wallet funding complete:", fundingUpdateErr);
+      const { data: tx } = await supabase
+        .from("transactions")
+        .select("id, task_id, poster_id, student_id, status")
+        .eq("paystack_reference", reference)
+        .maybeSingle();
+      console.log("[paystack-webhook] escrow charge.success:", reference, "tx:", tx?.id ?? "not found");
+      if (!tx) return new Response("tx not found", { status: 404 });
+      if (tx.status === "in_escrow" || tx.status === "released") {
+        return new Response("already processed");
       }
 
-      await supabase.from("notifications").insert({
-        user_id: funding.user_id,
-        type: "wallet_funded",
-        message: `₦${amount.toLocaleString()} has been added to your InTask wallet.`,
-        link: "/app/wallet",
-      });
+      const walletContribution = Number(metadata.escrow_wallet_amount ?? 0);
+      if (walletContribution > 0) {
+        const debitRef = `ESCROW_WALLET_DEBIT_${tx.task_id}`;
+        const debitRes = await supabase.rpc("debit_wallet_atomic", {
+          p_user_id: tx.poster_id,
+          p_amount: walletContribution,
+          p_description: `Wallet contribution for escrow on task ${tx.task_id}`,
+          p_reference: debitRef,
+        });
+
+        const debitFailed = !!debitRes.error || (debitRes.data && debitRes.data.success === false);
+        if (debitFailed) {
+          return new Response(debitRes.error?.message ?? debitRes.data?.error ?? "wallet debit failed", { status: 409 });
+        }
+      }
+
+      const { data: claimedTx } = await supabase
+        .from("transactions")
+        .update({ status: "in_escrow" })
+        .eq("id", tx.id)
+        .eq("status", tx.status)
+        .select("id")
+        .maybeSingle();
+
+      if (!claimedTx) {
+        return new Response("already processed");
+      }
+
+      await supabase
+        .from("tasks")
+        .update({ status: "in_progress" })
+        .eq("id", tx.task_id);
+
+      // Create conversation if not exists
+      const { data: existingConv } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("task_id", tx.task_id)
+        .eq("student_id", tx.student_id)
+        .maybeSingle();
+      if (!existingConv) {
+        await supabase.from("conversations").insert({
+          task_id: tx.task_id,
+          student_id: tx.student_id,
+          poster_id: tx.poster_id,
+        });
+      }
+
+      await supabase.from("notifications").insert([
+        {
+          user_id: tx.student_id,
+          type: "task_funded",
+          message: "Escrow funded. You can start the work.",
+          link: `/app/tasks/${tx.task_id ?? taskId}`,
+        },
+        {
+          user_id: tx.poster_id,
+          type: "task_funded",
+          message: "Payment received and held in escrow.",
+          link: `/app/tasks/${tx.task_id ?? taskId}`,
+        },
+      ]);
+
+      return new Response("OK", { status: 200 });
     }
 
     return new Response("OK", { status: 200 });

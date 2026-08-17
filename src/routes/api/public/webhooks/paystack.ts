@@ -18,14 +18,86 @@ export const Route = createFileRoute("/api/public/webhooks/paystack")({
         }
 
         const evt = JSON.parse(raw);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+        // Transfer events (withdrawals)
+        if (evt?.event === "transfer.success" || evt?.event === "transfer.failed" || evt?.event === "transfer.reversed") {
+          const reference: string = evt.data?.reference ?? "";
+          if (!reference) return new Response("missing reference", { status: 400 });
+
+          const { data: withdrawal } = await supabaseAdmin
+            .from("withdrawal_requests")
+            .select("id, user_id, amount, net_amount, bank_name, webhook_processed")
+            .eq("reference", reference)
+            .maybeSingle();
+
+          if (!withdrawal || withdrawal.webhook_processed || !withdrawal.user_id) return new Response("ok");
+
+          if (evt.event === "transfer.success") {
+            const { data: claimedWithdrawal } = await supabaseAdmin
+              .from("withdrawal_requests")
+              .update({ status: "completed", processed_at: new Date().toISOString(), webhook_processed: true })
+              .eq("reference", reference)
+              .eq("webhook_processed", false)
+              .select("id")
+              .maybeSingle();
+
+            if (!claimedWithdrawal) return new Response("ok");
+
+            await supabaseAdmin
+              .from("wallet_transactions")
+              .update({ status: "completed" })
+              .eq("reference", reference)
+              .eq("user_id", withdrawal.user_id);
+
+            await supabaseAdmin.from("notifications").insert({
+              user_id: withdrawal.user_id,
+              type: "withdrawal_completed",
+              message: `Your withdrawal of ₦${Number(withdrawal.net_amount).toLocaleString()} has been sent to ${withdrawal.bank_name}.`,
+              link: "/app/wallet",
+            });
+          } else {
+            const newStatus = evt.event === "transfer.failed" ? "failed" : "reversed";
+            const { data: claimedWithdrawal } = await supabaseAdmin
+              .from("withdrawal_requests")
+              .update({
+                status: newStatus,
+                processed_at: new Date().toISOString(),
+                webhook_processed: true,
+                failure_reason: evt.data?.reason ?? evt.event,
+              })
+              .eq("reference", reference)
+              .eq("webhook_processed", false)
+              .select("id")
+              .maybeSingle();
+
+            if (!claimedWithdrawal) return new Response("ok");
+
+            // Reverse the wallet debit — return funds to user
+            await supabaseAdmin.rpc("reverse_wallet_debit", {
+              p_user_id: withdrawal.user_id,
+              p_amount: withdrawal.amount,
+              p_description: `Withdrawal ${newStatus} - funds returned`,
+              p_reference: reference,
+            });
+
+            await supabaseAdmin.from("notifications").insert({
+              user_id: withdrawal.user_id,
+              type: "withdrawal_failed",
+              message: `Your withdrawal of ₦${Number(withdrawal.net_amount).toLocaleString()} could not be processed. Funds have been returned to your wallet.`,
+              link: "/app/wallet",
+            });
+          }
+
+          return new Response("ok");
+        }
+
         if (evt?.event !== "charge.success") return new Response("ignored");
 
         const reference: string = evt.data?.reference ?? "";
         const meta = evt.data?.metadata ?? {};
         const taskId: string | undefined = meta.task_id;
         if (!reference) return new Response("missing reference", { status: 400 });
-
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
         const { data: tx } = await supabaseAdmin
           .from("transactions")
