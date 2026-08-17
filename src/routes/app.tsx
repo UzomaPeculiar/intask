@@ -12,11 +12,18 @@ export const Route = createFileRoute("/app")({
   component: AppLayout,
 });
 
+function dashboardModeFromSearch(searchStr: string): "find" | "post" | null {
+  const m = new URLSearchParams(searchStr).get("mode");
+  return m === "post" ? "post" : m === "find" ? "find" : null;
+}
+
 function AppLayout() {
   const nav = useNavigate();
   const [ready, setReady] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const path = useRouterState({ select: (s) => s.location.pathname });
+  const location = useRouterState({ select: (s) => s.location });
+  const path = location.pathname;
+  const dashboardMode = dashboardModeFromSearch(location.searchStr);
   const hasSupabaseConfig = hasSupabaseClientConfig();
   const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
 
@@ -113,17 +120,17 @@ function AppLayout() {
   return (
     <AuthProvider>
       <div className="min-h-screen bg-background">
-        {!path.startsWith("/app/messages/") && <DesktopSidebar path={path} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((value) => !value)} />}
+        {!path.startsWith("/app/messages/") && <DesktopSidebar path={path} mode={dashboardMode} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((value) => !value)} />}
         <div className={`${path.startsWith("/app/messages/") ? "" : sidebarCollapsed ? "pb-20 lg:pb-0 lg:pl-20" : "pb-20 lg:pb-0 lg:pl-72"}`}>
           <Outlet />
         </div>
-        {!path.startsWith("/app/messages/") && <BottomNav path={path} />}
+        {!path.startsWith("/app/messages/") && <BottomNav path={path} mode={dashboardMode} />}
       </div>
     </AuthProvider>
   );
 }
 
-function DesktopSidebar({ path, collapsed, onToggleCollapsed }: { path: string; collapsed: boolean; onToggleCollapsed: () => void }) {
+function DesktopSidebar({ path, mode, collapsed, onToggleCollapsed }: { path: string; mode: "find" | "post" | null; collapsed: boolean; onToggleCollapsed: () => void }) {
   const { data: me } = useQuery({
     queryKey: ["nav-me-id"],
     queryFn: async () => (await supabase.auth.getUser()).data.user,
@@ -139,7 +146,8 @@ function DesktopSidebar({ path, collapsed, onToggleCollapsed }: { path: string; 
   });
 
   const isPoster = myProfile?.role === "company" || myProfile?.role === "individual";
-  const browseLabel = "Browse Tasks";
+  const showingTalent = isPoster || mode === "post";
+  const browseLabel = showingTalent ? "Talent" : "Browse Tasks";
 
   const { data: unreadMsgs = 0 } = useQuery({
     queryKey: ["desktop-unread-messages"],
@@ -194,7 +202,7 @@ function DesktopSidebar({ path, collapsed, onToggleCollapsed }: { path: string; 
 
       <nav className={`flex-1 space-y-1 py-4 ${collapsed ? "px-2" : "px-3"}`}>
         <DesktopNavItem to="/app" label="Dashboard" icon={Home} active={path === "/app" || path === "/app/"} collapsed={collapsed} />
-        {isPoster ? (
+        {showingTalent ? (
           <DesktopNavItem to="/app/talent" label="Talent" icon={Search} active={path.startsWith("/app/talent")} collapsed={collapsed} />
         ) : (
           <DesktopNavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} collapsed={collapsed} />
@@ -230,7 +238,7 @@ function NotifBell() {
   );
 }
 
-function BottomNav({ path }: { path: string }) {
+function BottomNav({ path, mode }: { path: string; mode: "find" | "post" | null }) {
   const qc = useQueryClient();
   const { data: me } = useQuery({
     queryKey: ["nav-me-id"],
@@ -247,7 +255,8 @@ function BottomNav({ path }: { path: string }) {
   });
 
   const isPoster = myProfile?.role === "company" || myProfile?.role === "individual";
-  const browseLabel = "Browse";
+  const showingTalent = isPoster || mode === "post";
+  const browseLabel = showingTalent ? "Talent" : "Browse";
 
   const { data: unreadMsgs = 0 } = useQuery({
     queryKey: ["unread-messages"],
@@ -309,7 +318,7 @@ function BottomNav({ path }: { path: string }) {
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/95 backdrop-blur shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.25)] lg:hidden">
       <ul className="mx-auto grid max-w-md grid-cols-5">
         <NavItem to="/app" label="Home" icon={Home} active={path === "/app" || path === "/app/"} badge={0} />
-        {isPoster ? (
+        {showingTalent ? (
           <NavItem to="/app/talent" label="Talent" icon={Search} active={path.startsWith("/app/talent")} badge={0} />
         ) : (
           <NavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} badge={0} />

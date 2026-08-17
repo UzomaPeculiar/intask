@@ -41,19 +41,6 @@ function TalentSearchPage() {
     queryFn: async () => (await supabase.auth.getUser()).data.user,
   });
 
-  const { data: myProfile } = useQuery({
-    queryKey: ["my-profile", me?.id],
-    enabled: !!me?.id,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", me!.id)
-        .maybeSingle();
-      return data;
-    },
-  });
-
   const { data: mySub } = useQuery({
     queryKey: ["my-subscription", me?.id],
     enabled: !!me?.id,
@@ -157,8 +144,6 @@ function TalentSearchPage() {
   });
 
   const canSearchTalent = !MVP_FEATURES.subscriptions || mySub?.plan?.can_search_talent === true;
-  const role = myProfile?.role;
-  const canAccess = role === "company" || role === "individual" || role === "alumni";
 
   function handleSearch() {
     setHasSearched(true);
@@ -180,23 +165,6 @@ function TalentSearchPage() {
   }
 
   const filtersActive = skill !== "All Skills" || university !== "All Universities" || yearLevel !== "All Levels" || !!minRating;
-
-  if (!canAccess) {
-    return (
-      <div className="mx-auto min-h-screen w-full max-w-[1240px] bg-[#eff8ea] px-5 py-7 text-[#1a1e16] lg:px-9">
-        <div className="mx-auto max-w-md rounded-[14px] border border-[#c4deb8] bg-white p-8 text-center">
-          <Lock className="mx-auto mb-4 size-10 text-[#6a8064]" />
-          <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">Talent Search</h1>
-          <p className="mt-2 text-[0.85rem] leading-relaxed text-[#6a8064]">
-            Talent search is available for companies, businesses, and alumni only.
-          </p>
-          <Button className="mt-5 rounded-[10px] bg-[#3dcb6c] px-5 text-[0.85rem] font-semibold text-white hover:bg-[#35b860]" onClick={() => window.history.back()}>
-            Go back
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   const countLabel = isLoading
     ? "Searching talent…"

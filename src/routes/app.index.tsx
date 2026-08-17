@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { DisputeButton } from "@/components/intask/DisputeButton";
 import { BarChart2 } from "lucide-react";
 import { SaveTaskButton } from "@/components/intask/SaveTaskButton";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
@@ -34,9 +34,15 @@ export const Route = createFileRoute("/app/")({
 type Mode = "find" | "post";
 
 function Dashboard() {
-  const [mode, setMode] = useState<Mode>("find");
-  const [filter, setFilter] = useState("All");
   const { user, profile, role } = useAuth();
+  const nav = useNavigate();
+  const routerLocation = useRouterState({ select: (s) => s.location });
+  const modeFromSearch: Mode | null = (() => {
+    const m = new URLSearchParams(routerLocation.searchStr).get("mode");
+    return m === "post" ? "post" : m === "find" ? "find" : null;
+  })();
+  const [mode, setMode] = useState<Mode>(() => modeFromSearch ?? "find");
+  const [filter, setFilter] = useState("All");
   const { data: accountDetails } = useQuery({
     queryKey: ["profile-details", user?.id],
     enabled: !!user && !!role,
@@ -75,12 +81,20 @@ function Dashboard() {
   });
 
   useEffect(() => {
+    if (modeFromSearch) return; // an explicit ?mode= in the URL wins
     if (role === "company" || role === "individual") {
       setMode("post");
     } else if (role === "student" || role === "alumni") {
       setMode("find");
     }
-  }, [role]);
+  }, [role, modeFromSearch]);
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    // Persist the mode in the URL so the sidebar / bottom nav can show the
+    // matching label ("Browse Tasks" vs "Talent").
+    nav({ to: "/app", search: { mode: next } as any });
+  };
 
   const canFindWork = role === "student" || role === "alumni";
   const greetingName = profile?.full_name?.split(" ")[0];
@@ -128,11 +142,11 @@ function Dashboard() {
       {canFindWork && (
         <div>
           <div className="grid grid-cols-2 gap-1 rounded-2xl border border-border/80 bg-muted p-1 text-sm font-medium shadow-sm">
-            <button onClick={() => setMode("find")}
+            <button onClick={() => switchMode("find")}
               className={`rounded-md py-2 transition-colors ${mode === "find" ? "bg-card text-foreground shadow-card" : "text-muted-foreground"}`}>
               Find work
             </button>
-            <button onClick={() => setMode("post")}
+            <button onClick={() => switchMode("post")}
               className={`rounded-md py-2 transition-colors ${mode === "post" ? "bg-card text-foreground shadow-card" : "text-muted-foreground"}`}>
               Post work
             </button>
@@ -143,7 +157,7 @@ function Dashboard() {
       {role === "alumni" && mode === "find" && MVP_FEATURES.mentorship && <MentorshipSection />}
 
       {mode === "find" && canFindWork ? (
-        <FindWorkView userId={user?.id} filter={filter} onFilter={setFilter} onSwitchToPost={() => setMode("post")} />
+        <FindWorkView userId={user?.id} filter={filter} onFilter={setFilter} onSwitchToPost={() => switchMode("post")} />
       ) : (
         <PostWorkView userId={user?.id} />
       )}
