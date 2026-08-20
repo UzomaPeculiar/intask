@@ -90,10 +90,65 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "InTask — Work, collaborate, and grow" },
       { name: "description", content: "InTask connects Nigerian students with paid tasks — design, writing, research, tutoring and more. Get hired, get paid safely via escrow." },
       { name: "author", content: "InTask" },
+      { name: "robots", content: "index, follow, max-snippet:-1, max-image-preview:large" },
       { property: "og:title", content: "InTask — Work, collaborate, and grow" },
       { property: "og:description", content: "Built for Nigerian students. Find paid tasks or hire verified students. Secure escrow payments." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { property: "og:site_name", content: "InTask" },
+      { property: "og:locale", content: "en_NG" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@intask_ng" },
+      { name: "twitter:title", content: "InTask — Work, collaborate, and grow" },
+      { name: "twitter:description", content: "Built for Nigerian students. Find paid tasks or hire verified students. Secure escrow payments." },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "InTask",
+          url: "https://intask.ng",
+          logo: "https://intask.ng/intask-icon.svg",
+          description: "InTask connects Nigerian university students with clients who need quality work done quickly. Verified students, secure escrow payments, fair outcomes.",
+          sameAs: [],
+          contactPoint: {
+            "@type": "ContactPoint",
+            contactType: "customer service",
+            email: "support@intask.ng",
+            availableLanguage: "English",
+          },
+          areaServed: {
+            "@type": "Country",
+            name: "Nigeria",
+          },
+          makesOffer: {
+            "@type": "Offer",
+            itemOffered: {
+              "@type": "Service",
+              name: "Student Freelance Marketplace",
+              description: "Connect with verified Nigerian university students for web design, content writing, research, tutoring, and more.",
+            },
+          },
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "InTask",
+          url: "https://intask.ng",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: "https://intask.ng/app/browse?q={search_term_string}",
+            },
+            "query-input": "required name=search_term_string",
+          },
+        }),
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

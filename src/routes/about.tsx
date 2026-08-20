@@ -16,11 +16,39 @@ import {
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About InTask - Our mission" },
+      { title: "About InTask — Our Mission | Nigerian Student Freelance Marketplace" },
       {
         name: "description",
         content:
-          "InTask connects Nigerian university students with real paid tasks. Learn about our mission, values, and the team behind the platform.",
+          "Learn about InTask — the marketplace connecting Nigerian university students with real paid tasks. Our mission, values, and how we ensure secure escrow payments.",
+      },
+      { property: "og:title", content: "About InTask — Our Mission" },
+      {
+        property: "og:description",
+        content:
+          "Learn about InTask — the marketplace connecting Nigerian university students with real paid tasks. Secure escrow payments, verified students.",
+      },
+      { name: "canonical", content: "https://intask.ng/about" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "AboutPage",
+          name: "About InTask",
+          url: "https://intask.ng/about",
+          mainEntity: {
+            "@type": "Organization",
+            name: "InTask",
+            url: "https://intask.ng",
+            description: "InTask connects Nigerian university students with clients who need quality work done quickly. Verified students, secure escrow payments, fair outcomes.",
+            areaServed: {
+              "@type": "Country",
+              name: "Nigeria",
+            },
+          },
+        }),
       },
     ],
   }),

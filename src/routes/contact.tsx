@@ -14,11 +14,35 @@ import {
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact InTask - Get in touch" },
+      { title: "Contact InTask — Get in Touch | Support" },
       {
         name: "description",
         content:
+          "Need help with your account, payments, or disputes? Reach out to the InTask support team. We respond within 24 hours.",
+      },
+      { property: "og:title", content: "Contact InTask — Get in Touch" },
+      {
+        property: "og:description",
+        content:
           "Need help with your account, payments, or disputes? Reach out to the InTask support team.",
+      },
+      { name: "canonical", content: "https://intask.ng/contact" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ContactPage",
+          name: "Contact InTask",
+          url: "https://intask.ng/contact",
+          mainEntity: {
+            "@type": "Organization",
+            name: "InTask",
+            url: "https://intask.ng",
+            email: "support@intask.ng",
+          },
+        }),
       },
     ],
   }),

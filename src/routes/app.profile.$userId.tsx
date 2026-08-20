@@ -10,7 +10,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { MVP_FEATURES } from "@/lib/mvp-features";
-import { submitStudentIdUpload, switchStudentVerificationMethod } from "@/lib/admin.functions";
+import { submitStudentIdUpload, switchStudentVerificationMethod, saveProfileEdits } from "@/lib/admin.functions";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 import { SKILLS, NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY } from "@/lib/constants";
+import { UniversitySelect } from "@/components/intask/UniversitySelect";
 import { ArrowLeft, LogOut, Star, Briefcase, Edit3, Save, Plus, ExternalLink, Trash2, FolderGit2, GraduationCap, Mail, Phone, Building2, MapPin, Globe, ImagePlus, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -634,6 +636,7 @@ function EditPanel({ profile, student, company, onDone }: any) {
   const isStudentOrAlumni = profile.role === "student" || profile.role === "alumni";
   const isCompany = profile.role === "company";
   const isIndividual = profile.role === "individual";
+  const saveProfile = useServerFn(saveProfileEdits);
 
   const [bio, setBio] = useState(profile.bio ?? "");
   const [fullName, setFullName] = useState(profile.full_name ?? "");
@@ -653,6 +656,9 @@ function EditPanel({ profile, student, company, onDone }: any) {
 
   const [saving, setSaving] = useState(false);
 
+  // university state holds the selected name or custom-typed name directly.
+  const resolvedUniversity = university.trim() || null;
+
   async function save() {
     setSaving(true);
     const profileUpdate: any = { bio: bio.slice(0, 200) || null };
@@ -661,27 +667,25 @@ function EditPanel({ profile, student, company, onDone }: any) {
       profileUpdate.email = email.trim() || null;
       profileUpdate.phone = phone.trim() || null;
     }
-    const { error: pErr } = await supabase.from("profiles").update(profileUpdate).eq("id", profile.id);
-    if (pErr) { toast.error(pErr.message); setSaving(false); return; }
-
-    if (isStudentOrAlumni) {
-      const { error: sErr } = await supabase.from("student_profiles").update({
-        skills,
-        university: university || null,
-        year_of_study: year || null,
-        department: department || null,
-        university_email: universityEmail.trim() || null,
-      }).eq("user_id", profile.id);
-      if (sErr) { toast.error(sErr.message); setSaving(false); return; }
-    }
-    if (isCompany) {
-      await supabase.from("company_profiles").upsert({
-        user_id: profile.id,
-        company_name: companyName.trim() || profile.full_name,
-        industry: industry.trim() || null,
-        location: location.trim() || null,
-        website: website.trim() || null,
-      });
+    const studentUpdate: any = isStudentOrAlumni ? {
+      skills,
+      university: resolvedUniversity || null,
+      year_of_study: year || null,
+      department: department || null,
+      university_email: universityEmail.trim() || null,
+    } : undefined;
+    const companyUpdate: any = isCompany ? {
+      company_name: companyName.trim() || profile.full_name,
+      industry: industry.trim() || null,
+      location: location.trim() || null,
+      website: website.trim() || null,
+    } : undefined;
+    try {
+      await saveProfile({ data: { profileUpdate, studentUpdate, companyUpdate } });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not save profile");
+      setSaving(false);
+      return;
     }
     setSaving(false);
     toast.success("Profile saved");
@@ -750,10 +754,14 @@ function EditPanel({ profile, student, company, onDone }: any) {
         <>
           <div className="space-y-1.5">
             <Label>University</Label>
-            <select value={university} onChange={(e) => setUniversity(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-              <option value="">Select…</option>
-              {NIGERIAN_UNIVERSITIES.map((u) => <option key={u} value={u}>{u}</option>)}
-            </select>
+            <UniversitySelect
+              value={university}
+              onChange={(val) => {
+                setUniversity(val);
+                if (val !== "Other") setUniversityCustom("");
+                else setUniversityCustom("");
+              }}
+            />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">

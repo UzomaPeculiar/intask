@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { applyReferralCode } from "@/lib/referral.functions";
+import { finalizeSignupProfile } from "@/lib/admin.functions";
+import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GraduationCap, Briefcase, User, CheckCircle2, Upload, ArrowRight, ArrowLeft, Award } from "lucide-react";
 import { NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY, SKILLS, NG_PHONE_REGEX } from "@/lib/constants";
+import { UniversitySelect } from "@/components/intask/UniversitySelect";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 
@@ -22,9 +25,11 @@ export const Route = createFileRoute("/auth/signup")({
   component: SignupPage,
 });
 
+type Intent = "find_work" | "hire_talent" | null;
 type Role = "student" | "alumni" | "company" | "individual";
 
 interface SignupState {
+  intent: Intent;
   role: Role | null;
   // account
   full_name: string;
@@ -79,7 +84,8 @@ function SignupPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [s, setS] = useState<SignupState>({
-    role: "student",
+    intent: null,
+    role: null,
     full_name: "",
     email: "",
     phone: "",
@@ -107,21 +113,25 @@ function SignupPage() {
   const isIndividual = s.role === "individual";
 
   // Per-role stepper config. Welcome screen is hidden from stepper.
+  // Steps: 1=intent, 2=sub-role, 3=account, then role-specific
   function stepInfo(): { current: number; total: number } {
     if (s.role === "student") {
-      // 1=role, 2=account, 3=uni, 4=verify, 5=skills, 6=welcome
-      return { current: Math.min(step, 4), total: 4 };
+      // 1=intent, 2=sub-role, 3=account, 4=uni, 5=verify, 6=skills, 7=welcome
+      return { current: Math.min(step, 6), total: 6 };
     }
     if (s.role === "alumni") {
-      // 1=role, 2=account, 3=grad, 4=skills, 5=welcome
-      return { current: Math.min(step, 4), total: 4 };
+      // 1=intent, 2=sub-role, 3=account, 4=grad, 5=skills, 6=welcome
+      return { current: Math.min(step, 5), total: 5 };
     }
-    if (s.role === "individual") return { current: Math.min(step, 2), total: 2 };
+    if (s.role === "individual") {
+      // 1=intent, 2=sub-role, 3=account
+      return { current: Math.min(step, 3), total: 3 };
+    }
     if (s.role === "company") {
-      // 1=role, 2=account, 3=business, 4=verify, 5=finish
-      return { current: Math.min(step, 4), total: 4 };
+      // 1=intent, 2=sub-role, 3=account, 4=business, 5=verify, 6=welcome
+      return { current: Math.min(step, 5), total: 5 };
     }
-    return { current: 1, total: 4 };
+    return { current: 1, total: 2 };
   }
   const sinfo = stepInfo();
 
@@ -156,33 +166,43 @@ function SignupPage() {
     return true;
   }
 
+  const finalizeSignup = useServerFn(finalizeSignupProfile);
+
   async function finalizeProfile() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const role = s.role ?? "student";
-    await supabase.from("profiles").upsert({
-      id: user.id,
-      full_name: s.full_name,
-      email: s.email,
-      phone: s.phone,
-      role,
-    });
-    if (isStudent) {
-      let idUploadPath = null;
 
-      if (s.verification_method === "id_upload" && idFile) {
-        const fileExt = idFile.name.split(".").pop();
-        const filePath = `${user.id}/student-id.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from("student-ids")
-          .upload(filePath, idFile, { upsert: true });
-        if (!uploadError) {
-          idUploadPath = filePath;
-        }
+    // Upload files to storage first (client-side — storage doesn't have the trigger issue)
+    let idUploadPath: string | null = null;
+    let docUploadPath: string | null = null;
+
+    if (isStudent && s.verification_method === "id_upload" && idFile) {
+      const fileExt = idFile.name.split(".").pop();
+      const filePath = `${user.id}/student-id.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from("student-ids")
+        .upload(filePath, idFile, { upsert: true });
+      if (!uploadError) {
+        idUploadPath = filePath;
       }
+    }
 
-      await supabase.from("student_profiles").upsert({
-        user_id: user.id,
+    if (isCompany && s.company_verification_method === "cac_number" && s.company_doc_file) {
+      const fileExt = s.company_doc_file.name.split(".").pop();
+      const filePath = `${user.id}/cac-cert.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from("company-docs")
+        .upload(filePath, s.company_doc_file, { upsert: true });
+      if (!uploadError) {
+        docUploadPath = filePath;
+      }
+    }
+
+    // Use server function with supabaseAdmin to bypass the trigger permission issue
+    const roleData: Record<string, any> = {};
+    if (isStudent) {
+      roleData.studentProfile = {
         university: s.university || null,
         department: s.department || null,
         year_of_study: s.year_of_study || null,
@@ -195,106 +215,97 @@ function SignupPage() {
         rating_average: 0,
         rating_count: 0,
         tasks_completed: 0,
-      });
-
-      if (s.verification_method === "email" && s.university_email.trim()) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData.session?.access_token;
-        if (accessToken && SUPABASE_FUNCTIONS_URL) {
-          const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/send-student-verification-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ university_email: s.university_email.trim() }),
-          });
-
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok || result?.success === false) {
-            if (result?.code === "EMAIL_VERIFICATION_NOT_CONFIGURED") {
-              toast.error("Student email verification is temporarily unavailable. Your account is active, and you can upload a student ID from your profile to complete verification.");
-            } else {
-              toast.error(result?.error ?? "Could not send verification code. You can retry from your profile.");
-            }
-          } else {
-            toast.success("Verification code sent to your university email.");
-          }
-        }
-      }
+      };
     } else if (isAlumni) {
-      await supabase.from("student_profiles").upsert({
-        user_id: user.id,
+      roleData.alumniProfile = {
         university: s.university || null,
         department: s.department || null,
         year_of_study: s.graduation_year ? `Class of ${s.graduation_year}` : "Alumni",
         skills: s.skills,
         verification_method: "id_upload",
-        verified: false, // alumni unverified — pending review
-        rating_average: 0,
-        rating_count: 0,
-        tasks_completed: 0,
-      });
+        verified: false,
+      };
     } else if (isIndividual) {
-      await supabase.from("individual_profiles").upsert({
-        user_id: user.id,
+      roleData.individualProfile = {
         verified: true,
         verification_method: "auto",
         verification_status: "auto_verified",
         verified_at: new Date().toISOString(),
-      });
+      };
     } else if (isCompany) {
-      let docUploadPath = null;
-
-      if (s.company_verification_method === "cac_number" && s.company_doc_file) {
-        const fileExt = s.company_doc_file.name.split(".").pop();
-        const filePath = `${user.id}/cac-cert.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from("company-docs")
-          .upload(filePath, s.company_doc_file, { upsert: true });
-        if (!uploadError) {
-          docUploadPath = filePath;
-        }
-      }
-
-      await supabase.from("company_profiles").upsert({
-        user_id: user.id,
+      roleData.companyProfile = {
         company_name: s.company_name || s.full_name,
         industry: s.industry || null,
-        location: s.city || null,
-        website: s.website || null,
-        verified: false,
         verification_method: s.company_verification_method ?? null,
-        company_email: s.company_email || null,
-        cac_number: s.cac_number || null,
-        verification_doc_url: docUploadPath,
+        verified: false,
         verification_status: "pending",
+        verification_doc_url: docUploadPath,
+      };
+    }
+
+    try {
+      await finalizeSignup({
+        data: {
+          profile: {
+            id: user.id,
+            full_name: s.full_name,
+            email: s.email,
+            phone: s.phone,
+            role,
+          },
+          ...roleData,
+        },
       });
+    } catch (e: any) {
+      toast.error(`Profile creation failed: ${e?.message ?? "Please try again."}`);
+      return;
+    }
 
-      // Send verification email if email method selected
-      if (s.company_verification_method === "email" && s.company_email.trim()) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData.session?.access_token;
-        if (accessToken && SUPABASE_FUNCTIONS_URL) {
-          const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/send-company-verification-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ company_email: s.company_email.trim() }),
-          });
-
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok || result?.success === false) {
-            if (result?.code === "EMAIL_VERIFICATION_NOT_CONFIGURED") {
-              toast.error("Company email verification is temporarily unavailable. Your account is active, and you can complete verification from your profile.");
-            } else {
-              toast.error(result?.error ?? "Could not send verification code. You can retry from your profile.");
-            }
+    // Send verification emails (unchanged — these are external API calls)
+    if (isStudent && s.verification_method === "email" && s.university_email.trim()) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (accessToken && SUPABASE_FUNCTIONS_URL) {
+        const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/send-student-verification-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ university_email: s.university_email.trim() }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.success === false) {
+          if (result?.code === "EMAIL_VERIFICATION_NOT_CONFIGURED") {
+            toast.error("Student email verification is temporarily unavailable. Your account is active, and you can upload a student ID from your profile to complete verification.");
           } else {
-            toast.success("Verification code sent to your company email.");
+            toast.error(result?.error ?? "Could not send verification code. You can retry from your profile.");
           }
+        } else {
+          toast.success("Verification code sent to your university email.");
+        }
+      }
+    } else if (isCompany && s.company_verification_method === "email" && s.company_email.trim()) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (accessToken && SUPABASE_FUNCTIONS_URL) {
+        const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/send-company-verification-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ company_email: s.company_email.trim() }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.success === false) {
+          if (result?.code === "EMAIL_VERIFICATION_NOT_CONFIGURED") {
+            toast.error("Company email verification is temporarily unavailable. Your account is active, and you can complete verification from your profile.");
+          } else {
+            toast.error(result?.error ?? "Could not send verification code. You can retry from your profile.");
+          }
+        } else {
+          toast.success("Verification code sent to your company email.");
         }
       }
     }
@@ -442,30 +453,88 @@ function SignupPage() {
           </div>
 
           <div>
-        {/* STEP 1 — Role selection (4 roles) */}
+        {/* STEP 1 — Intent selection */}
         {step === 1 && (
           <div>
             <div className="mb-7">
-              <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1a1e16]">How will you use InTask?</h1>
-              <p className="mt-1 text-[0.85rem] text-[#6a8064]">Pick the option that fits you best.</p>
+              <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1a1e16]">Welcome to InTask</h1>
+              <p className="mt-1 text-[0.85rem] text-[#6a8064]">What brings you here?</p>
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <RoleCard icon={GraduationCap} title="I'm a student" desc="I want to find work and get paid for my skills." selected={s.role === "student"} onClick={() => set("role", "student")} />
-              <RoleCard icon={User} title="I want to post a task" desc="I need help from a student with a project." selected={s.role === "individual"} onClick={() => set("role", "individual")} />
-              <RoleCard icon={Award} title="I'm alumni" desc="I graduated and want to keep working and earning." selected={s.role === "alumni"} onClick={() => set("role", "alumni")} />
-              <RoleCard icon={Briefcase} title="I'm a company" desc="I want to hire verified students for tasks." selected={s.role === "company"} onClick={() => set("role", "company")} />
+            <div className="grid grid-cols-1 gap-3">
+              <button
+                type="button"
+                onClick={() => { set("intent", "find_work"); set("role", null); }}
+                className={`flex items-center gap-4 rounded-[14px] border p-5 text-left transition-all ${
+                  s.intent === "find_work"
+                    ? "border-[#3dcb6c] bg-[rgba(61,203,108,0.06)] shadow-[0_0_0_3px_rgba(61,203,108,0.1)]"
+                    : "border-[#c4deb8] bg-white hover:border-[#3dcb6c] hover:bg-[#f9fdf7]"
+                }`}
+              >
+                <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-[rgba(61,203,108,0.12)] text-[#1a7a42]">
+                  <GraduationCap className="size-6" />
+                </div>
+                <div>
+                  <p className="text-[1rem] font-semibold text-[#1a1e16]">Find work</p>
+                  <p className="text-[0.8rem] text-[#6a8064]">I'm a student or graduate looking for paid tasks.</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => { set("intent", "hire_talent"); set("role", null); }}
+                className={`flex items-center gap-4 rounded-[14px] border p-5 text-left transition-all ${
+                  s.intent === "hire_talent"
+                    ? "border-[#3dcb6c] bg-[rgba(61,203,108,0.06)] shadow-[0_0_0_3px_rgba(61,203,108,0.1)]"
+                    : "border-[#c4deb8] bg-white hover:border-[#3dcb6c] hover:bg-[#f9fdf7]"
+                }`}
+              >
+                <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-[rgba(37,99,235,0.10)] text-[#2563eb]">
+                  <Briefcase className="size-6" />
+                </div>
+                <div>
+                  <p className="text-[1rem] font-semibold text-[#1a1e16]">Hire talent</p>
+                  <p className="text-[0.8rem] text-[#6a8064]">I need skilled students or graduates for a project.</p>
+                </div>
+              </button>
             </div>
-            <Button size="lg" className="mt-6 h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.95rem] font-semibold text-white hover:bg-[#35b860]" disabled={!s.role} onClick={next}>
+            <Button size="lg" className="mt-6 h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.95rem] font-semibold text-white hover:bg-[#35b860]" disabled={!s.intent} onClick={next}>
               Continue <ArrowRight className="size-4" />
             </Button>
             <p className="mt-5 text-center text-[0.85rem] text-[#6a8064]">
-              Already have an account? <Link to="/auth/login" className="font-semibold text-[#3dcb6c] no-underline">Log in</Link>
+              Already have an account? <Link to="/auth/login" search={{ redirect: "" }} className="font-semibold text-[#3dcb6c] no-underline">Log in</Link>
             </p>
           </div>
         )}
 
-        {/* STEP 2 — Account creation */}
+        {/* STEP 2 — Sub-role selection */}
         {step === 2 && (
+          <div>
+            <div className="mb-7">
+              <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1a1e16]">
+                {s.intent === "find_work" ? "Are you currently a student?" : "How will you use InTask?"}
+              </h1>
+              <p className="mt-1 text-[0.85rem] text-[#6a8064]">Pick the option that fits you best.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {s.intent === "find_work" ? (
+                <>
+                  <RoleCard icon={GraduationCap} title="I'm a student" desc="I want to find work and get paid for my skills." selected={s.role === "student"} onClick={() => set("role", "student")} />
+                  <RoleCard icon={Award} title="I'm alumni" desc="I graduated and want to keep working and earning." selected={s.role === "alumni"} onClick={() => set("role", "alumni")} />
+                </>
+              ) : (
+                <>
+                  <RoleCard icon={User} title="I want to post a task" desc="I need help from a student with a one-off project." selected={s.role === "individual"} onClick={() => set("role", "individual")} />
+                  <RoleCard icon={Briefcase} title="I'm a company" desc="I want to hire verified students for ongoing work." selected={s.role === "company"} onClick={() => set("role", "company")} />
+                </>
+              )}
+            </div>
+            <Button size="lg" className="mt-6 h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.95rem] font-semibold text-white hover:bg-[#35b860]" disabled={!s.role} onClick={next}>
+              Continue <ArrowRight className="size-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* STEP 3 — Account creation */}
+        {step === 3 && (
           <div>
             <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
               <h1 className="text-2xl font-semibold tracking-tight">{isCompany ? "Create your business account" : "Create your account"}</h1>
@@ -518,7 +587,7 @@ function SignupPage() {
         )}
 
         {/* STUDENT — university details */}
-        {step === 3 && isStudent && (
+        {step === 4 && isStudent && (
           <div>
             <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
               <h1 className="text-2xl font-semibold tracking-tight">University details</h1>
@@ -548,7 +617,7 @@ function SignupPage() {
         )}
 
         {/* STUDENT — verification */}
-        {step === 4 && isStudent && (
+        {step === 5 && isStudent && (
           <div>
             <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
               <h1 className="text-2xl font-semibold tracking-tight">Verify your student status</h1>
@@ -606,12 +675,12 @@ function SignupPage() {
         )}
 
         {/* STUDENT — skills */}
-        {step === 5 && isStudent && (
+        {step === 6 && isStudent && (
           <SkillsPicker s={s} setS={setS} loading={loading} onFinish={handleStudentFinish} />
         )}
 
         {/* ALUMNI — graduation details */}
-        {step === 3 && isAlumni && (
+        {step === 4 && isAlumni && (
           <div>
             <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
               <h1 className="text-2xl font-semibold tracking-tight">Where did you graduate from?</h1>
@@ -636,12 +705,12 @@ function SignupPage() {
         )}
 
         {/* ALUMNI — skills */}
-        {step === 4 && isAlumni && (
+        {step === 5 && isAlumni && (
           <SkillsPicker s={s} setS={setS} loading={loading} onFinish={handleAlumniFinish} />
         )}
 
-        {/* COMPANY — step 3 business details */}
-        {step === 3 && isCompany && (
+        {/* COMPANY — business details */}
+        {step === 4 && isCompany && (
           <div>
             <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
               <h1 className="text-2xl font-semibold tracking-tight">Business details</h1>
@@ -667,8 +736,8 @@ function SignupPage() {
           </div>
         )}
 
-        {/* COMPANY — step 4 verification */}
-        {step === 4 && isCompany && (
+        {/* COMPANY — verification */}
+        {step === 5 && isCompany && (
           <div>
             <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 shadow-sm">
               <h1 className="text-2xl font-semibold tracking-tight">Verify your business</h1>
@@ -741,8 +810,8 @@ function SignupPage() {
           </div>
         )}
 
-        {/* WELCOME — student (step 6), alumni (step 5), company (step 5) */}
-        {((step === 6 && isStudent) || (step === 5 && isAlumni) || (step === 5 && isCompany)) && (
+        {/* WELCOME — student (step 7), alumni (step 6), company (step 6) */}
+        {((step === 7 && isStudent) || (step === 6 && isAlumni) || (step === 6 && isCompany)) && (
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">You're all set 🎉</h1>
             <p className="mt-1 text-sm text-muted-foreground">Welcome to InTask, {s.full_name.split(" ")[0]}.</p>
@@ -801,12 +870,8 @@ function SignupPage() {
 function UniSelect({ value, onChange, label = "University" }: { value: string; onChange: (v: string) => void; label?: string }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor="uni">{label}</Label>
-      <select id="uni" value={value} onChange={(e) => onChange(e.target.value)}
-        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-        <option value="">Select your university</option>
-        {NIGERIAN_UNIVERSITIES.map((u) => <option key={u} value={u}>{u}</option>)}
-      </select>
+      <Label>{label}</Label>
+      <UniversitySelect value={value} onChange={onChange} />
     </div>
   );
 }

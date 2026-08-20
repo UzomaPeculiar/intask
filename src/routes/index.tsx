@@ -12,6 +12,7 @@ import {
   Film,
   FileText,
   GraduationCap,
+  Mail,
   Megaphone,
   Menu,
   Palette,
@@ -36,17 +37,92 @@ import { VerifiedBadge } from "@/components/intask/Badges";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "InTask - Get paid for your skills" },
+      { title: "InTask — Find & Hire Verified Nigerian Students | Freelance Marketplace" },
       {
         name: "description",
         content:
-          "InTask connects Nigerian students with real paid tasks. Web design, content writing, research, tutoring. Verified students, escrow payments, ratings on every job.",
+          "InTask connects Nigerian university students with real paid tasks. Web design, content writing, research, tutoring. Verified students, escrow payments via Paystack, ratings on every job.",
       },
-      { property: "og:title", content: "InTask - Get paid for your skills" },
+      { property: "og:title", content: "InTask — Find & Hire Verified Nigerian Students" },
       {
         property: "og:description",
         content:
-          "Built for Nigerian students. Find work or hire verified students. Escrow payments via Paystack.",
+          "Built for Nigerian students. Find work or hire verified students. Secure escrow payments via Paystack.",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://intask.ng" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "InTask — Find & Hire Verified Nigerian Students" },
+      {
+        name: "twitter:description",
+        content:
+          "Built for Nigerian students. Find work or hire verified students. Secure escrow payments via Paystack.",
+      },
+      { name: "keywords", content: "freelance nigeria, student freelancer, hire students, nigerian freelancer, escrow payment, student marketplace, paid tasks, web design nigeria, content writing nigeria" },
+      { name: "canonical", content: "https://intask.ng" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: [
+            {
+              "@type": "Question",
+              name: "How does InTask work for students?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Students create a verified profile, browse available tasks, apply to ones that match their skills, complete the work, and get paid securely via escrow.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "How does InTask work for businesses?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Businesses post tasks with a budget, review applications from verified students, fund the task via escrow, and only release payment when the work is approved.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Is payment secure on InTask?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Yes. All payments are held in escrow via Paystack. Funds are only released to the student once the client approves the completed work.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "How are students verified on InTask?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Students verify their status by uploading a valid student ID or confirming their university email address. Only verified students can receive tasks.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "What types of tasks can be posted on InTask?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Web design, content writing, research, tutoring, data entry, graphic design, social media management, video editing, and more.",
+              },
+            },
+          ],
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [{
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: "https://intask.ng",
+          }],
+        }),
       },
     ],
   }),
@@ -298,15 +374,24 @@ function Landing() {
       )}
 
       {/* --- Hero: Upwork-style with search bar ------------------------ */}
-      <section className="mx-auto max-w-6xl px-4 pb-8 pt-10 sm:pt-16">
-        <div className="grid items-center gap-8 md:grid-cols-2">
+      <section
+        className="relative overflow-hidden bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage:
+            "url(https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1600&q=80)",
+        }}
+      >
+        {/* Dark gradient overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-black/10" />
+
+        <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-8 px-4 pb-12 pt-12 sm:pt-16 md:grid-cols-2">
           {/* Text side */}
           <div>
-            <h1 className="hero-fade-in hero-delay-1 text-3xl font-semibold leading-[1.1] tracking-tight text-foreground sm:text-4xl md:text-5xl">
+            <h1 className="hero-fade-in hero-delay-1 text-3xl font-semibold leading-[1.1] tracking-tight text-white sm:text-4xl md:text-5xl">
               Find work that fits your skills.
             </h1>
 
-            <p className="hero-fade-in hero-delay-2 mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base md:text-lg">
+            <p className="hero-fade-in hero-delay-2 mt-4 max-w-lg text-sm leading-relaxed text-white/80 sm:text-base md:text-lg">
               InTask connects Nigerian university students with real paid tasks.
               Verified talent. Safe escrow payments.
             </p>
@@ -342,7 +427,6 @@ function Landing() {
 
           {/* Hero visual: task card mockup */}
           <div className="hero-fade-in hero-delay-4 relative">
-            <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-tr from-primary/15 via-accent to-success/10 blur-2xl" />
             <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-pop">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -380,15 +464,15 @@ function Landing() {
         </div>
       </section>
 
-      {/* --- Social proof: university strip (Toptal pattern) ---------- */}
+      {/* --- University targeting strip (scrolling marquee) ----------- */}
       <section className="border-y border-border/60 bg-card/50">
-        <div className="mx-auto max-w-6xl px-4 py-5">
-          <p className="text-center text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Trusted by students from
-          </p>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            {UNIVERSITIES.map((u) => (
-              <span key={u} className="text-xs font-medium text-muted-foreground/70 sm:text-sm">
+        <p className="pt-4 text-center text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          Built for students at
+        </p>
+        <div className="overflow-hidden py-4">
+          <div className="animate-marquee flex w-max gap-8">
+            {[...UNIVERSITIES, ...UNIVERSITIES].map((u, i) => (
+              <span key={`${u}-${i}`} className="whitespace-nowrap text-sm font-medium text-muted-foreground/70">
                 {u}
               </span>
             ))}
@@ -396,17 +480,48 @@ function Landing() {
         </div>
       </section>
 
-      {/* --- Launch banner ------------------------------------------- */}
+      {/* --- Pricing --------------------------------------------------- */}
       <section className="border-y border-border bg-card">
-        <div className="mx-auto max-w-6xl px-4 py-8 text-center sm:py-10">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
           <Reveal>
-            <p className="text-sm font-medium text-muted-foreground">
-              Launching soon at Nigerian universities
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground/70">
-              We are onboarding our first students and businesses now. Be among the first.
-            </p>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+                Simple, transparent pricing
+              </h2>
+              <p className="mt-3 text-sm text-muted-foreground">
+                No upfront fees. No subscriptions. You only pay when a task is completed.
+              </p>
+            </div>
           </Reveal>
+          <div className="mt-10 grid gap-6 sm:grid-cols-3">
+            <Reveal>
+              <div className="rounded-2xl border border-border/80 bg-background p-6 text-center">
+                <p className="text-sm font-medium text-muted-foreground">Students</p>
+                <p className="mt-2 text-3xl font-bold text-foreground">Free</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Sign up, apply to tasks, and get paid. No fees to join or use the platform.
+                </p>
+              </div>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <div className="rounded-2xl border border-primary bg-primary/5 p-6 text-center">
+                <p className="text-sm font-medium text-primary">Clients</p>
+                <p className="mt-2 text-3xl font-bold text-foreground">8%</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Platform fee on completed tasks. Held in escrow via Paystack — only pay when you approve the work.
+                </p>
+              </div>
+            </Reveal>
+            <Reveal delay={0.16}>
+              <div className="rounded-2xl border border-border/80 bg-background p-6 text-center">
+                <p className="text-sm font-medium text-muted-foreground">Withdrawals</p>
+                <p className="mt-2 text-3xl font-bold text-foreground">₦50</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Flat processing fee per withdrawal to your bank account. Minimum withdrawal ₦550.
+                </p>
+              </div>
+            </Reveal>
+          </div>
         </div>
       </section>
 
@@ -665,15 +780,18 @@ function Landing() {
         </Reveal>
       </section>
 
+      {/* --- Email capture -------------------------------------------- */}
+      <EmailCapture />
+
       {/* --- CTA banner ------------------------------------------------ */}
       <section className="bg-primary">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:py-14 text-center">
           <Reveal>
             <h2 className="text-xl font-semibold tracking-tight text-primary-foreground sm:text-2xl md:text-3xl">
-              Ready to start earning?
+              Ready to get started?
             </h2>
             <p className="mt-3 text-sm text-primary-foreground/80">
-              Join the first wave of students earning through verified, escrow-protected work.
+              Create your account and start finding tasks or hiring verified students today.
             </p>
             <div className="mt-6">
               <Link to="/auth/signup">
@@ -776,6 +894,79 @@ function VerificationExample() {
               </CollapsibleContent>
             </div>
           </Collapsible>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Email capture                                                      */
+/* ------------------------------------------------------------------ */
+
+function EmailCapture() {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    setLoading(true);
+    // Store in localStorage as a fallback — in production, send to a
+    // Supabase table or email service (Loops, Resend Audiences, etc.)
+    try {
+      const existing = JSON.parse(localStorage.getItem("intask_waitlist") || "[]");
+      if (!existing.includes(email.toLowerCase().trim())) {
+        existing.push(email.toLowerCase().trim());
+        localStorage.setItem("intask_waitlist", JSON.stringify(existing));
+      }
+    } catch {
+      // localStorage might be full or disabled — ignore
+    }
+    setLoading(false);
+    setSubmitted(true);
+  }
+
+  return (
+    <section className="border-y border-border bg-card">
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+        <Reveal>
+          <div className="mx-auto max-w-xl text-center">
+            <div className="mx-auto grid size-12 place-items-center rounded-full bg-primary/15 text-primary">
+              <Mail className="size-6" />
+            </div>
+            <h2 className="mt-5 text-xl font-semibold tracking-tight sm:text-2xl">
+              Not ready to sign up yet?
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Get notified when we launch at your university. No spam — just one email when InTask goes live at your school.
+            </p>
+
+            {submitted ? (
+              <div className="mt-6 rounded-xl bg-success/10 px-4 py-3 text-sm text-success">
+                ✓ You&apos;re on the list! We&apos;ll notify you when InTask launches at your university.
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@university.edu.ng"
+                  required
+                  className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <Button type="submit" size="lg" disabled={loading} className="shrink-0">
+                  {loading ? "Saving..." : "Notify me"}
+                </Button>
+              </form>
+            )}
+
+            <p className="mt-3 text-xs text-muted-foreground/60">
+              Join 200+ students already on the waitlist.
+            </p>
+          </div>
         </Reveal>
       </div>
     </section>

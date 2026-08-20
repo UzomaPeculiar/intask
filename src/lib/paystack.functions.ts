@@ -552,7 +552,7 @@ export const releaseEscrow = createServerFn({ method: "POST" })
       // runs inline to avoid createServerFn context issues.
       for (const recipient of recipients) {
         try {
-          const { data: refEvent } = await supabaseAdmin
+          const { data: refEvent } = await (supabaseAdmin as any)
             .from("referral_events")
             .select("id, referrer_id, referrer_credit, referred_credit")
             .eq("referred_id", recipient.studentId)
@@ -583,7 +583,7 @@ export const releaseEscrow = createServerFn({ method: "POST" })
           if (refdCreditRes.error) throw refdCreditRes.error;
 
           // Mark event as credited.
-          await supabaseAdmin
+          await (supabaseAdmin as any)
             .from("referral_events")
             .update({ credited: true })
             .eq("id", refEvent.id);

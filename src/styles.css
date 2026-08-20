@@ -258,6 +258,18 @@
 .hero-delay-4 { animation-delay: 0.32s; }
 .hero-delay-5 { animation-delay: 0.2s; }
 
+/* University marquee ticker */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal-hidden {
     opacity: 1;
@@ -267,6 +279,9 @@
     animation: none;
   }
   .hero-fade-in {
+    animation: none;
+  }
+  .animate-marquee {
     animation: none;
   }
 }
