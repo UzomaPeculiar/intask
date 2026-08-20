@@ -14,6 +14,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/talent")({
   head: () => ({ meta: [{ title: "Talent Search — InTask" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: (search.q as string) || "",
+  }),
   component: TalentSearchPage,
 });
 
@@ -28,8 +31,9 @@ const YEAR_LEVELS = ["All Levels", "100 level", "200 level", "300 level", "400 l
 function TalentSearchPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
-  const [q, setQ] = useState("");
-  const [submittedQ, setSubmittedQ] = useState("");
+  const { q: initialQ } = Route.useSearch();
+  const [q, setQ] = useState(initialQ);
+  const [submittedQ, setSubmittedQ] = useState(initialQ);
   const [skill, setSkill] = useState("All Skills");
   const [university, setUniversity] = useState("All Universities");
   const [yearLevel, setYearLevel] = useState("All Levels");
@@ -77,10 +81,31 @@ function TalentSearchPage() {
         .from("student_profiles")
         .select("user_id, university, year_of_study, skills, rating_average, rating_count, tasks_completed, verified");
 
-      if (university !== "All Universities") spQuery = spQuery.ilike("university", `%${university}%`);
+      if (university !== "All Universities") {
+        if (university === "Other") {
+          // Exclude every university listed in the dropdown so only
+          // universities NOT in the list remain.
+          const listed = UNIVERSITIES.filter((u) => u !== "All Universities" && u !== "Other");
+          for (const u of listed) {
+            spQuery = spQuery.not("university", "ilike", `%${u}%`);
+          }
+        } else {
+          spQuery = spQuery.ilike("university", `%${university}%`);
+        }
+      }
       if (yearLevel !== "All Levels") spQuery = spQuery.eq("year_of_study", yearLevel);
       if (minRating) spQuery = spQuery.gte("rating_average", Number(minRating));
       if (skill !== "All Skills") spQuery = spQuery.contains("skills", [skill]);
+
+      // Search bar: match by skill name or by student name.
+      const q = submittedQ.trim();
+      const matchingSkills = q
+        ? SKILLS.filter((s) => s.toLowerCase().includes(q.toLowerCase()))
+        : [];
+      const searchingBySkill = matchingSkills.length > 0;
+      if (searchingBySkill) {
+        spQuery = spQuery.overlaps("skills", matchingSkills);
+      }
 
       const { data: studentProfiles } = await spQuery;
       const userIds = (studentProfiles ?? []).map((sp) => sp.user_id);
@@ -92,7 +117,10 @@ function TalentSearchPage() {
         .in("id", userIds)
         .in("role", ["student", "alumni"]);
 
-      if (submittedQ.trim()) profilesQuery = profilesQuery.ilike("full_name", `%${submittedQ.trim()}%`);
+      // Only filter by name when the query didn't match any known skill.
+      if (q && !searchingBySkill) {
+        profilesQuery = profilesQuery.ilike("full_name", `%${q}%`);
+      }
 
       const { data: profiles } = await profilesQuery;
       if (!profiles || profiles.length === 0) return [];

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasSupabaseClientConfig } from "@/integrations/supabase/env";
 import { AuthProvider } from "@/hooks/useAuth.tsx";
-import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2, PanelLeft, Search } from "lucide-react";
+import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2, PanelLeft, Search, Gift } from "lucide-react";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app")({
@@ -148,6 +148,7 @@ function DesktopSidebar({ path, mode, collapsed, onToggleCollapsed }: { path: st
   const isPoster = myProfile?.role === "company" || myProfile?.role === "individual";
   const showingTalent = isPoster || mode === "post";
   const browseLabel = showingTalent ? "Talent" : "Browse Tasks";
+  const navSearch = mode ? { mode } : undefined;
 
   const { data: unreadMsgs = 0 } = useQuery({
     queryKey: ["desktop-unread-messages"],
@@ -201,15 +202,16 @@ function DesktopSidebar({ path, mode, collapsed, onToggleCollapsed }: { path: st
       </div>
 
       <nav className={`flex-1 space-y-1 py-4 ${collapsed ? "px-2" : "px-3"}`}>
-        <DesktopNavItem to="/app" label="Dashboard" icon={Home} active={path === "/app" || path === "/app/"} collapsed={collapsed} />
+        <DesktopNavItem to="/app" label="Dashboard" icon={Home} active={path === "/app" || path === "/app/"} search={navSearch} collapsed={collapsed} />
         {showingTalent ? (
-          <DesktopNavItem to="/app/talent" label="Talent" icon={Search} active={path.startsWith("/app/talent")} collapsed={collapsed} />
+          <DesktopNavItem to="/app/talent" label="Talent" icon={Search} active={path.startsWith("/app/talent")} search={navSearch} collapsed={collapsed} />
         ) : (
-          <DesktopNavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} collapsed={collapsed} />
+          <DesktopNavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} search={navSearch} collapsed={collapsed} />
         )}
-        <DesktopNavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} collapsed={collapsed} />
-        <DesktopNavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} collapsed={collapsed} />
-        <DesktopNavItem to="/app/profile/$userId" label="Profile" icon={UserIcon} active={path.startsWith("/app/profile")} params={{ userId: "me" }} collapsed={collapsed} />
+        <DesktopNavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} search={navSearch} collapsed={collapsed} />
+        <DesktopNavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} search={navSearch} collapsed={collapsed} />
+        <DesktopNavItem to="/app/referrals" label="Referrals" icon={Gift} active={path.startsWith("/app/referrals")} search={navSearch} collapsed={collapsed} />
+        <DesktopNavItem to="/app/profile/$userId" label="Profile" icon={UserIcon} active={path.startsWith("/app/profile")} params={{ userId: "me" }} search={navSearch} collapsed={collapsed} />
       </nav>
     </aside>
   );
@@ -257,6 +259,9 @@ function BottomNav({ path, mode }: { path: string; mode: "find" | "post" | null 
   const isPoster = myProfile?.role === "company" || myProfile?.role === "individual";
   const showingTalent = isPoster || mode === "post";
   const browseLabel = showingTalent ? "Talent" : "Browse";
+
+  // Preserve mode across tab navigations so the label doesn't flip.
+  const navSearch = mode ? { mode } : undefined;
 
   const { data: unreadMsgs = 0 } = useQuery({
     queryKey: ["unread-messages"],
@@ -317,16 +322,16 @@ function BottomNav({ path, mode }: { path: string; mode: "find" | "post" | null 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/95 backdrop-blur shadow-[0_-12px_30px_-24px_rgba(15,23,42,0.25)] lg:hidden">
       <ul className="mx-auto grid max-w-md grid-cols-5">
-        <NavItem to="/app" label="Home" icon={Home} active={path === "/app" || path === "/app/"} badge={0} />
+        <NavItem to="/app" label="Home" icon={Home} active={path === "/app" || path === "/app/"} badge={0} search={navSearch} />
         {showingTalent ? (
-          <NavItem to="/app/talent" label="Talent" icon={Search} active={path.startsWith("/app/talent")} badge={0} />
+          <NavItem to="/app/talent" label="Talent" icon={Search} active={path.startsWith("/app/talent")} badge={0} search={navSearch} />
         ) : (
-          <NavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} badge={0} />
+          <NavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} badge={0} search={navSearch} />
         )}
-        <NavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} />
-        <NavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} />
+        <NavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} search={navSearch} />
+        <NavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} search={navSearch} />
         <li>
-          <Link to="/app/profile/$userId" params={{ userId: "me" }} className="relative flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium">
+          <Link to="/app/profile/$userId" params={{ userId: "me" }} search={navSearch as any} className="relative flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium">
             <span className="relative">
               <UserIcon className={`size-5 ${path.startsWith("/app/profile") ? "text-accent-foreground" : "text-muted-foreground"}`} />
             </span>
@@ -338,10 +343,10 @@ function BottomNav({ path, mode }: { path: string; mode: "find" | "post" | null 
   );
 }
 
-function NavItem({ to, label, icon: Icon, active, badge }: { to: string; label: string; icon: any; active: boolean; badge: number }) {
+function NavItem({ to, label, icon: Icon, active, badge, search }: { to: string; label: string; icon: any; active: boolean; badge: number; search?: Record<string, string> }) {
   return (
     <li>
-      <Link to={to as any} className="relative flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium">
+      <Link to={to as any} search={search as any} className="relative flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium">
         <span className="relative">
           <Icon className={`size-5 ${active ? "text-accent-foreground" : "text-muted-foreground"}`} />
           {badge > 0 && (
@@ -363,6 +368,7 @@ function DesktopNavItem({
   active,
   badge,
   params,
+  search,
   collapsed,
 }: {
   to: string;
@@ -371,12 +377,14 @@ function DesktopNavItem({
   active: boolean;
   badge?: number;
   params?: Record<string, string>;
+  search?: Record<string, string>;
   collapsed: boolean;
 }) {
   return (
     <Link
       to={to as any}
       params={params as any}
+      search={search as any}
       title={label}
       aria-label={label}
       className={`relative flex items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${

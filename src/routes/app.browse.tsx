@@ -13,13 +13,17 @@ import { MVP_FEATURES } from "@/lib/mvp-features";
 
 export const Route = createFileRoute("/app/browse")({
   head: () => ({ meta: [{ title: "Browse — InTask" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: (search.q as string) || "",
+  }),
   component: BrowsePage,
 });
 
 function BrowsePage() {
+  const { q: initialQ } = Route.useSearch();
   const [tab, setTab] = useState<"tasks" | "saved">("tasks");
   const [filter, setFilter] = useState("All");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQ);
   const [budgetBand, setBudgetBand] = useState("any");
   const [typeFilter, setTypeFilter] = useState("all");
 

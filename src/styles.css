@@ -7,7 +7,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * InTask design system — clean, modern, mobile-first.
+ * InTask design system - clean, modern, mobile-first.
  * Palette aligned with prototype: light green canvas, mint primary, deep green text.
  */
 
@@ -220,4 +220,53 @@
 
 @utility shadow-card {
   box-shadow: var(--shadow-card);
+}
+
+@utility shadow-pop {
+  box-shadow: var(--shadow-pop);
+}
+
+/* ── Scroll-reveal + hero entrance animations ─────────────────── */
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal-hidden {
+  opacity: 0;
+  transform: translateY(28px);
+}
+
+.reveal-visible {
+  animation: reveal-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.hero-fade-in {
+  animation: reveal-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hero-delay-1 { animation-delay: 0.05s; }
+.hero-delay-2 { animation-delay: 0.12s; }
+.hero-delay-3 { animation-delay: 0.22s; }
+.hero-delay-4 { animation-delay: 0.32s; }
+.hero-delay-5 { animation-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-hidden {
+    opacity: 1;
+    transform: none;
+  }
+  .reveal-visible {
+    animation: none;
+  }
+  .hero-fade-in {
+    animation: none;
+  }
 }

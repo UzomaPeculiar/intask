@@ -25,6 +25,7 @@ import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-pas
 import { Route as AppWalletRouteImport } from './routes/app.wallet'
 import { Route as AppTalentRouteImport } from './routes/app.talent'
 import { Route as AppSubscriptionRouteImport } from './routes/app.subscription'
+import { Route as AppReferralsRouteImport } from './routes/app.referrals'
 import { Route as AppPartnershipRouteImport } from './routes/app.partnership'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/app.messages'
@@ -132,6 +133,11 @@ const AppTalentRoute = AppTalentRouteImport.update({
 const AppSubscriptionRoute = AppSubscriptionRouteImport.update({
   id: '/subscription',
   path: '/subscription',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReferralsRoute = AppReferralsRouteImport.update({
+  id: '/referrals',
+  path: '/referrals',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPartnershipRoute = AppPartnershipRouteImport.update({
@@ -296,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
+  '/app/referrals': typeof AppReferralsRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
   '/app/wallet': typeof AppWalletRoute
@@ -341,6 +348,7 @@ export interface FileRoutesByTo {
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
+  '/app/referrals': typeof AppReferralsRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
   '/app/wallet': typeof AppWalletRoute
@@ -388,6 +396,7 @@ export interface FileRoutesById {
   '/app/messages': typeof AppMessagesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
+  '/app/referrals': typeof AppReferralsRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
   '/app/wallet': typeof AppWalletRoute
@@ -436,6 +445,7 @@ export interface FileRouteTypes {
     | '/app/messages'
     | '/app/notifications'
     | '/app/partnership'
+    | '/app/referrals'
     | '/app/subscription'
     | '/app/talent'
     | '/app/wallet'
@@ -481,6 +491,7 @@ export interface FileRouteTypes {
     | '/app/messages'
     | '/app/notifications'
     | '/app/partnership'
+    | '/app/referrals'
     | '/app/subscription'
     | '/app/talent'
     | '/app/wallet'
@@ -527,6 +538,7 @@ export interface FileRouteTypes {
     | '/app/messages'
     | '/app/notifications'
     | '/app/partnership'
+    | '/app/referrals'
     | '/app/subscription'
     | '/app/talent'
     | '/app/wallet'
@@ -684,6 +696,13 @@ declare module '@tanstack/react-router' {
       path: '/subscription'
       fullPath: '/app/subscription'
       preLoaderRoute: typeof AppSubscriptionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/referrals': {
+      id: '/app/referrals'
+      path: '/referrals'
+      fullPath: '/app/referrals'
+      preLoaderRoute: typeof AppReferralsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/partnership': {
@@ -948,6 +967,7 @@ interface AppRouteChildren {
   AppMessagesRoute: typeof AppMessagesRouteWithChildren
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPartnershipRoute: typeof AppPartnershipRoute
+  AppReferralsRoute: typeof AppReferralsRoute
   AppSubscriptionRoute: typeof AppSubscriptionRoute
   AppTalentRoute: typeof AppTalentRoute
   AppWalletRoute: typeof AppWalletRoute
@@ -975,6 +995,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMessagesRoute: AppMessagesRouteWithChildren,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPartnershipRoute: AppPartnershipRoute,
+  AppReferralsRoute: AppReferralsRoute,
   AppSubscriptionRoute: AppSubscriptionRoute,
   AppTalentRoute: AppTalentRoute,
   AppWalletRoute: AppWalletRoute,

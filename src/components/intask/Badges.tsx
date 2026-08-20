@@ -52,16 +52,26 @@ export function VerifiedBadge({ role, verified, isPro }: { role?: "student" | "a
       </span>
     );
   }
-  if (role === "student" && verified === false) {
+  // Students: show pending when verified is false, null, or undefined.
+  // Only show "Verified" when verified is explicitly true.
+  if (role === "student") {
+    if (verified === true) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
+          <CheckCircle2 className="size-3" /> Verified Student
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">
         <Clock className="size-3" /> Verification pending
       </span>
     );
   }
+  // Fallback for unknown roles
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
-      <CheckCircle2 className="size-3" /> Verified Student
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+      Unverified
     </span>
   );
 }

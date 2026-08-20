@@ -19,6 +19,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { naira, timeAgo } from "@/lib/format";
 import { FEED_FILTERS } from "@/lib/constants";
 import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle, Users, Wallet, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { OnboardingChecklist } from "@/components/intask/OnboardingChecklist";
 import { useApplicantCount, applicantLabel } from "@/hooks/useApplicantCount";
 import { MessagePartyLink } from "@/components/intask/MessagePartyLink";
 import { MVP_FEATURES } from "@/lib/mvp-features";
@@ -80,6 +81,33 @@ function Dashboard() {
     },
   });
 
+  // Onboarding: count tasks applied/posted for checklist
+  const { data: onboardingCounts } = useQuery({
+    queryKey: ["onboarding-counts", user?.id, role],
+    enabled: !!user?.id && !!role,
+    queryFn: async () => {
+      if (!user || !role) return { applied: 0, posted: 0 };
+      const isSeeker = role === "student" || role === "alumni";
+      const [applied, posted] = await Promise.all([
+        isSeeker
+          ? supabase
+              .from("applications")
+              .select("id", { count: "exact", head: true })
+              .eq("student_id", user.id)
+              .then((r) => r.count ?? 0)
+          : Promise.resolve(0),
+        !isSeeker
+          ? supabase
+              .from("tasks")
+              .select("id", { count: "exact", head: true })
+              .eq("poster_id", user.id)
+              .then((r) => r.count ?? 0)
+          : Promise.resolve(0),
+      ]);
+      return { applied, posted };
+    },
+  });
+
   useEffect(() => {
     if (modeFromSearch) return; // an explicit ?mode= in the URL wins
     if (role === "company" || role === "individual") {
@@ -138,6 +166,28 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      <div className="pb-4">
+        <OnboardingChecklist
+          role={role}
+          profileComplete={
+            (role === "student" || role === "alumni")
+              ? !!(accountDetails?.student?.university && accountDetails?.student?.year_of_study)
+              : role === "company"
+                ? !!(accountDetails?.company?.company_name)
+                : !!accountDetails?.individual
+          }
+          tasksApplied={onboardingCounts?.applied ?? 0}
+          tasksPosted={onboardingCounts?.posted ?? 0}
+          verified={
+            (role === "student" || role === "alumni")
+              ? !!(accountDetails?.student?.verified)
+              : role === "company"
+                ? !!(accountDetails?.company?.verified)
+                : !!(accountDetails?.individual?.verified)
+          }
+        />
+      </div>
 
       {canFindWork && (
         <div>
@@ -302,6 +352,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
           </div>
           <CollapsibleContent className="pt-2">
             <div className="space-y-2">
+              {MVP_FEATURES.mentorship && (
               <Link
                 to="/app/mentorship"
                 className="block rounded-2xl border border-warning/30 bg-gradient-to-br from-warning/10 to-card p-4 shadow-sm"
@@ -319,7 +370,9 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
                   <span className="text-xs font-medium text-warning">Browse →</span>
                 </div>
               </Link>
+              )}
 
+              {MVP_FEATURES.internships && (
               <Link
                 to="/app/internships"
                 className="block rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm active:bg-accent/50"
@@ -337,7 +390,9 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
                   <span className="text-xs font-medium text-accent-foreground">Browse →</span>
                 </div>
               </Link>
+              )}
 
+              {MVP_FEATURES.learn && (
               <div
                 onClick={() => nav({ to: "/app/learn" as any })}
                 className="cursor-pointer rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm active:bg-accent/50"
@@ -355,6 +410,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
                   <span className="text-xs font-medium text-warning">Browse →</span>
                 </div>
               </div>
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>

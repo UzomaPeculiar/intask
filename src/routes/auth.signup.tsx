@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { applyReferralCode } from "@/lib/referral.functions";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,9 @@ const SUPABASE_FUNCTIONS_URL = `${SUPABASE_BASE_URL.replace(/\/$/, "")}/function
 
 export const Route = createFileRoute("/auth/signup")({
   head: () => ({ meta: [{ title: "Sign up — InTask" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    ref: (search.ref as string) || "",
+  }),
   component: SignupPage,
 });
 
@@ -68,6 +72,9 @@ function Stepper({ current, total }: { current: number; total: number }) {
 
 function SignupPage() {
   const nav = useNavigate();
+  const { ref: referralCodeParam } = Route.useSearch();
+  const [referralCodeManual, setReferralCodeManual] = useState("");
+  const effectiveReferralCode = referralCodeParam || referralCodeManual || "";
   const [idFile, setIdFile] = useState<File | null>(null);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -293,6 +300,32 @@ function SignupPage() {
     }
   }
 
+  /** After signup/profile creation, check admin status and route accordingly. */
+  async function redirectToApp() {
+    try {
+      const { data: me } = await supabase.auth.getUser();
+      if (me.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", me.user.id)
+          .maybeSingle();
+        // Admin users go to /admin; everyone else to /app.
+        const { data: fullProfile } = await (supabase as any)
+          .from("my_profile")
+          .select("is_admin")
+          .maybeSingle();
+        if (fullProfile?.is_admin) {
+          nav({ to: "/admin" });
+          return;
+        }
+      }
+    } catch {
+      // Fall through to default route
+    }
+    nav({ to: "/app" });
+  }
+
   async function handleAccountSubmit() {
     const err = validAccount();
     if (err) return toast.error(err);
@@ -303,7 +336,7 @@ function SignupPage() {
       await finalizeProfile();
       setLoading(false);
       toast.success("Welcome! Post your first task to get started.");
-      nav({ to: "/app" });
+      await redirectToApp();
       return;
     }
     next();
@@ -313,6 +346,15 @@ function SignupPage() {
     setLoading(true);
     await finalizeProfile();
     setLoading(false);
+    // Apply referral code if present.
+    if (effectiveReferralCode) {
+      try {
+        await applyReferralCode({ data: { code: effectiveReferralCode } });
+        toast.success("Referral bonus applied! Check your wallet.");
+      } catch {
+        // Non-critical — don't block signup.
+      }
+    }
     next(); // welcome
   }
 
@@ -320,6 +362,15 @@ function SignupPage() {
     setLoading(true);
     await finalizeProfile();
     setLoading(false);
+    // Apply referral code if present.
+    if (effectiveReferralCode) {
+      try {
+        await applyReferralCode({ data: { code: effectiveReferralCode } });
+        toast.success("Referral bonus applied! Check your wallet.");
+      } catch {
+        // Non-critical — don't block signup.
+      }
+    }
     next(); // welcome
   }
 
@@ -328,6 +379,15 @@ function SignupPage() {
     setLoading(true);
     await finalizeProfile();
     setLoading(false);
+    // Apply referral code if present.
+    if (effectiveReferralCode) {
+      try {
+        await applyReferralCode({ data: { code: effectiveReferralCode } });
+        toast.success("Referral bonus applied! Check your wallet.");
+      } catch {
+        // Non-critical — don't block signup.
+      }
+    }
     next(); // go to welcome
   }
 
@@ -335,6 +395,15 @@ function SignupPage() {
     setLoading(true);
     await finalizeProfile();
     setLoading(false);
+    // Apply referral code if present.
+    if (effectiveReferralCode) {
+      try {
+        await applyReferralCode({ data: { code: effectiveReferralCode } });
+        toast.success("Referral bonus applied! Check your wallet.");
+      } catch {
+        // Non-critical — don't block signup.
+      }
+    }
     next(); // go to welcome
   }
 
@@ -423,6 +492,24 @@ function SignupPage() {
                 <Label htmlFor="pw">Password</Label>
                 <Input id="pw" type="password" value={s.password} onChange={(e) => set("password", e.target.value)} placeholder="At least 8 characters" />
               </div>
+              {!referralCodeParam && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="ref">Referral code <span className="text-muted-foreground">(optional)</span></Label>
+                  <Input
+                    id="ref"
+                    value={referralCodeManual}
+                    onChange={(e) => setReferralCodeManual(e.target.value.toUpperCase())}
+                    placeholder="e.g. ABCD1234"
+                    className="uppercase"
+                    maxLength={8}
+                  />
+                </div>
+              )}
+              {referralCodeParam && (
+                <div className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">
+                  ✓ Referral code <span className="font-mono font-bold">{referralCodeParam}</span> applied — you&apos;ll both earn a bonus!
+                </div>
+              )}
               <Button size="lg" className="w-full" onClick={handleAccountSubmit} disabled={loading}>
                 {loading ? "Creating..." : "Continue"} <ArrowRight className="size-4" />
               </Button>
@@ -695,7 +782,7 @@ function SignupPage() {
             </div>
 
             <div className="mt-6 space-y-2">
-              <Button size="lg" className="w-full" onClick={() => nav({ to: "/app" })}>
+              <Button size="lg" className="w-full" onClick={async () => await redirectToApp()}>
                 {isAlumni ? "Go to dashboard" : "Browse open tasks"}
               </Button>
               <Button size="lg" variant="ghost" className="w-full" onClick={() => nav({ to: "/app/profile/$userId", params: { userId: "me" } })}>

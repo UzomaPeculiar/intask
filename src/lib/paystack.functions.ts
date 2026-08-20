@@ -547,6 +547,67 @@ export const releaseEscrow = createServerFn({ method: "POST" })
         }
       }
 
+      // Credit referral rewards if any recipient was referred.
+      // This logic mirrors creditReferralRewards in referral.functions.ts but
+      // runs inline to avoid createServerFn context issues.
+      for (const recipient of recipients) {
+        try {
+          const { data: refEvent } = await supabaseAdmin
+            .from("referral_events")
+            .select("id, referrer_id, referrer_credit, referred_credit")
+            .eq("referred_id", recipient.studentId)
+            .eq("credited", false)
+            .maybeSingle();
+
+          if (!refEvent) continue;
+
+          const referrerAmount = Number(refEvent.referrer_credit ?? 500);
+          const referredAmount = Number(refEvent.referred_credit ?? 250);
+
+          // Credit referrer's wallet.
+          const refCreditRes = await supabaseAdmin.rpc("credit_wallet", {
+            p_user_id: refEvent.referrer_id,
+            p_amount: referrerAmount,
+            p_description: `Referral reward: someone you invited completed their first task!`,
+            p_reference: `REFERRAL_REFERRER_${recipient.studentId}`,
+          });
+          if (refCreditRes.error) throw refCreditRes.error;
+
+          // Credit referred user's wallet (completion bonus).
+          const refdCreditRes = await supabaseAdmin.rpc("credit_wallet", {
+            p_user_id: recipient.studentId,
+            p_amount: referredAmount,
+            p_description: `Referral completion bonus: thanks for completing your first task!`,
+            p_reference: `REFERRAL_REFERRED_${recipient.studentId}`,
+          });
+          if (refdCreditRes.error) throw refdCreditRes.error;
+
+          // Mark event as credited.
+          await supabaseAdmin
+            .from("referral_events")
+            .update({ credited: true })
+            .eq("id", refEvent.id);
+
+          // Notify both parties.
+          await supabaseAdmin.from("notifications").insert([
+            {
+              user_id: refEvent.referrer_id,
+              type: "referral_reward",
+              message: `You earned \u20A6${referrerAmount.toLocaleString("en-NG")}! Your referral completed their first task.`,
+              link: "/app/referrals",
+            },
+            {
+              user_id: recipient.studentId,
+              type: "referral_reward",
+              message: `You earned a \u20A6${referredAmount.toLocaleString("en-NG")} completion bonus for your first task!`,
+              link: "/app/referrals",
+            },
+          ]);
+        } catch {
+          // Non-fatal — don't block task completion if referral credit fails.
+        }
+      }
+
       await supabaseAdmin.from("notifications").insert(
         recipients.map((recipient) => ({
           user_id: recipient.studentId,

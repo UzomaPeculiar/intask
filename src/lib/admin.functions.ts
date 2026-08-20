@@ -765,7 +765,7 @@ export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
     const matchedCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     const reviewCutoff = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
-    const [profilesRes, tasksRes, transactionsRes, disputesRes, reportsRes, withdrawalsRes, studentRes, companyRes, individualRes, fundingRes] = await Promise.all([
+    const [profilesRes, tasksRes, transactionsRes, disputesRes, reportsRes, withdrawalsRes, studentRes, companyRes, individualRes, fundingRes, referralEventsRes] = await Promise.all([
       db.from("profiles").select("id, role, created_at"),
       db.from("tasks").select("id, title, status, created_at, updated_at"),
       db.from("transactions").select("id, task_id, status, amount, platform_fee, created_at, updated_at"),
@@ -776,6 +776,7 @@ export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
       db.from("company_profiles").select("user_id, verified, verification_status"),
       db.from("individual_profiles").select("user_id, verification_status"),
       db.from("wallet_funding").select("id, status, created_at, webhook_processed"),
+      (db as any).from("referral_events").select("referrer_id, referrer_credit, credited, created_at"),
     ]);
 
     if (profilesRes.error) throw profilesRes.error;
@@ -795,6 +796,7 @@ export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
     const disputes = disputesRes.data ?? [];
     const reports = reportsRes.data ?? [];
     const withdrawals = withdrawalsRes.data ?? [];
+    const referralEvents = referralEventsRes.data ?? [];
     const students = studentRes.data ?? [];
     const companies = companyRes.data ?? [];
     const individuals = individualRes.data ?? [];
@@ -916,6 +918,43 @@ export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
       .slice(-6)
       .map((key) => ({ key, label: formatMonthLabel(key), amount: Math.round(monthlyMap[key]) }));
 
+    // Referral stats
+    const totalReferrals = referralEvents.length;
+    const totalReferralCredits = referralEvents.reduce(
+      (sum: number, e: any) => sum + Number(e.referrer_credit ?? 0), 0,
+    );
+    const creditedReferrals = referralEvents.filter((e: any) => e.credited).length;
+
+    // Top referrers: aggregate by referrer_id
+    const referrerMap = new Map<string, { count: number; earned: number }>();
+    for (const e of referralEvents) {
+      const rid = e.referrer_id;
+      if (!rid) continue;
+      const prev = referrerMap.get(rid) ?? { count: 0, earned: 0 };
+      prev.count += 1;
+      prev.earned += Number(e.referrer_credit ?? 0);
+      referrerMap.set(rid, prev);
+    }
+    const topReferrerIds = [...referrerMap.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 5)
+      .map(([id]) => id);
+
+    let topReferrers: Array<{ id: string; name: string; count: number; earned: number }> = [];
+    if (topReferrerIds.length > 0) {
+      const { data: topProfiles } = await db
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", topReferrerIds);
+      const topMap = new Map((topProfiles ?? []).map((p: any) => [p.id, p.full_name]));
+      topReferrers = topReferrerIds.map((id) => ({
+        id,
+        name: topMap.get(id) ?? "Unknown",
+        count: referrerMap.get(id)?.count ?? 0,
+        earned: referrerMap.get(id)?.earned ?? 0,
+      }));
+    }
+
     return {
       liveStats: {
         totalUsers: profiles.length,
@@ -949,6 +988,12 @@ export const getAdminCommandCenterStats = createServerFn({ method: "GET" })
       revenueTrend: {
         weekly: weeklyTrend,
         monthly: monthlyTrend,
+      },
+      referrals: {
+        totalReferrals,
+        totalReferralCredits,
+        creditedReferrals,
+        topReferrers,
       },
     };
   });
@@ -1900,6 +1945,142 @@ export const adminSetUserStatus = createServerFn({ method: "POST" })
       details: { reason: data.reason || null, status: data.status },
     });
     if (auditErr) throw auditErr;
+
+    return { ok: true };
+  });
+
+// ---------------------------------------------------------------------------
+// Student ID upload — bypasses the student_profiles UPDATE trigger which
+// queries profiles.is_admin via is_admin_user(). The authenticated role lacks
+// SELECT on that column, causing "permission denied for table profiles".
+// Using the service_role client avoids this.
+// ---------------------------------------------------------------------------
+export const submitStudentIdUpload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { idUploadPath: string; switchToId?: boolean }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const { userId } = context;
+
+    // First check if the row exists.
+    const { data: existing } = await db
+      .from("student_profiles")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (existing) {
+      // Row exists — update it.
+      const updatePayload: Record<string, any> = {
+        id_upload_path: data.idUploadPath,
+        verification_status: "pending",
+      };
+      if (data.switchToId) {
+        updatePayload.verification_method = "id_upload";
+      }
+
+      const { data: updated, error: updateErr } = await db
+        .from("student_profiles")
+        .update(updatePayload)
+        .eq("user_id", userId)
+        .select("user_id, verification_method, verification_status, id_upload_path")
+        .maybeSingle();
+
+      if (updateErr) throw updateErr;
+      if (!updated) throw new Error("Update returned no rows");
+      return { ok: true, row: updated };
+    } else {
+      // Row does not exist — create it (insert).
+      const insertPayload: Record<string, any> = {
+        user_id: userId,
+        id_upload_path: data.idUploadPath,
+        verification_status: "pending",
+        verification_method: data.switchToId ? "id_upload" : "email",
+        verified: false,
+      };
+
+      const { data: inserted, error: insertErr } = await db
+        .from("student_profiles")
+        .insert(insertPayload)
+        .select("user_id, verification_method, verification_status, id_upload_path")
+        .maybeSingle();
+
+      if (insertErr) throw insertErr;
+      if (!inserted) throw new Error("Insert returned no rows");
+      return { ok: true, row: inserted };
+    }
+  });
+
+export const switchStudentVerificationMethod = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { method: string }) => data)
+  .handler(async ({ context, data }) => {
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+    const { userId } = context;
+
+    const { error: updateErr } = await db
+      .from("student_profiles")
+      .update({
+        verification_method: data.method,
+        verification_status: "pending",
+      } as any)
+      .eq("user_id", userId);
+
+    if (updateErr) throw updateErr;
+    return { ok: true };
+  });
+
+export const adminApproveStudentVerification = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { userId: string }) => data)
+  .handler(async ({ context, data }) => {
+    const { userId: adminUserId } = context;
+    await ensureAdmin(adminUserId);
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+
+    const { error: updateErr } = await (db as any)
+      .from("student_profiles")
+      .update({
+        verified: true,
+        verification_status: "approved",
+      })
+      .eq("user_id", data.userId);
+
+    if (updateErr) throw updateErr;
+
+    await (db as any).from("notifications").insert({
+      user_id: data.userId,
+      type: "verification_approved",
+      message: "Your student ID has been verified. Your Verified Student badge is now active.",
+      link: "/app/profile/me",
+    });
+
+    return { ok: true };
+  });
+
+export const adminRejectStudentVerification = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data: { userId: string }) => data)
+  .handler(async ({ context, data }) => {
+    const { userId: adminUserId } = context;
+    await ensureAdmin(adminUserId);
+    const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
+
+    const { error: updateErr } = await (db as any)
+      .from("student_profiles")
+      .update({
+        verification_status: "rejected",
+      })
+      .eq("user_id", data.userId);
+
+    if (updateErr) throw updateErr;
+
+    await (db as any).from("notifications").insert({
+      user_id: data.userId,
+      type: "verification_rejected",
+      message: "Your student ID could not be verified. Please upload a clearer photo of your valid student ID card.",
+      link: "/app",
+    });
 
     return { ok: true };
   });

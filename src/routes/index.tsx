@@ -1,139 +1,365 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import React, { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   Briefcase,
   Building2,
+  BookOpen,
+  BarChart3,
   CheckCircle2,
+  Code,
+  Film,
+  FileText,
   GraduationCap,
+  Megaphone,
+  Menu,
+  Palette,
+  PenTool,
+  Search,
   ShieldCheck,
   Sparkles,
   Star,
   User,
+  X,
+  Zap,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { naira } from "@/lib/format";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
 
+/* ------------------------------------------------------------------ */
+/*  Route                                                              */
+/* ------------------------------------------------------------------ */
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "InTask — Get paid for your skills" },
-      { name: "description", content: "InTask connects Nigerian students with real paid tasks — from web design to research to content writing. Verified students, escrow payments, ratings on every job." },
-      { property: "og:title", content: "InTask — Get paid for your skills" },
-      { property: "og:description", content: "Built for Nigerian students. Find work or hire verified students. Escrow payments via Paystack." },
+      { title: "InTask - Get paid for your skills" },
+      {
+        name: "description",
+        content:
+          "InTask connects Nigerian students with real paid tasks. Web design, content writing, research, tutoring. Verified students, escrow payments, ratings on every job.",
+      },
+      { property: "og:title", content: "InTask - Get paid for your skills" },
+      {
+        property: "og:description",
+        content:
+          "Built for Nigerian students. Find work or hire verified students. Escrow payments via Paystack.",
+      },
     ],
   }),
   component: Landing,
 });
 
-const HOW_IT_WORKS = [
-  { n: 1, title: "Create your profile", body: "Sign up as a student, alumni, or business. Verify your status and list your skills." },
-  { n: 2, title: "Apply or post a task", body: "Students browse and apply for open tasks. Businesses post tasks and review applicants." },
-  { n: 3, title: "Get paid safely", body: "Money is held in escrow via Paystack and released only when work is approved." },
-];
+/* ------------------------------------------------------------------ */
+/*  Reveal-on-scroll wrapper (IntersectionObserver + CSS)              */
+/* ------------------------------------------------------------------ */
 
-const CATEGORIES = [
-  "Web Design", "Content Writing", "UI/UX", "Research", "Video Editing",
-  "Tutoring", "Business", "Data Analysis", "App Development", "Social Media",
-  "Graphic Design", "Copywriting", "Python", "Virtual Assistant",
-];
+function Reveal({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
 
-const TRUST = [
-  { icon: ShieldCheck, title: "Verified students only", body: "Every student is checked with their school email or student ID before they can work." },
-  { icon: CheckCircle2, title: "Secure escrow payments", body: "Funds are held safely via Paystack until you approve the delivered work." },
-  { icon: Star, title: "Ratings on every job", body: "Both sides leave reviews after every task. Build a reputation that earns you more." },
-];
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
 
-const WHO_IS_IT_FOR = [
-  {
-    icon: GraduationCap,
-    title: "Students",
-    body: "Find paid tasks that match your skills. Build your portfolio and earn while you study.",
-    cta: "Find work",
-    color: "bg-primary/10 text-primary",
-  },
-  {
-    icon: User,
-    title: "Alumni",
-    body: "Keep earning after graduation. Take on tasks, build your portfolio, and grow your network.",
-    cta: "Join as alumni",
-    color: "bg-warning/10 text-warning",
-  },
-  {
-    icon: Building2,
-    title: "Businesses",
-    body: "Access affordable, verified student talent for short-term tasks and projects.",
-    cta: "Post a task",
-    color: "bg-success/10 text-success",
-  },
-];
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.remove("reveal-hidden");
+          el.classList.add("reveal-visible");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
 
-function Landing() {
-  return <MobileLanding />;
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`reveal-hidden ${className ?? ""}`}
+      style={delay > 0 ? { animationDelay: `${delay}s` } : undefined}
+    >
+      {children}
+    </div>
+  );
 }
 
-function MobileLanding() {
-  const [showAllCategories, setShowAllCategories] = useState(false);
-  const [showTrustExample, setShowTrustExample] = useState(false);
-  const visibleCategories = showAllCategories ? CATEGORIES : CATEGORIES.slice(0, 8);
+/* ------------------------------------------------------------------ */
+/*  Static data                                                        */
+/* ------------------------------------------------------------------ */
+
+
+const STUDENT_PERKS = [
+  "Find tasks that match your skills",
+  "Build your portfolio while studying",
+  "Get paid safely via escrow",
+  "Earn ratings that open more work",
+];
+
+const BUSINESS_PERKS = [
+  "Access verified student talent",
+  "Post tasks in minutes",
+  "Funds held until work is approved",
+  "Ratings help you pick the best fit",
+];
+
+const HOW_IT_WORKS = [
+  {
+    n: 1,
+    title: "Create your profile",
+    body: "Sign up as a student, alumni, or business. Verify your status and list your skills.",
+  },
+  {
+    n: 2,
+    title: "Apply or post a task",
+    body: "Students browse and apply for open tasks. Businesses post tasks and review applicants.",
+  },
+  {
+    n: 3,
+    title: "Get paid safely",
+    body: "Money is held in escrow via Paystack and released only when work is approved.",
+  },
+];
+
+const SEARCH_SUGGESTIONS = [
+  "Web Design",
+  "Content Writing",
+  "UI/UX",
+  "Research",
+  "Video Editing",
+  "Tutoring",
+];
+
+const CATEGORIES_DATA = [
+  { name: "Web Design", icon: Code },
+  { name: "Content Writing", icon: PenTool },
+  { name: "UI/UX Design", icon: Palette },
+  { name: "Research", icon: BookOpen },
+  { name: "Video Editing", icon: Film },
+  { name: "Graphic Design", icon: Sparkles },
+  { name: "Data Analysis", icon: BarChart3 },
+  { name: "App Development", icon: Zap },
+  { name: "Social Media", icon: Megaphone },
+  { name: "Copywriting", icon: FileText },
+  { name: "Tutoring", icon: GraduationCap },
+  { name: "Virtual Assistant", icon: Briefcase },
+];
+
+
+const UNIVERSITIES = [
+  "University of Lagos",
+  "Obafemi Awolowo University",
+  "University of Nigeria",
+  "Ahmadu Bello University",
+  "University of Ibadan",
+  "Federal University of Technology",
+];
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
+function Landing() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    navigate({ to: "/auth/login", search: { redirect: q ? `/app/browse?q=${encodeURIComponent(q)}` : "/app/browse" } });
+  };
 
   return (
     <div className="min-h-screen bg-background">
+      {/* --- Header -------------------------------------------------- */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
-              <Sparkles className="size-4" />
-            </span>
-            InTask
-          </Link>
+          <div className="flex items-center gap-8">
+            <Link
+              to="/"
+              className="flex items-center gap-2 font-semibold tracking-tight"
+            >
+              <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
+                <Sparkles className="size-4" />
+              </span>
+              InTask
+            </Link>
+            <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
+              <Link to="/auth/login" search={{ redirect: "/app/browse" }} className="transition-colors hover:text-foreground">
+                Find work
+              </Link>
+              <Link to="/app/talent" className="transition-colors hover:text-foreground">
+                For businesses
+              </Link>
+              <Link to="/auth/login" search={{ redirect: "/app/browse" }} className="transition-colors hover:text-foreground">
+                Categories
+              </Link>
+            </nav>
+          </div>
           <div className="flex items-center gap-2">
-            <Link to="/auth/login"><Button variant="ghost" size="sm">Log in</Button></Link>
-            <Link to="/auth/signup"><Button size="sm">Sign up free</Button></Link>
+            <Link to="/auth/login" className="hidden sm:inline-flex">
+              <Button variant="ghost" size="sm">
+                Log in
+              </Button>
+            </Link>
+            <Link to="/auth/signup" className="hidden sm:inline-flex">
+              <Button size="sm">Sign up free</Button>
+            </Link>
+            <button
+              className="grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="size-5" />
+            </button>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:pt-16">
-        <div className="grid items-center gap-10 md:grid-cols-2">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-              <Sparkles className="size-3" /> Built for students
-            </span>
-            <h1 className="mt-4 text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl">
-              Get paid for your skills. <span className="text-primary">No experience needed.</span>
-            </h1>
-            <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-              InTask connects university students with real paid tasks — web design, content writing, research, tutoring, and more. Safe payments. Verified talent.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link to="/auth/signup">
-                <Button size="lg" className="gap-2">
-                  Find work <ArrowRight className="size-4" />
+      {/* --- Mobile menu overlay -------------------------------------- */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="absolute inset-y-0 right-0 w-full max-w-xs bg-background shadow-lg">
+            <div className="flex h-14 items-center justify-between border-b border-border px-4">
+              <Link
+                to="/"
+                className="flex items-center gap-2 font-semibold tracking-tight"
+                onClick={() => setMobileOpen(false)}
+              >
+                <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground">
+                  <Sparkles className="size-4" />
+                </span>
+                InTask
+              </Link>
+              <button
+                className="grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close menu"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <nav className="flex flex-col gap-1 p-4">
+              <Link
+                to="/auth/login"
+                search={{ redirect: "/app/browse" }}
+                className="rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                onClick={() => setMobileOpen(false)}
+              >
+                Find work
+              </Link>
+              <Link
+                to="/app/talent"
+                className="rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                onClick={() => setMobileOpen(false)}
+              >
+                For businesses
+              </Link>
+              <Link
+                to="/auth/login"
+                search={{ redirect: "/app/browse" }}
+                className="rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                onClick={() => setMobileOpen(false)}
+              >
+                Categories
+              </Link>
+            </nav>
+            <div className="border-t border-border p-4">
+              <Link to="/auth/login" onClick={() => setMobileOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start">
+                  Log in
                 </Button>
               </Link>
-              <Link to="/auth/signup">
-                <Button size="lg" variant="outline">Post a task</Button>
+              <Link to="/auth/signup" onClick={() => setMobileOpen(false)} className="mt-2 block">
+                <Button className="w-full">Sign up free</Button>
               </Link>
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">Free to sign up · Payments secured by Paystack · Verified students only</p>
+          </div>
+        </div>
+      )}
+
+      {/* --- Hero: Upwork-style with search bar ------------------------ */}
+      <section className="mx-auto max-w-6xl px-4 pb-8 pt-10 sm:pt-16">
+        <div className="grid items-center gap-8 md:grid-cols-2">
+          {/* Text side */}
+          <div>
+            <h1 className="hero-fade-in hero-delay-1 text-3xl font-semibold leading-[1.1] tracking-tight text-foreground sm:text-4xl md:text-5xl">
+              Find work that fits your skills.
+            </h1>
+
+            <p className="hero-fade-in hero-delay-2 mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base md:text-lg">
+              InTask connects Nigerian university students with real paid tasks.
+              Verified talent. Safe escrow payments.
+            </p>
+
+            <div className="hero-fade-in hero-delay-3 mt-7">
+              <form onSubmit={handleSearch} className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+                <Search className="size-4 shrink-0 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for a skill..."
+                  className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                />
+                <Button type="submit" size="sm" className="shrink-0">
+                  Search
+                </Button>
+              </form>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {SEARCH_SUGGESTIONS.map((s) => (
+                  <Link
+                    key={s}
+                    to="/auth/login"
+                    search={{ redirect: `/app/browse?q=${encodeURIComponent(s)}` }}
+                    className="rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                  >
+                    {s}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="relative">
+          {/* Hero visual: task card mockup */}
+          <div className="hero-fade-in hero-delay-4 relative">
             <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-gradient-to-tr from-primary/15 via-accent to-success/10 blur-2xl" />
-            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-[0_18px_48px_-24px_rgba(37,99,235,0.38)]">
+            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-pop">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">Web Design · Remote</p>
-                  <h3 className="mt-1 truncate text-base font-semibold text-foreground">Landing page for fashion brand</h3>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Web Design - Remote
+                  </p>
+                  <h3 className="mt-1 truncate text-base font-semibold text-foreground">
+                    Landing page for fashion brand
+                  </h3>
                 </div>
-                <span className="shrink-0 rounded-md bg-success/15 px-2 py-1 text-sm font-semibold text-success">{naira(35000)}</span>
+                <span className="shrink-0 rounded-md bg-success/15 px-2 py-1 text-sm font-semibold text-success">
+                  {naira(35000)}
+                </span>
               </div>
               <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
-                Need a clean, mobile-first landing page with hero section, product showcase, and contact form. Figma mockup available.
+                Need a clean, mobile-first landing page with hero section,
+                product showcase, and contact form.
               </p>
               <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                 <div className="flex items-center gap-2">
@@ -143,143 +369,324 @@ function MobileLanding() {
                     <div className="text-muted-foreground">5 applicants</div>
                   </div>
                 </div>
-                <Link to="/auth/signup"><Button size="sm" variant="secondary">Apply</Button></Link>
+                <Link to="/auth/signup">
+                  <Button size="sm" variant="secondary">
+                    Apply
+                  </Button>
+                </Link>
               </div>
-              <p className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground">
-                <ShieldCheck className="size-3 text-success" /> Payment held safely until work is approved
-              </p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="border-t border-border bg-card">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Who is InTask for?</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {WHO_IS_IT_FOR.map((w) => (
-              <div key={w.title} className="rounded-2xl border border-border/80 bg-background p-5 shadow-sm">
-                <div className={`grid size-9 place-items-center rounded-lg ${w.color}`}>
-                  <w.icon className="size-5" />
-                </div>
-                <h3 className="mt-3 font-medium text-foreground">{w.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{w.body}</p>
-                <Link to="/auth/signup">
-                  <Button size="sm" variant="outline" className="mt-4 w-full">{w.cta} →</Button>
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">How it works</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {HOW_IT_WORKS.map((s) => (
-              <div key={s.n} className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
-                <div className="grid size-8 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">{s.n}</div>
-                <h3 className="mt-3 font-medium text-foreground">{s.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{s.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-border bg-card">
-        <div className="mx-auto max-w-6xl px-4 py-14">
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="text-2xl font-semibold tracking-tight">Popular categories</h2>
-            <button onClick={() => setShowAllCategories((prev) => !prev)} className="text-sm font-medium text-primary hover:underline">
-              {showAllCategories ? "Show less" : "Browse all"} →
-            </button>
-          </div>
-          <div className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-2">
-            {visibleCategories.map((c) => (
-              <span key={c} className="shrink-0 rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground">
-                {c}
+      {/* --- Social proof: university strip (Toptal pattern) ---------- */}
+      <section className="border-y border-border/60 bg-card/50">
+        <div className="mx-auto max-w-6xl px-4 py-5">
+          <p className="text-center text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            Trusted by students from
+          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+            {UNIVERSITIES.map((u) => (
+              <span key={u} className="text-xs font-medium text-muted-foreground/70 sm:text-sm">
+                {u}
               </span>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Why InTask?</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {TRUST.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
-                <div className="grid size-9 place-items-center rounded-lg bg-success/15 text-success">
-                  <Icon className="size-5" />
-                </div>
-                <h3 className="mt-3 font-medium text-foreground">{title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+      {/* --- Launch banner ------------------------------------------- */}
+      <section className="border-y border-border bg-card">
+        <div className="mx-auto max-w-6xl px-4 py-8 text-center sm:py-10">
+          <Reveal>
+            <p className="text-sm font-medium text-muted-foreground">
+              Launching soon at Nigerian universities
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground/70">
+              We are onboarding our first students and businesses now. Be among the first.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* --- For Students / For Businesses (Upwork dual-path pattern) - */}
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+        <Reveal>
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+            Two ways to use InTask
+          </h2>
+        </Reveal>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          {/* Students card */}
+          <Reveal>
+            <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-primary/5 p-6 sm:p-8">
+              <div className="grid size-10 place-items-center rounded-full bg-primary/15 text-primary">
+                <GraduationCap className="size-5" />
               </div>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">
+                For students
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Find paid tasks, build your portfolio, and earn while you study.
+              </p>
+              <ul className="mt-4 space-y-2">
+                {STUDENT_PERKS.map((p) => (
+                  <li key={p} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6">
+                <Link to="/auth/signup">
+                  <Button className="w-full">Join as student</Button>
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* Businesses card */}
+          <Reveal delay={0.08}>
+            <div className="flex h-full flex-col rounded-2xl border border-border/80 bg-card p-6 sm:p-8">
+              <div className="grid size-10 place-items-center rounded-full bg-success/15 text-success">
+                <Building2 className="size-5" />
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">
+                For businesses
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Access affordable, verified student talent for short-term tasks.
+              </p>
+              <ul className="mt-4 space-y-2">
+                {BUSINESS_PERKS.map((p) => (
+                  <li key={p} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6">
+                <Link to="/app/tasks/create">
+                  <Button variant="outline" className="w-full">
+                    Post a task
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* --- How it works: 3 steps (Toptal pattern) ------------------- */}
+      <section className="border-y border-border bg-card">
+        <div className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+          <Reveal>
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+              How it works
+            </h2>
+          </Reveal>
+          <div className="mt-10 grid gap-8 sm:grid-cols-3 sm:gap-6">
+            {HOW_IT_WORKS.map((step, i) => (
+              <Reveal key={step.n} delay={i * 0.08}>
+                <div className="relative">
+                  <span className="text-5xl font-bold tracking-tighter text-primary/20">
+                    {step.n}
+                  </span>
+                  <h3 className="mt-2 text-lg font-medium text-foreground">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {step.body}
+                  </p>
+                </div>
+              </Reveal>
             ))}
           </div>
-
-          <Collapsible open={showTrustExample} onOpenChange={setShowTrustExample}>
-            <div className="mt-8 rounded-2xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Verification example</p>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-xs">
-                    {showTrustExample ? "Hide" : "View"} details
-                  </Button>
-                </CollapsibleTrigger>
-              </div>
-              <CollapsibleContent>
-                <div className="mt-3 flex items-start gap-3">
-                  <InitialsAvatar name="Chiamaka Okafor" size={44} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-medium text-foreground">Chiamaka Okafor</p>
-                      <VerifiedBadge role="student" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">UNILAG · 300L · Computer Science</p>
-                    <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Star className="size-3 fill-warning text-warning" /> 4.9 · 12 tasks completed
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {["Web Design", "UI/UX", "Figma"].map((s) => (
-                        <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <Briefcase className="hidden size-5 shrink-0 text-muted-foreground sm:block" />
-                </div>
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
         </div>
       </section>
 
-      <section className="border-t border-border bg-primary">
-        <div className="mx-auto max-w-6xl px-4 py-14 text-center">
-          <h2 className="text-2xl font-semibold tracking-tight text-primary-foreground sm:text-3xl">
-            Ready to start earning?
+      {/* --- Why InTask: 2+1 bento grid (asymmetric, varied BGs) ----- */}
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+        <Reveal>
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+            Why InTask?
           </h2>
-          <p className="mt-3 text-sm text-primary-foreground/80">
-            Join thousands of students already using InTask to earn, learn, and grow.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link to="/auth/signup">
-              <Button size="lg" variant="secondary" className="gap-2">
-                Create free account <ArrowRight className="size-4" />
-              </Button>
-            </Link>
-            <Link to="/auth/signup">
-              <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
-                Post a task
-              </Button>
-            </Link>
-          </div>
+        </Reveal>
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          {/* Verified students - large card (col-span-2) */}
+          <Reveal className="sm:col-span-2 sm:row-span-2">
+            <div className="flex h-full min-h-[180px] flex-col justify-between rounded-2xl bg-primary/8 p-5 sm:min-h-[220px] sm:p-8">
+              <div className="grid size-10 place-items-center rounded-full bg-primary/15 text-primary">
+                <ShieldCheck className="size-5" />
+              </div>
+              <div className="mt-auto">
+                <h3 className="text-xl font-medium text-foreground sm:text-2xl">
+                  Verified students only
+                </h3>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  Every student is checked with their school email or student ID
+                  before they can work. No fake profiles, no guesswork.
+                </p>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* Secure escrow - tinted card */}
+          <Reveal delay={0.08}>
+            <div className="flex h-full min-h-[140px] flex-col justify-between rounded-2xl bg-success/8 p-6">
+              <div className="grid size-10 place-items-center rounded-full bg-success/15 text-success">
+                <CheckCircle2 className="size-5" />
+              </div>
+              <div className="mt-auto">
+                <h3 className="mt-4 font-medium text-foreground">
+                  Secure escrow
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Funds held via Paystack until you approve the work.
+                </p>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* Ratings - plain card with border */}
+          <Reveal delay={0.16}>
+            <div className="flex h-full min-h-[140px] flex-col justify-between rounded-2xl border border-border/80 bg-card p-6">
+              <div className="grid size-10 place-items-center rounded-full bg-warning/15 text-warning">
+                <Star className="size-5" />
+              </div>
+              <div className="mt-auto">
+                <h3 className="mt-4 font-medium text-foreground">
+                  Ratings on every job
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Both sides leave reviews. Build a reputation that earns you
+                  more.
+                </p>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
+      {/* --- Verification example -------------------------------------- */}
+      <VerificationExample />
+
+      {/* --- Popular skills (replaces fake student cards) --------------- */}
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+        <Reveal>
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+            Skills students are offering
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Verified students ready to work across these categories
+          </p>
+        </Reveal>
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            { skill: "Web Design", desc: "Landing pages, websites, e-commerce stores" },
+            { skill: "Content Writing", desc: "Blog posts, articles, product descriptions" },
+            { skill: "UI/UX Design", desc: "Mobile apps, dashboards, wireframes" },
+            { skill: "Video Editing", desc: "YouTube, social media, reels" },
+            { skill: "Research", desc: "Academic papers, market research, reports" },
+            { skill: "Tutoring", desc: "Math, science, English, programming" },
+          ].map((item, i) => (
+            <Reveal key={item.skill} delay={i * 0.06}>
+              <Link
+                to="/auth/login"
+                search={{ redirect: `/app/browse?q=${encodeURIComponent(item.skill)}` }}
+                className="group flex items-start gap-3 rounded-2xl border border-border/80 bg-card p-5 transition-all hover:border-primary/40 hover:shadow-sm"
+              >
+                <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                  <CheckCircle2 className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{item.skill}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{item.desc}</p>
+                </div>
+              </Link>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* --- Categories: visual icon grid (Upwork pattern) ------------- */}
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+        <Reveal>
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+            Find work by category
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Browse tasks across popular student skills
+          </p>
+        </Reveal>
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {CATEGORIES_DATA.map((c, i) => (
+            <Reveal key={c.name} delay={i * 0.04}>
+              <Link
+                to="/auth/login"
+                search={{ redirect: `/app/browse?q=${encodeURIComponent(c.name)}` }}
+                className="group flex items-center gap-3 rounded-xl border border-border/80 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-sm"
+              >
+                <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                  <c.icon className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {c.name}
+                  </p>
+                </div>
+              </Link>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* --- How it feels (value prop, no fake testimonials) ----------- */}
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+        <Reveal>
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+              Built for how students actually work
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              No upfront fees. No chasing clients for payment. Post a profile,
+              find tasks that match your skills, and get paid safely through
+              escrow. Your reputation grows with every completed job.
+            </p>
+            <div className="mt-6">
+              <Link to="/auth/signup">
+                <Button size="lg" className="gap-2">
+                  Get started free <ArrowRight className="size-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* --- CTA banner ------------------------------------------------ */}
+      <section className="bg-primary">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:py-14 text-center">
+          <Reveal>
+            <h2 className="text-xl font-semibold tracking-tight text-primary-foreground sm:text-2xl md:text-3xl">
+              Ready to start earning?
+            </h2>
+            <p className="mt-3 text-sm text-primary-foreground/80">
+              Join the first wave of students earning through verified, escrow-protected work.
+            </p>
+            <div className="mt-6">
+              <Link to="/auth/signup">
+                <Button size="lg" variant="secondary" className="gap-2">
+                  Create free account <ArrowRight className="size-4" />
+                </Button>
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* --- Footer ---------------------------------------------------- */}
       <footer className="border-t border-border bg-background">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center">
           <div>
@@ -289,16 +696,88 @@ function MobileLanding() {
               </span>
               InTask
             </div>
-            <p className="mt-1 text-xs">Work, collaborate, and grow — built for students.</p>
+            <p className="mt-1 text-xs">
+              Work, collaborate, and grow. Built for students.
+            </p>
           </div>
           <div className="flex flex-wrap gap-4 text-xs">
-            <Link to="/about" className="hover:text-foreground">About</Link>
-            <Link to="/contact" className="hover:text-foreground">Contact</Link>
-            <Link to="/terms" className="hover:text-foreground">Terms</Link>
-            <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link to="/about" className="hover:text-foreground">
+              About
+            </Link>
+            <Link to="/contact" className="hover:text-foreground">
+              Contact
+            </Link>
+            <Link to="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link to="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
           </div>
         </div>
       </footer>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Verification example (collapsible, isolated for clarity)           */
+/* ------------------------------------------------------------------ */
+
+function VerificationExample() {
+  const [show, setShow] = useState(false);
+
+  return (
+    <section className="border-y border-border bg-card">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
+        <Reveal>
+          <Collapsible open={show} onOpenChange={setShow}>
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-medium text-foreground sm:text-sm">
+                  See how verification works
+                </p>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-xs">
+                    {show ? "Hide" : "View"} details
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent>
+                <div className="mt-3 flex items-start gap-3">
+                  <InitialsAvatar name="Chiamaka Okafor" size={44} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-medium text-foreground">
+                        Chiamaka Okafor
+                      </p>
+                      <VerifiedBadge role="student" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      UNILAG - 300L - Computer Science
+                    </p>
+                    <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Star className="size-3 fill-warning text-warning" />{" "}
+                      4.9 - 12 tasks completed
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {["Web Design", "UI/UX", "Figma"].map((s) => (
+                        <span
+                          key={s}
+                          className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <Briefcase className="hidden size-5 shrink-0 text-muted-foreground sm:block" />
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        </Reveal>
+      </div>
+    </section>
   );
 }

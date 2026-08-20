@@ -407,6 +407,51 @@ function OverviewTab() {
       </section>
 
       <section className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Referral program</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Total referrals</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.referrals?.totalReferrals ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Credited referrals</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.referrals?.creditedReferrals ?? 0}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Total referral credits paid</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{formatCurrency(data?.referrals?.totalReferralCredits ?? 0)}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Unique referrers</p>
+            <p className="mt-1 text-2xl font-semibold text-foreground">{data?.referrals?.topReferrers?.length ?? 0}</p>
+          </div>
+        </div>
+        {(data?.referrals?.topReferrers?.length ?? 0) > 0 && (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Top referrers</p>
+            <div className="mt-3 space-y-2">
+              {data!.referrals.topReferrers.map((r: any) => (
+                <div key={r.id} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-sm">
+                  <div>
+                    <button
+                      onClick={() => setViewingProfile(r.id)}
+                      className="font-medium text-foreground hover:text-primary hover:underline"
+                    >
+                      {r.name}
+                    </button>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-semibold text-foreground">{r.count} referral{r.count === 1 ? "" : "s"}</span>
+                    <span className="ml-3 text-muted-foreground">earned {formatCurrency(r.earned)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3">
         <h3 className="text-sm font-semibold text-foreground">Platform health</h3>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <div className="rounded-xl border border-border bg-card p-4">

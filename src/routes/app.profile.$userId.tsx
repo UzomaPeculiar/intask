@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { MVP_FEATURES } from "@/lib/mvp-features";
+import { submitStudentIdUpload, switchStudentVerificationMethod } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -1186,19 +1187,17 @@ function ReuploadIDSection({ userId }: { userId: string }) {
       setUploading(false);
       return;
     }
-    const { error: updateError } = await supabase
-       .from("student_profiles")
-       .update({
-         id_upload_path: filePath,
-         verification_status: "pending",
-       } as any)
-       .eq("user_id", userId);
-     if (updateError) {
-       toast.error("Could not submit for review. Please try again.");
-       setUploading(false);
-       return;
-     }
-     toast.success("ID re-submitted for review. We will notify you once verified.");
+    // Use a server function with service_role privileges to bypass the
+    // student_profiles UPDATE trigger that queries profiles.is_admin
+    // (the authenticated role lacks SELECT on that column).
+    try {
+      await submitStudentIdUpload({ data: { idUploadPath: filePath, switchToId: true } });
+    } catch (e: any) {
+      toast.error(`Could not submit for review: ${e?.message ?? "Please try again."}`);
+      setUploading(false);
+      return;
+    }
+     toast.success("ID submitted for review. We will notify you once verified.");
      setIdFile(null);
      setUploading(false);
      qc.invalidateQueries({ queryKey: ["profile", userId] });
@@ -1259,15 +1258,7 @@ function StudentVerificationSection({
 
   const switchVerificationMethod = useMutation({
     mutationFn: async (nextMethod: "email" | "id_upload") => {
-      const { error } = await supabase
-        .from("student_profiles")
-        .update({
-          verification_method: nextMethod,
-          verification_status: "pending",
-        } as any)
-        .eq("user_id", userId);
-
-      if (error) throw error;
+      await switchStudentVerificationMethod({ data: { method: nextMethod } });
     },
     onSuccess: (_data, nextMethod) => {
       toast.success(nextMethod === "email" ? "Switched to university email verification." : "Switched to student ID verification.");

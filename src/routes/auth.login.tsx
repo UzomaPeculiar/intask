@@ -26,7 +26,34 @@ function LoginPage() {
     setLoading(false);
     if (error) return toast.error(error.message);
     toast.success("Welcome back");
-    nav({ to: (redirect as any) ?? "/app" });
+
+    // Route based on profile role: students/alumni → browse, others → talent.
+    try {
+      const { data: me } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", me.user?.id ?? "")
+        .maybeSingle();
+
+      // If there's an explicit redirect, honor it — this covers /admin and
+      // other deep links the user was trying to reach.
+      if (redirect) {
+        nav({ to: redirect as any });
+        return;
+      }
+
+      const role = profile?.role;
+      const isPoster = role === "company" || role === "individual";
+
+      if (isPoster) {
+        nav({ to: "/app/talent" });
+      } else {
+        nav({ to: "/app" });
+      }
+    } catch {
+      nav({ to: "/app" });
+    }
   }
 
   return (
@@ -51,15 +78,8 @@ function LoginPage() {
               </p>
             </div>
 
-            <div className="mt-12 flex gap-12">
-              <div>
-                <p className="[font-family:'Space_Grotesk',sans-serif] text-[1.8rem] font-bold text-[#3dcb6c]">2,400+</p>
-                <p className="mt-0.5 text-[0.8rem] text-white/45">Students verified</p>
-              </div>
-              <div>
-                <p className="[font-family:'Space_Grotesk',sans-serif] text-[1.8rem] font-bold text-[#3dcb6c]">₦12M+</p>
-                <p className="mt-0.5 text-[0.8rem] text-white/45">Paid out securely</p>
-              </div>
+            <div className="mt-12">
+              <p className="text-[0.85rem] text-white/50">Verified students. Secure escrow payments. Fair outcomes for both sides.</p>
             </div>
           </div>
         </section>
@@ -137,7 +157,7 @@ function LoginPage() {
 
           <p className="mt-7 text-center text-[0.85rem] text-[#6a8064]">
             New here?{" "}
-            <Link to="/auth/signup" className="font-semibold text-[#3dcb6c] no-underline">
+            <Link to="/auth/signup" search={{ ref: "" }} className="font-semibold text-[#3dcb6c] no-underline">
               Create an account
             </Link>
           </p>
