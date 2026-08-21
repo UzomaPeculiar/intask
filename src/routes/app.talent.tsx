@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Search, Star, Lock, Unlock, Award } from "lucide-react";
 import { toast } from "sonner";
+import { TalentSearchSkeleton } from "@/components/intask/Skeletons";
 
 export const Route = createFileRoute("/app/talent")({
   head: () => ({ meta: [{ title: "Talent Search — InTask" }] }),
@@ -299,13 +300,7 @@ function TalentSearchPage() {
         )}
       </div>
 
-      {isLoading && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-44 animate-pulse rounded-[14px] border border-[#c4deb8] bg-white" />
-          ))}
-        </div>
-      )}
+      {isLoading && <TalentSearchSkeleton />}
 
       {hasSearched && !isLoading && results && results.length === 0 && (
         <EmptyState icon={Search} title="No talent found" description="Try adjusting your filters or search terms." />

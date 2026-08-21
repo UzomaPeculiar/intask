@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 import { getMyWithdrawals } from "@/lib/paystack.functions";
+import { WalletSkeleton } from "@/components/intask/Skeletons";
 
 export const Route = createFileRoute("/app/wallet")({
   head: () => ({ meta: [{ title: "Wallet — InTask" }] }),
@@ -35,13 +36,13 @@ function WalletPage() {
   const loadRuntimePlatformSettings = useServerFn(getRuntimePlatformSettings);
   const loadMyWithdrawals = useServerFn(getMyWithdrawals);
   const setDefaultBankAccount = useServerFn(async ({ data }: { data: { bankAccountId: string } }) => {
-    const { data: result, error } = await supabase.rpc("set_default_bank_account", {
+    const { data: result, error } = await (supabase as any).rpc("set_default_bank_account", {
       p_bank_account_id: data.bankAccountId,
     });
 
     if (error) throw error;
-    if (result?.success === false) {
-      throw new Error(result.error ?? "Could not update default bank account");
+    if ((result as any)?.success === false) {
+      throw new Error((result as any).error ?? "Could not update default bank account");
     }
 
     return result;
@@ -542,6 +543,14 @@ function WalletPage() {
 
   const compactNaira = (value: number) =>
     new Intl.NumberFormat("en-NG", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+
+  if (!me || !wallet) {
+    return (
+      <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+        <WalletSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">

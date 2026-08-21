@@ -7,6 +7,7 @@ import { InitialsAvatar } from "@/components/intask/Avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, MessageCircle, Send } from "lucide-react";
+import { ConversationListSkeleton, ChatMessagesSkeleton } from "@/components/intask/Skeletons";
 
 export const Route = createFileRoute("/app/messages")({
   head: () => ({ meta: [{ title: "Messages — InTask" }] }),
@@ -186,7 +187,7 @@ function MessagesPage() {
       const { data, error } = await supabase
         .from("messages")
         .select("*")
-        .eq("conversation_id", selectedConversationId)
+        .eq("conversation_id", selectedConversationId as string)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -314,9 +315,7 @@ function MessagesPage() {
           </div>
 
           {listLoading ? (
-            <div className="grid flex-1 place-items-center">
-              <Loader2 className="size-5 animate-spin text-[#1a7a42]" />
-            </div>
+            <ConversationListSkeleton />
           ) : mergedConversations.length === 0 ? (
             <div className="p-4">
               <EmptyState icon={MessageCircle} title="No conversations yet" description="Once a payment is funded, your chat with the other party opens here." />
@@ -384,9 +383,7 @@ function MessagesPage() {
               <div className="flex flex-1 min-h-0 flex-col">
                 <div className="flex-1 space-y-3 overflow-y-auto px-6 py-6">
                   {messagesLoading ? (
-                    <div className="grid h-full place-items-center">
-                      <Loader2 className="size-5 animate-spin text-[#1a7a42]" />
-                    </div>
+                    <ChatMessagesSkeleton />
                   ) : messages.length === 0 ? (
                     <div className="pt-10">
                       <EmptyState icon={Send} title="Say hello to get the work started." description="Messages will appear here once the conversation begins." />

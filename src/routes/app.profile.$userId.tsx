@@ -23,6 +23,7 @@ import { SKILLS, NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY } from "@/lib/constants";
 import { UniversitySelect } from "@/components/intask/UniversitySelect";
 import { ArrowLeft, LogOut, Star, Briefcase, Edit3, Save, Plus, ExternalLink, Trash2, FolderGit2, GraduationCap, Mail, Phone, Building2, MapPin, Globe, ImagePlus, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { ProfileSkeleton } from "@/components/intask/Skeletons";
 
 const SUPABASE_BASE_URL = import.meta.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "";
 const SUPABASE_FUNCTIONS_URL = `${SUPABASE_BASE_URL.replace(/\/$/, "")}/functions/v1`;
@@ -115,10 +116,10 @@ function ProfilePage() {
       if (profile?.role === "individual") {
         const individualQuery = isOwn
           ? (supabase as any).from("my_individual_profile").select("*").maybeSingle()
-          : supabase
+          : (supabase as any)
               .from("individual_profiles")
               .select("user_id, verified, created_at, updated_at")
-              .eq("user_id", targetId!)
+              .eq("user_id", targetId as string)
               .maybeSingle();
         const { data, error } = await individualQuery;
         if (!error) individual = data as any;
@@ -207,7 +208,7 @@ function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "activity">("overview");
 
   if (isLoading && !timedOut) {
-    return <div className="grid min-h-[60vh] place-items-center text-muted-foreground">Loading profile…</div>;
+    return <ProfileSkeleton />;
   }
 
   const fallbackProfile = {
@@ -477,8 +478,7 @@ function ProfilePage() {
                   {reviews.length === 0 ? (
                     <p className="text-sm text-[#6a8064]">No reviews yet.</p>
                   ) : (
-                    <ul className="space-y-2.5">
-                      {reviews.map((r) => (
+                    <ul className="space-y-2.5">                          {reviews.map((r: any) => (
                         <li key={r.id} className="rounded-[12px] border border-[#e4efe0] bg-white p-4">
                           <div className="flex items-center justify-between gap-3">
                             <div>
@@ -534,7 +534,7 @@ function ProfilePage() {
               </div>
               <div className="flex items-center justify-between py-2">
                 <span className="text-[0.8rem] text-[#6a8064]">Response time</span>
-                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">{resolved.responseTimeLabel ?? "—"}</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">{(resolved as any).responseTimeLabel ?? "—"}</span>
               </div>
             </div>
           </section>
@@ -545,7 +545,7 @@ function ProfilePage() {
               <div className="rounded-[12px] border border-[#e4efe0] bg-[#f9fdf7] p-4 text-[0.8rem] text-[#6a8064]">No reviews yet.</div>
             ) : (
               <div className="space-y-2.5">
-                {reviews.slice(0, 2).map((r) => (
+                {reviews.slice(0, 2).map((r: any) => (
                   <div key={r.id} className="rounded-[12px] border border-[#e4efe0] bg-white p-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[0.85rem] font-semibold text-[#1a1e16]">{r.reviewer?.full_name ?? "Anonymous"}</p>
@@ -758,8 +758,7 @@ function EditPanel({ profile, student, company, onDone }: any) {
               value={university}
               onChange={(val) => {
                 setUniversity(val);
-                if (val !== "Other") setUniversityCustom("");
-                else setUniversityCustom("");
+                if (val !== "Other") {}
               }}
             />
           </div>
@@ -885,11 +884,11 @@ function ProjectsSection({ userId, isOwn }: { userId: string; isOwn: boolean }) 
 
     const persistProject = async (payload: Record<string, any>) => {
       if (editingProject) {
-        const { error } = await supabase.from("student_projects").update(payload).eq("id", editingProject.id);
+        const { error } = await (supabase as any).from("student_projects").update(payload).eq("id", editingProject.id);
         if (error) throw error;
         toast.success("Project updated");
       } else {
-        const { error } = await supabase.from("student_projects").insert({ user_id: userId, ...payload });
+        const { error } = await (supabase as any).from("student_projects").insert({ user_id: userId, ...payload });
         if (error) throw error;
         toast.success("Project added");
       }
@@ -1514,7 +1513,7 @@ function IndividualIdVerificationSection({ userId }: { userId: string }) {
       setUploading(false);
       return;
     }
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from("individual_profiles")
       .upsert({
         user_id: userId,

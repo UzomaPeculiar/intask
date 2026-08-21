@@ -13,6 +13,7 @@ import { naira, shortDate } from "@/lib/format";
 import { ArrowLeft, ShieldCheck, MapPin, Calendar as CalIcon, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useApplicantCount, applicantLabel } from "@/hooks/useApplicantCount";
+import { TaskDetailSkeleton } from "@/components/intask/Skeletons";
 import { Input } from "@/components/ui/input";
 import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
@@ -142,7 +143,7 @@ function TaskDetail() {
   const taskSectionClass = "rounded-[14px] border border-[#c4deb8] bg-white p-5";
 
   if (isLoading) {
-    return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>;
+    return <TaskDetailSkeleton />;
   }
 
   if (!task) return <div className="px-4 pt-10 text-center text-muted-foreground">Task not found.</div>;
@@ -190,7 +191,7 @@ function TaskDetail() {
         <Button
           variant="outline"
           size="lg"
-          className="w-full gap-1"
+          className={`${actionSecondaryClass} w-full gap-1`}
           onClick={async () => {
             const room = await loadProjectRoomForTask({ data: { taskId: task.id } }).catch(() => null);
             const roomId = (room as any)?.roomId ?? (room as any)?.room_id;
@@ -200,7 +201,6 @@ function TaskDetail() {
               toast.error("Project room not found");
             }
           }}
-          className={actionSecondaryClass}
         >
           <Users className="size-4" /> Open project room
         </Button>

@@ -16,6 +16,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { getMyReferralCode, getMyReferralStats } from "@/lib/referral.functions";
+import { ReferralsSkeleton } from "@/components/intask/Skeletons";
 
 export const Route = createFileRoute("/app/referrals")({
   head: () => ({ meta: [{ title: "Referrals — InTask" }] }),
@@ -103,7 +104,7 @@ function ReferralsPage() {
 
           {/* Referral code */}
           {codeLoading ? (
-            <div className="mx-auto mt-5 h-12 w-48 animate-pulse rounded-xl bg-muted" />
+            <ReferralsSkeleton />
           ) : (
             <div className="mx-auto mt-5 flex max-w-xs items-center gap-2">
               <div className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-center font-mono text-lg font-bold tracking-widest text-foreground">

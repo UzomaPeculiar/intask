@@ -10,6 +10,7 @@ import { Inbox, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MVP_FEATURES } from "@/lib/mvp-features";
+import { TaskFeedSkeleton } from "@/components/intask/Skeletons";
 
 export const Route = createFileRoute("/app/browse")({
   head: () => ({ meta: [{ title: "Browse — InTask" }] }),
@@ -244,7 +245,7 @@ function TasksResults({ q, filter, minBudget, maxBudget, typeFilter }: { q: stri
     },
   });
 
-  if (isLoading) return <div className="h-32 animate-pulse rounded-xl border border-border bg-card" />;
+  if (isLoading) return <TaskFeedSkeleton />;
 
   if ((tasks?.length ?? 0) === 0) {
     return <EmptyState icon={Inbox} title="Nothing matches" description="Try clearing filters or searching for something else." />;
@@ -277,11 +278,7 @@ function SavedTasksResults() {
     },
   });
 
-  if (isLoading) return (
-    <div className="space-y-3">
-      {[0, 1, 2].map((i) => <div key={i} className="h-32 animate-pulse rounded-xl border border-border bg-card" />)}
-    </div>
-  );
+  if (isLoading) return <TaskFeedSkeleton />;
 
   if (!saved || saved.length === 0) {
     return (

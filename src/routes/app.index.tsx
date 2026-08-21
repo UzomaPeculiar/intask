@@ -26,6 +26,14 @@ import { MVP_FEATURES } from "@/lib/mvp-features";
 import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 import { getStudentActiveTasks, getProjectRoomForTask } from "@/lib/task.functions";
+import {
+  DashboardStatsSkeleton,
+  WalletCardSkeleton,
+  ActiveTasksSkeleton,
+  ApplicationsSkeleton,
+  ApplicationRowSkeleton,
+  TaskFeedSkeleton,
+} from "@/components/intask/Skeletons";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({ meta: [{ title: "Dashboard — InTask" }] }),
@@ -263,7 +271,6 @@ function greeting() {
 function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: string; filter: string; onFilter: (f: string) => void; onSwitchToPost: () => void }) {
   const nav = useNavigate();
   const loadStudentActiveTasks = useServerFn(getStudentActiveTasks);
-  const loadProjectRoomForTask = useServerFn(getProjectRoomForTask);
   const [showQuickLinks, setShowQuickLinks] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -290,6 +297,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
     if (!el) return;
     el.scrollBy({ left: dir === "left" ? -200 : 200, behavior: "smooth" });
   };
+
   const { data: stats } = useQuery({
     queryKey: ["student-stats", userId],
     enabled: !!userId,
@@ -305,36 +313,113 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
     },
   });
 
-  const { data: tasks, isLoading } = useQuery({
-    queryKey: ["feed", filter],
+  // Fetch the student's recent applications with task details
+  const { data: myApplications, isLoading: appsLoading } = useQuery({
+    queryKey: ["my-applications", userId],
+    enabled: !!userId,
     queryFn: async () => {
-      let q = supabase.from("tasks").select("*, poster:profiles!tasks_poster_id_fkey(id, full_name, role, avatar_url)").eq("status", "open").order("featured", { ascending: false }).order("created_at", { ascending: false }).limit(40);
-      if (userId) q = q.neq("poster_id", userId);
-      if (filter !== "All") q = q.ilike("category", `%${filter}%`);
-      const { data, error } = await q;
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from("applications")
+        .select("id, status, created_at, cover_message, task:tasks!applications_task_id_fkey(id, title, budget, status as task_status, category, deadline, poster:profiles!tasks_poster_id_fkey(id, full_name, avatar_url))")
+        .eq("student_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(20);
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const taskCategories = Array.from(new Set((tasks ?? []).map((t: any) => t.category).filter(Boolean)));
-  const { data: categoryBudgetStats = {} } = useCategoryBudgetStats(taskCategories);
+  const pendingApps = (myApplications ?? []).filter((a: any) => a.status === "pending");
+  const acceptedApps = (myApplications ?? []).filter((a: any) => a.status === "accepted");
+  const rejectedApps = (myApplications ?? []).filter((a: any) => a.status === "rejected");
 
   return (
     <div className="space-y-6 pt-5">
+      {/* Overview stats */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Overview</h2>
           <span className="text-xs text-muted-foreground">What needs your attention</span>
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <StatCard label="Tasks applied" value={stats?.applied ?? 0} />
-          <StatCard label="Active" value={stats?.active ?? 0} />
-          <StatCard label="Rating" value={stats?.rating ? Number(stats.rating).toFixed(1) : "—"} icon={<Star className="size-3.5 fill-warning text-warning" />} />
-        </div>
+        {!stats ? <DashboardStatsSkeleton /> : (
+          <div className="grid grid-cols-3 gap-2">
+            <StatCard label="Applied" value={stats.applied ?? 0} />
+            <StatCard label="Active" value={stats.active ?? 0} />
+            <StatCard label="Rating" value={stats.rating ? Number(stats.rating).toFixed(1) : "—"} icon={<Star className="size-3.5 fill-warning text-warning" />} />
+          </div>
+        )}
         <WalletBalanceCard userId={userId} />
       </section>
 
+      {/* Active tasks — the student's matched work */}
+      <section className="space-y-3">
+        <ActiveTasksSection userId={userId} />
+      </section>
+
+      {/* My applications */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">My applications</h2>
+          {pendingApps.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">
+              {pendingApps.length} pending
+            </span>
+          )}
+        </div>
+
+        {appsLoading && <ApplicationsSkeleton />}
+
+        {!appsLoading && (myApplications?.length ?? 0) === 0 && (
+          <EmptyState
+            icon={Inbox}
+            title="No applications yet"
+            description="Browse available tasks and apply to start earning."
+            action={<Button onClick={() => nav({ to: "/app/browse", search: { q: "" } as any })} className="gap-1"><Search className="size-4" /> Browse tasks</Button>}
+          />
+        )}
+
+        {/* Pending applications */}
+        {pendingApps.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Awaiting response</h3>
+            <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+              {pendingApps.map((app: any) => (
+                <ApplicationRow key={app.id} app={app} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Accepted applications */}
+        {acceptedApps.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Accepted</h3>
+            <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+              {acceptedApps.map((app: any) => (
+                <ApplicationRow key={app.id} app={app} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Rejected — show last 3 only */}
+        {rejectedApps.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Not selected</h3>
+            <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+              {rejectedApps.slice(0, 3).map((app: any) => (
+                <ApplicationRow key={app.id} app={app} />
+              ))}
+            </div>
+            {rejectedApps.length > 3 && (
+              <p className="text-xs text-muted-foreground">And {rejectedApps.length - 3} more</p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Quick links — mentorship, internships, learn */}
       {(MVP_FEATURES.mentorship || MVP_FEATURES.internships || MVP_FEATURES.learn) && (
       <section className="space-y-2">
         <Collapsible open={showQuickLinks} onOpenChange={setShowQuickLinks}>
@@ -417,62 +502,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
       </section>
       )}
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Task feed</h2>
-        <div className="relative">
-          {canScrollLeft && (
-            <button
-              onClick={() => scrollFilters("left")}
-              className="absolute -left-1 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card shadow-md transition-colors hover:bg-accent/50"
-              aria-label="Scroll filters left"
-            >
-              <ChevronLeft className="size-4 text-foreground" />
-            </button>
-          )}
-          <div
-            ref={scrollContainerRef}
-            onScroll={checkScroll}
-            className="flex gap-2 overflow-x-auto pb-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {FEED_FILTERS.map((f) => {
-              const active = f === filter;
-              return (
-                <button key={f} onClick={() => onFilter(f)}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                    active ? "it-chip-active" : "border-border bg-card text-foreground"
-                  }`}>{f}</button>
-              );
-            })}
-          </div>
-          {canScrollRight && (
-            <button
-              onClick={() => scrollFilters("right")}
-              className="absolute -right-1 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card shadow-md transition-colors hover:bg-accent/50"
-              aria-label="Scroll filters right"
-            >
-              <ChevronRight className="size-4 text-foreground" />
-            </button>
-          )}
-          {canScrollLeft && <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background to-transparent" />}
-          {canScrollRight && <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-background to-transparent" />}
-        </div>
-      </section>
 
-      <section className="space-y-3">
-        <ActiveTasksSection userId={userId} />
-        {isLoading && <SkeletonList />}
-        {!isLoading && (tasks?.length ?? 0) === 0 && (
-          <EmptyState
-            icon={Inbox}
-            title="No open tasks yet"
-            description="Check back soon, or be the first to post one."
-            action={<Button onClick={onSwitchToPost} className="gap-1"><Plus className="size-4" /> Post a task</Button>}
-          />
-        )}
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
-          {tasks?.map((t) => <TaskCard key={t.id} task={t} currentUserId={userId} categoryBudgetStats={categoryBudgetStats} />)}
-        </div>
-      </section>
     </div>
   );
 }
@@ -481,7 +511,7 @@ function ActiveTasksSection({ userId }: { userId?: string }) {
   const nav = useNavigate();
   const loadStudentActiveTasks = useServerFn(getStudentActiveTasks);
   const loadProjectRoomForTask = useServerFn(getProjectRoomForTask);
-  const { data: active } = useQuery({
+  const { data: active, isLoading } = useQuery({
     queryKey: ["student-active", userId],
     enabled: !!userId,
     queryFn: async () => {
@@ -489,10 +519,22 @@ function ActiveTasksSection({ userId }: { userId?: string }) {
       return await loadStudentActiveTasks();
     },
   });
-  if (!active || active.length === 0) return null;
+  if (isLoading) return <ActiveTasksSkeleton />;
+  if (!active || active.length === 0) {
+    return (
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold text-foreground">Active tasks</h2>
+        <EmptyState
+          icon={Briefcase}
+          title="No active tasks yet"
+          description="When you apply to a task and get accepted, it will show up here."
+        />
+      </div>
+    );
+  }
   return (
     <div className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active tasks</h2>
+      <h2 className="text-sm font-semibold text-foreground">Active tasks</h2>
       <div className="space-y-3">
         {active.map((t: any) => (
           <div key={t.id} className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-sm">
@@ -781,7 +823,7 @@ function PostWorkView({ userId }: { userId?: string }) {
         </p>
       </div>}
 
-      {isLoading && <SkeletonList />}
+      {isLoading && <TaskFeedSkeleton />}
 
       {!isLoading && (mine?.length ?? 0) === 0 && (
         <EmptyState icon={Briefcase} title="No tasks yet" description="Post your first task and verified students will start applying."
@@ -1014,6 +1056,46 @@ export function TaskCard({ task, currentUserId, categoryBudgetStats = {} }: { ta
         </p>
       </article>
     </Link>
+  );
+}
+
+function ApplicationRow({ app }: { app: any }) {
+  const nav = useNavigate();
+  const task = app.task;
+  const poster = task?.poster;
+  const status = app.status as string;
+  const taskStatus = task?.task_status as string;
+
+  const statusColors: Record<string, string> = {
+    pending: "bg-warning/15 text-warning",
+    accepted: "bg-success/15 text-success",
+    rejected: "bg-muted text-muted-foreground",
+  };
+
+  const statusLabels: Record<string, string> = {
+    pending: "Pending",
+    accepted: "Accepted",
+    rejected: "Not selected",
+  };
+
+  return (
+    <div
+      onClick={() => task?.id && nav({ to: "/app/tasks/$taskId", params: { taskId: task.id } })}
+      className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-card transition-colors active:bg-accent/50"
+    >
+      <InitialsAvatar name={poster?.full_name} size={36} avatarUrl={poster?.avatar_url} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">{task?.title ?? "Task"}</p>
+        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+          {poster?.full_name && <span>{poster.full_name}</span>}
+          {task?.budget && !task?.budget_negotiable && <span>· {naira(task.budget)}</span>}
+          {task?.category && <span>· {task.category}</span>}
+        </div>
+      </div>
+      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusColors[status] ?? "bg-muted text-muted-foreground"}`}>
+        {statusLabels[status] ?? status}
+      </span>
+    </div>
   );
 }
 

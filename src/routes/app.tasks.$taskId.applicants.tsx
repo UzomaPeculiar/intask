@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { acceptTaskApplicant, removeAcceptedTaskApplicant } from "@/lib/task.functions";
 import { PLATFORM_SETTING_DEFAULTS } from "@/lib/platform-settings";
+import { ApplicationsSkeleton } from "@/components/intask/Skeletons";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app/tasks/$taskId/applicants")({
@@ -181,7 +182,7 @@ function ApplicantsPage() {
             <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">Review pending applicants first, then check accepted and dismissed history.</p>
           </div>
 
-          {isLoading && <div className="mt-4 h-32 animate-pulse rounded-xl border border-border bg-card" />}
+          {isLoading && <div className="mt-4"><ApplicationsSkeleton /></div>}
 
           {!isLoading && (apps?.length ?? 0) === 0 && (
             <div className="mt-4"><EmptyState icon={Inbox} title="No applicants yet" description="Students are being notified. Check back soon." /></div>

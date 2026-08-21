@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { GraduationCap, Briefcase, User, CheckCircle2, Upload, ArrowRight, ArrowLeft, Award } from "lucide-react";
+import { GraduationCap, Briefcase, User, CheckCircle2, Upload, ArrowRight, ArrowLeft, Award, Loader2 } from "lucide-react";
 import { NIGERIAN_UNIVERSITIES, YEARS_OF_STUDY, SKILLS, NG_PHONE_REGEX } from "@/lib/constants";
 import { UniversitySelect } from "@/components/intask/UniversitySelect";
 import { InitialsAvatar } from "@/components/intask/Avatar";
@@ -451,6 +451,16 @@ function SignupPage() {
           <div className="mb-7">
             <Stepper current={sinfo.current} total={sinfo.total} />
           </div>
+
+          {/* Loading overlay during form submission */}
+          {loading && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="size-8 animate-spin text-[#3dcb6c]" />
+                <p className="text-sm font-medium text-[#1a1e16]">Setting up your account...</p>
+              </div>
+            </div>
+          )}
 
           <div>
         {/* STEP 1 — Intent selection */}

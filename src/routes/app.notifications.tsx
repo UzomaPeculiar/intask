@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { EmptyState } from "@/components/intask/EmptyState";
 import { Bell, ArrowLeft } from "lucide-react";
+import { NotificationsSkeleton } from "@/components/intask/Skeletons";
 
 export const Route = createFileRoute("/app/notifications")({
   head: () => ({ meta: [{ title: "Notifications — InTask" }] }),
@@ -60,7 +61,7 @@ function NotificationsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
         </div>
         {isLoading ? (
-          <div className="mt-6 space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-muted" />)}</div>
+          <NotificationsSkeleton />
         ) : !data?.length ? (
           <div className="mt-6"><EmptyState icon={Bell} title="No notifications" description="You're all caught up." /></div>
         ) : (
