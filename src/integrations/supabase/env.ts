@@ -4,9 +4,9 @@ type SupabaseClientEnv = {
   SUPABASE_PROJECT_ID?: string;
 };
 
-const DEFAULT_SUPABASE_PROJECT_ID = "tjepeveyluwxohhbsqod";
+const DEFAULT_SUPABASE_PROJECT_ID = process.env.SUPABASE_PROJECT_ID;
 const DEFAULT_SUPABASE_URL = `https://${DEFAULT_SUPABASE_PROJECT_ID}.supabase.co`;
-const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_aaV165iyyzPupmmYYGWtTw_UOriGmXm";
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
 
 declare global {
   interface Window {
