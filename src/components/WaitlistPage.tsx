@@ -150,8 +150,8 @@ export function WaitlistPage() {
             </h1>
 
             <p className="mx-auto mt-6 max-w-lg text-lg leading-relaxed text-[#6B7280]">
-              Connect with verified Nigerian university students for web design,
-              content writing, research, tutoring, and more. Secure escrow payments.
+              Hire verified Nigerian university students for web design, content writing, research, 
+              tutoring, and more, paid through escrow, so your money's protected until the work is done.
             </p>
 
             <div className="mt-10">
@@ -239,7 +239,7 @@ export function WaitlistPage() {
             </div>
 
             <p className="mt-4 text-xs text-[#94A3B8]">
-              Join 200+ students already on the waitlist
+              200+ students already signed up
             </p>
           </div>
         </div>
@@ -249,7 +249,7 @@ export function WaitlistPage() {
       <section className="border-t border-[#E2E8F0] bg-white">
         <div className="mx-auto max-w-5xl px-4 py-16 sm:py-20">
           <h2 className="text-center text-2xl font-bold text-[#1E293B] sm:text-3xl">
-            Why wait for InTask?
+            Why join now?
           </h2>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
             <FeatureCard
@@ -259,13 +259,13 @@ export function WaitlistPage() {
             />
             <FeatureCard
               icon={<Zap className="size-5" />}
-              title="Secure Escrow"
-              description="Payments held via Paystack until work is approved. Safe for both sides."
+              title="Escrow payments"
+              description="Paystack holds the money until you approve the work. Neither side gets stuck."
             />
             <FeatureCard
               icon={<Users className="size-5" />}
-              title="Ratings & Reviews"
-              description="Both sides leave reviews. Build a reputation that earns you more work."
+              title="Reviews that matter"
+              description="Students and businesses rate each other, so good work builds a track record."
             />
           </div>
         </div>
@@ -286,12 +286,12 @@ export function WaitlistPage() {
             <StepCard
               number={2}
               title="Connect"
-              description="Students browse and apply for tasks. Businesses post and review applicants."
+              description="Students apply for tasks; businesses review who's applied."
             />
             <StepCard
               number={3}
               title="Get paid"
-              description="Money held in escrow via Paystack. Released when work is approved."
+              description="Paystack releases the money once the work's approved."
             />
           </div>
         </div>
@@ -300,11 +300,8 @@ export function WaitlistPage() {
       {/* CTA */}
       <section className="border-t border-[#E2E8F0] bg-white">
         <div className="mx-auto max-w-5xl px-4 py-16 text-center sm:py-20">
-          <h2 className="text-2xl font-bold text-[#1E293B] sm:text-3xl">
-            Be first in line
-          </h2>
           <p className="mx-auto mt-4 max-w-md text-[#6B7280]">
-            Join the waitlist now and get early access when InTask launches at your university.
+            Get early access when InTask launches
           </p>
           {!submitted && (
             <div className="mt-8">
