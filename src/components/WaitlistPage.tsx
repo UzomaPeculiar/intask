@@ -9,7 +9,6 @@ import {
   Mail,
   Share2,
   Copy,
-  Sparkles,
   Users,
   Shield,
   Zap,
@@ -120,9 +119,6 @@ export function WaitlistPage() {
       <header className="border-b border-[#E2E8F0] bg-white/80 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 font-bold text-[#1E293B]">
-            <span className="grid size-8 place-items-center rounded-lg bg-[#16A34A] text-white">
-              <Sparkles className="size-4" />
-            </span>
             InTask
           </Link>
 
@@ -321,9 +317,6 @@ export function WaitlistPage() {
       <footer className="border-t border-[#E2E8F0] bg-[#DCFCE7]">
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-[#94A3B8] sm:flex-row">
           <div className="flex items-center gap-2 font-bold text-[#1E293B]">
-            <span className="grid size-6 place-items-center rounded-md bg-[#16A34A] text-white">
-              <Sparkles className="size-3" />
-            </span>
             InTask
           </div>
           <div className="flex gap-4 text-xs">
