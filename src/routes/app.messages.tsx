@@ -306,12 +306,12 @@ function MessagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] [font-family:'Inter',sans-serif]">
       <div className="mx-auto grid h-[720px] w-full max-w-[1280px] grid-cols-[360px_1fr] overflow-hidden">
-        <aside className="flex min-h-0 flex-col border-r border-[#c4deb8] bg-white">
-          <div className="border-b border-[#e4efe0] px-6 py-5">
-            <h1 className="font-['Space_Grotesk',sans-serif] text-[1.2rem] font-bold text-[#1a1e16]">Messages</h1>
-            <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">Pick a conversation to continue</p>
+        <aside className="flex min-h-0 flex-col border-r border-[#E2E8F0] bg-white">
+          <div className="border-b border-[#E2E8F0] px-6 py-5">
+            <h1 className="font-['Space_Grotesk',sans-serif] text-[1.2rem] font-bold text-[#1E293B]">Messages</h1>
+            <p className="mt-0.5 text-[0.75rem] text-[#6B7280]">Pick a conversation to continue</p>
           </div>
 
           {listLoading ? (
@@ -322,7 +322,7 @@ function MessagesPage() {
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-2">
-              <div className="px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Today</div>
+              <div className="px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#94A3B8]">Today</div>
               <div className="space-y-1">
                 {grouped.today.length > 0 ? grouped.today.map((conversation: any) => {
                   const active = conversation.id === selectedConversationId;
@@ -331,20 +331,20 @@ function MessagesPage() {
                       key={conversation.id}
                       type="button"
                       onClick={() => selectConversation(conversation.id)}
-                      className={`flex w-full items-center gap-3 rounded-[12px] p-3 text-left transition-colors ${active ? "bg-[#d8f5e4]" : "hover:bg-[#f4fbf0]"}`}
+                      className={`flex w-full items-center gap-3 rounded-[12px] p-3 text-left transition-colors ${active ? "bg-[#DCFCE7]" : "hover:bg-[#F1F3F5]"}`}
                     >
                       <InitialsAvatar name={conversation.other?.full_name} avatarUrl={conversation.other?.avatar_url} size={44} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[0.85rem] font-semibold text-[#1a1e16]">{conversation.other?.full_name ?? "Chat"}</p>
-                        <p className="truncate text-[0.7rem] text-[#6a8064]">{conversation.task?.title ?? "Task chat"}</p>
+                        <p className="truncate text-[0.85rem] font-semibold text-[#1E293B]">{conversation.other?.full_name ?? "Chat"}</p>
+                        <p className="truncate text-[0.7rem] text-[#6B7280]">{conversation.task?.title ?? "Task chat"}</p>
                       </div>
-                      <div className="shrink-0 text-right text-[0.6rem] text-[#9eb79c]">{shortWhen(conversation.created_at)}</div>
+                      <div className="shrink-0 text-right text-[0.6rem] text-[#94A3B8]">{shortWhen(conversation.created_at)}</div>
                     </button>
                   );
-                }) : <div className="px-3 py-3 text-sm text-[#6a8064]">No recent messages.</div>}
+                }) : <div className="px-3 py-3 text-sm text-[#6B7280]">No recent messages.</div>}
               </div>
 
-              <div className="px-3 pb-1 pt-4 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Earlier</div>
+              <div className="px-3 pb-1 pt-4 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#94A3B8]">Earlier</div>
               <div className="space-y-1">
                 {grouped.earlier.length > 0 ? grouped.earlier.map((conversation: any) => {
                   const active = conversation.id === selectedConversationId;
@@ -353,30 +353,30 @@ function MessagesPage() {
                       key={conversation.id}
                       type="button"
                       onClick={() => selectConversation(conversation.id)}
-                      className={`flex w-full items-center gap-3 rounded-[12px] p-3 text-left transition-colors ${active ? "bg-[#d8f5e4]" : "hover:bg-[#f4fbf0]"}`}
+                      className={`flex w-full items-center gap-3 rounded-[12px] p-3 text-left transition-colors ${active ? "bg-[#DCFCE7]" : "hover:bg-[#F1F3F5]"}`}
                     >
                       <InitialsAvatar name={conversation.other?.full_name} avatarUrl={conversation.other?.avatar_url} size={44} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[0.85rem] font-semibold text-[#1a1e16]">{conversation.other?.full_name ?? "Chat"}</p>
-                        <p className="truncate text-[0.7rem] text-[#6a8064]">{conversation.task?.title ?? "Task chat"}</p>
+                        <p className="truncate text-[0.85rem] font-semibold text-[#1E293B]">{conversation.other?.full_name ?? "Chat"}</p>
+                        <p className="truncate text-[0.7rem] text-[#6B7280]">{conversation.task?.title ?? "Task chat"}</p>
                       </div>
-                      <div className="shrink-0 text-right text-[0.6rem] text-[#9eb79c]">{shortWhen(conversation.created_at)}</div>
+                      <div className="shrink-0 text-right text-[0.6rem] text-[#94A3B8]">{shortWhen(conversation.created_at)}</div>
                     </button>
                   );
-                }) : <div className="px-3 py-3 text-sm text-[#6a8064]">No older conversations.</div>}
+                }) : <div className="px-3 py-3 text-sm text-[#6B7280]">No older conversations.</div>}
               </div>
             </div>
           )}
         </aside>
 
-        <section className="flex min-h-0 flex-col bg-[#f9fdf7]">
+        <section className="flex min-h-0 flex-col bg-[#FFFFFF]">
           {selectedConversation ? (
             <>
-              <div className="flex items-center gap-3 border-b border-[#e4efe0] bg-white px-6 py-[14px]">
+              <div className="flex items-center gap-3 border-b border-[#E2E8F0] bg-white px-6 py-[14px]">
                 <InitialsAvatar name={selectedConversation.other?.full_name} avatarUrl={selectedConversation.other?.avatar_url} size={36} />
                 <div className="min-w-0">
-                  <p className="truncate text-[0.9rem] font-semibold text-[#1a1e16]">{selectedConversation.other?.full_name ?? "Chat"}</p>
-                  <p className="truncate text-[0.7rem] text-[#6a8064]">{selectedConversation.task?.title ?? "Task chat"}</p>
+                  <p className="truncate text-[0.9rem] font-semibold text-[#1E293B]">{selectedConversation.other?.full_name ?? "Chat"}</p>
+                  <p className="truncate text-[0.7rem] text-[#6B7280]">{selectedConversation.task?.title ?? "Task chat"}</p>
                 </div>
               </div>
 
@@ -393,9 +393,9 @@ function MessagesPage() {
                       const mine = message.sender_id === me?.id;
                       return (
                         <div key={message.id} className={`space-y-1 ${mine ? "flex flex-col items-end" : "flex flex-col items-start"}`}>
-                          <div className={`max-w-[70%] rounded-[14px] px-[14px] py-[10px] text-[0.82rem] leading-[1.5] ${mine ? "rounded-br-[4px] bg-[#3dcb6c] text-white" : "rounded-bl-[4px] border border-[#e4efe0] bg-white text-[#1a1e16]"}`}>
+                          <div className={`max-w-[70%] rounded-[14px] px-[14px] py-[10px] text-[0.82rem] leading-[1.5] ${mine ? "rounded-br-[4px] bg-[#16A34A] text-white" : "rounded-bl-[4px] border border-[#E2E8F0] bg-white text-[#1E293B]"}`}>
                             {message.content}
-                            <div className={`mt-1 text-[0.6rem] ${mine ? "text-white/60" : "text-[#9eb79c]"}`}>
+                            <div className={`mt-1 text-[0.6rem] ${mine ? "text-white/60" : "text-[#94A3B8]"}`}>
                               {message.created_at ? new Date(message.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""}
                             </div>
                           </div>
@@ -406,16 +406,16 @@ function MessagesPage() {
                   <div ref={endRef} />
                 </div>
 
-                <div className="border-t border-[#e4efe0] bg-white px-6 py-[14px]">
+                <div className="border-t border-[#E2E8F0] bg-white px-6 py-[14px]">
                   <div className="flex items-center gap-[10px]">
                     <Input
                       value={draft}
                       onChange={(event) => setDraft(event.target.value)}
                       onKeyDown={(event) => event.key === "Enter" && send()}
                       placeholder="Type a message..."
-                      className="h-10 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] px-[14px] text-[0.82rem]"
+                      className="h-10 rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF] px-[14px] text-[0.82rem]"
                     />
-                    <Button size="icon" onClick={send} disabled={!draft.trim()} className="size-10 rounded-[10px] bg-[#3dcb6c] text-white hover:bg-[#35b860]">
+                    <Button size="icon" onClick={send} disabled={!draft.trim()} className="size-10 rounded-[10px] bg-[#16A34A] text-white hover:bg-[#15803D]">
                       <Send className="size-4" />
                     </Button>
                   </div>

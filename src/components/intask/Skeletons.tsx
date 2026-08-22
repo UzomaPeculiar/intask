@@ -323,7 +323,7 @@ export function WalletSkeleton() {
         <Skeleton className="h-10 w-28 rounded-lg" />
       </div>
       {/* Balance card */}
-      <div className="mb-6 rounded-2xl border border-[#c4deb8] bg-white p-6">
+      <div className="mb-6 rounded-2xl border border-[#E2E8F0] bg-white p-6">
         <Skeleton className="h-4 w-28" />
         <Skeleton className="mt-2 h-10 w-40" />
         <div className="mt-4 flex gap-3">
@@ -336,7 +336,7 @@ export function WalletSkeleton() {
         <Skeleton className="h-5 w-36" />
       </div>
       {[0, 1].map((i) => (
-        <div key={i} className="mb-3 flex items-center gap-3 rounded-xl border border-[#c4deb8] bg-white p-4">
+        <div key={i} className="mb-3 flex items-center gap-3 rounded-xl border border-[#E2E8F0] bg-white p-4">
           <Skeleton className="size-10 rounded-lg" />
           <div className="space-y-1">
             <Skeleton className="h-4 w-36" />
@@ -348,7 +348,7 @@ export function WalletSkeleton() {
       <div className="mt-6">
         <Skeleton className="mb-3 h-5 w-32" />
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center gap-3 border-b border-[#c4deb8]/50 py-3">
+          <div key={i} className="flex items-center gap-3 border-b border-[#E2E8F0]/50 py-3">
             <Skeleton className="size-9 rounded-full" />
             <div className="flex-1 space-y-1">
               <Skeleton className="h-4 w-40" />

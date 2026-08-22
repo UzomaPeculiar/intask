@@ -115,12 +115,12 @@ export function WaitlistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f7ec] [font-family:'Inter',sans-serif]">
+    <div className="min-h-screen bg-[#DCFCE7] [font-family:'Inter',sans-serif]">
       {/* Header */}
-      <header className="border-b border-[#c4deb8] bg-white/80 backdrop-blur-sm">
+      <header className="border-b border-[#E2E8F0] bg-white/80 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 font-bold text-[#1a1e16]">
-            <span className="grid size-8 place-items-center rounded-lg bg-[#3dcb6c] text-white">
+          <Link to="/" className="flex items-center gap-2 font-bold text-[#1E293B]">
+            <span className="grid size-8 place-items-center rounded-lg bg-[#16A34A] text-white">
               <Sparkles className="size-4" />
             </span>
             InTask
@@ -132,24 +132,24 @@ export function WaitlistPage() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute -top-40 -right-40 size-80 rounded-full bg-[#3dcb6c]/10 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 size-80 rounded-full bg-[#3dcb6c]/5 blur-3xl" />
+          <div className="absolute -top-40 -right-40 size-80 rounded-full bg-[#16A34A]/10 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 size-80 rounded-full bg-[#16A34A]/5 blur-3xl" />
         </div>
 
         <div className="relative mx-auto max-w-5xl px-4 pb-20 pt-16 sm:pb-28 sm:pt-24">
           <div className="mx-auto max-w-2xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#c4deb8] bg-white px-4 py-1.5 text-sm font-medium text-[#1a7a42]">
-              <span className="size-2 rounded-full bg-[#3dcb6c] animate-pulse" />
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-4 py-1.5 text-sm font-medium text-[#15803D]">
+              <span className="size-2 rounded-full bg-[#16A34A] animate-pulse" />
               Coming Soon
             </div>
 
-            <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-[#1a1e16] sm:text-5xl md:text-6xl">
+            <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-[#1E293B] sm:text-5xl md:text-6xl">
               Nigeria's student
               <br />
               freelance marketplace
             </h1>
 
-            <p className="mx-auto mt-6 max-w-lg text-lg leading-relaxed text-[#6a8064]">
+            <p className="mx-auto mt-6 max-w-lg text-lg leading-relaxed text-[#6B7280]">
               Connect with verified Nigerian university students for web design,
               content writing, research, tutoring, and more. Secure escrow payments.
             </p>
@@ -164,13 +164,13 @@ export function WaitlistPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
                     required
-                    className="h-12 flex-1 rounded-xl border-[#c4deb8] bg-white px-4 text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]"
+                    className="h-12 flex-1 rounded-xl border-[#E2E8F0] bg-white px-4 text-[#1E293B] placeholder:text-[#94A3B8] focus-visible:ring-[#16A34A]"
                   />
                   <Button
                     type="submit"
                     size="lg"
                     disabled={loading}
-                    className="h-12 rounded-xl bg-[#3dcb6c] px-6 text-white hover:bg-[#33b45f]"
+                    className="h-12 rounded-xl bg-[#16A34A] px-6 text-white hover:bg-[#33b45f]"
                   >
                     {loading ? (
                       "Joining..."
@@ -183,39 +183,39 @@ export function WaitlistPage() {
                 </form>
               ) : (
                 <div className="mx-auto max-w-md space-y-4">
-                  <div className="rounded-xl border border-[#c4deb8] bg-white p-6 text-center shadow-sm">
-                    <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-[#3dcb6c]/15">
-                      <CheckCircle2 className="size-6 text-[#3dcb6c]" />
+                  <div className="rounded-xl border border-[#E2E8F0] bg-white p-6 text-center shadow-sm">
+                    <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-[#16A34A]/15">
+                      <CheckCircle2 className="size-6 text-[#16A34A]" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#1a1e16]">You're on the list!</h3>
+                    <h3 className="text-lg font-bold text-[#1E293B]">You're on the list!</h3>
                     {position && (
-                      <p className="mt-1 text-sm text-[#6a8064]">
+                      <p className="mt-1 text-sm text-[#6B7280]">
                         You're #{position} in line. We'll email you when we launch.
                       </p>
                     )}
                     {referralCount > 0 && (
-                      <p className="mt-2 text-sm font-medium text-[#3dcb6c]">
+                      <p className="mt-2 text-sm font-medium text-[#16A34A]">
                         {referralCount} friend{referralCount === 1 ? " has" : "s have"} joined through your link!
                       </p>
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-[#c4deb8] bg-white p-5 text-left shadow-sm">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[#1a1e16]">
-                      <Users className="size-4 text-[#3dcb6c]" />
+                  <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 text-left shadow-sm">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[#1E293B]">
+                      <Users className="size-4 text-[#16A34A]" />
                       Move up the list
                     </div>
-                    <p className="mt-1 text-xs text-[#6a8064]">
+                    <p className="mt-1 text-xs text-[#6B7280]">
                       Share your referral link. Each friend who joins moves you both up.
                     </p>
                     <div className="mt-3 flex items-center gap-2">
-                      <div className="min-w-0 flex-1 truncate rounded-lg border border-[#e4efe0] bg-[#f9fdf7] px-3 py-2 text-xs text-[#6a8064]">
+                      <div className="min-w-0 flex-1 truncate rounded-lg border border-[#E2E8F0] bg-[#FFFFFF] px-3 py-2 text-xs text-[#6B7280]">
                         {referralLink}
                       </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="shrink-0 border-[#c4deb8] text-[#1a7a42] hover:bg-[#f4fbf0]"
+                        className="shrink-0 border-[#E2E8F0] text-[#15803D] hover:bg-[#F1F3F5]"
                         onClick={handleCopy}
                       >
                         {copied ? (
@@ -227,7 +227,7 @@ export function WaitlistPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="shrink-0 border-[#c4deb8] text-[#1a7a42] hover:bg-[#f4fbf0]"
+                        className="shrink-0 border-[#E2E8F0] text-[#15803D] hover:bg-[#F1F3F5]"
                         onClick={handleShare}
                       >
                         <Share2 className="size-4" />
@@ -238,7 +238,7 @@ export function WaitlistPage() {
               )}
             </div>
 
-            <p className="mt-4 text-xs text-[#9eb79c]">
+            <p className="mt-4 text-xs text-[#94A3B8]">
               Join 200+ students already on the waitlist
             </p>
           </div>
@@ -246,9 +246,9 @@ export function WaitlistPage() {
       </section>
 
       {/* Features */}
-      <section className="border-t border-[#c4deb8] bg-white">
+      <section className="border-t border-[#E2E8F0] bg-white">
         <div className="mx-auto max-w-5xl px-4 py-16 sm:py-20">
-          <h2 className="text-center text-2xl font-bold text-[#1a1e16] sm:text-3xl">
+          <h2 className="text-center text-2xl font-bold text-[#1E293B] sm:text-3xl">
             Why wait for InTask?
           </h2>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
@@ -272,9 +272,9 @@ export function WaitlistPage() {
       </section>
 
       {/* How it works */}
-      <section className="border-t border-[#c4deb8] bg-[#f0f7ec]">
+      <section className="border-t border-[#E2E8F0] bg-[#DCFCE7]">
         <div className="mx-auto max-w-5xl px-4 py-16 sm:py-20">
-          <h2 className="text-center text-2xl font-bold text-[#1a1e16] sm:text-3xl">
+          <h2 className="text-center text-2xl font-bold text-[#1E293B] sm:text-3xl">
             How it works
           </h2>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
@@ -298,19 +298,19 @@ export function WaitlistPage() {
       </section>
 
       {/* CTA */}
-      <section className="border-t border-[#c4deb8] bg-white">
+      <section className="border-t border-[#E2E8F0] bg-white">
         <div className="mx-auto max-w-5xl px-4 py-16 text-center sm:py-20">
-          <h2 className="text-2xl font-bold text-[#1a1e16] sm:text-3xl">
+          <h2 className="text-2xl font-bold text-[#1E293B] sm:text-3xl">
             Be first in line
           </h2>
-          <p className="mx-auto mt-4 max-w-md text-[#6a8064]">
+          <p className="mx-auto mt-4 max-w-md text-[#6B7280]">
             Join the waitlist now and get early access when InTask launches at your university.
           </p>
           {!submitted && (
             <div className="mt-8">
               <Button
                 size="lg"
-                className="rounded-xl bg-[#3dcb6c] px-8 text-white hover:bg-[#33b45f]"
+                className="rounded-xl bg-[#16A34A] px-8 text-white hover:bg-[#33b45f]"
                 onClick={() => inputRef.current?.focus()}
               >
                 Join Waitlist <ArrowRight className="ml-2 size-4" />
@@ -321,19 +321,19 @@ export function WaitlistPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[#c4deb8] bg-[#f0f7ec]">
-        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-[#9eb79c] sm:flex-row">
-          <div className="flex items-center gap-2 font-bold text-[#1a1e16]">
-            <span className="grid size-6 place-items-center rounded-md bg-[#3dcb6c] text-white">
+      <footer className="border-t border-[#E2E8F0] bg-[#DCFCE7]">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-[#94A3B8] sm:flex-row">
+          <div className="flex items-center gap-2 font-bold text-[#1E293B]">
+            <span className="grid size-6 place-items-center rounded-md bg-[#16A34A] text-white">
               <Sparkles className="size-3" />
             </span>
             InTask
           </div>
           <div className="flex gap-4 text-xs">
-            <Link to="/about" className="hover:text-[#1a1e16]">About</Link>
-            <Link to="/contact" className="hover:text-[#1a1e16]">Contact</Link>
-            <Link to="/terms" className="hover:text-[#1a1e16]">Terms</Link>
-            <Link to="/privacy" className="hover:text-[#1a1e16]">Privacy</Link>
+            <Link to="/about" className="hover:text-[#1E293B]">About</Link>
+            <Link to="/contact" className="hover:text-[#1E293B]">Contact</Link>
+            <Link to="/terms" className="hover:text-[#1E293B]">Terms</Link>
+            <Link to="/privacy" className="hover:text-[#1E293B]">Privacy</Link>
           </div>
         </div>
       </footer>
@@ -351,12 +351,12 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[#c4deb8] bg-[#f9fdf7] p-6">
-      <div className="grid size-10 place-items-center rounded-full bg-[#3dcb6c]/15 text-[#3dcb6c]">
+    <div className="rounded-2xl border border-[#E2E8F0] bg-[#FFFFFF] p-6">
+      <div className="grid size-10 place-items-center rounded-full bg-[#16A34A]/15 text-[#16A34A]">
         {icon}
       </div>
-      <h3 className="mt-4 font-bold text-[#1a1e16]">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-[#6a8064]">{description}</p>
+      <h3 className="mt-4 font-bold text-[#1E293B]">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-[#6B7280]">{description}</p>
     </div>
   );
 }
@@ -372,11 +372,11 @@ function StepCard({
 }) {
   return (
     <div className="text-center">
-      <div className="mx-auto grid size-12 place-items-center rounded-full bg-[#3dcb6c] text-lg font-bold text-white">
+      <div className="mx-auto grid size-12 place-items-center rounded-full bg-[#16A34A] text-lg font-bold text-white">
         {number}
       </div>
-      <h3 className="mt-4 font-bold text-[#1a1e16]">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-[#6a8064]">{description}</p>
+      <h3 className="mt-4 font-bold text-[#1E293B]">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-[#6B7280]">{description}</p>
     </div>
   );
 }

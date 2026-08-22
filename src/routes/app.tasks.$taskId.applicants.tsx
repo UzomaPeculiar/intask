@@ -134,22 +134,22 @@ function ApplicantsPage() {
 
   const tabButtonClass = (isActive: boolean) =>
     `rounded-lg px-2 py-2 text-center text-[0.8rem] font-semibold transition-colors ${
-      isActive ? "bg-white text-[#1a1e16] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "bg-transparent text-[#6a8064] hover:text-[#1a1e16]"
+      isActive ? "bg-white text-[#1E293B] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "bg-transparent text-[#6B7280] hover:text-[#1E293B]"
     }`;
 
   const statusClass: Record<string, string> = {
-    pending: "bg-[#f4fbf0] text-[#6a8064]",
-    accepted: "bg-[rgba(61,203,108,0.12)] text-[#1a7a42]",
+    pending: "bg-[#F1F3F5] text-[#6B7280]",
+    accepted: "bg-[rgba(22,163,74,0.12)] text-[#15803D]",
     rejected: "bg-[rgba(199,59,59,0.1)] text-[#c73b3b]",
   };
 
   return (
-    <div className="mx-auto w-full max-w-[800px] px-4 pb-10 pt-6 sm:px-6 md:px-12" style={{ color: "#1a1e16" }}>
+    <div className="mx-auto w-full max-w-[800px] px-4 pb-10 pt-6 sm:px-6 md:px-12" style={{ color: "#1E293B" }}>
       <button
         onClick={() => window.history.back()}
         aria-label="Back"
         className="mb-4 inline-flex size-9 items-center justify-center rounded-full border bg-white"
-        style={{ borderColor: "#c4deb8" }}
+        style={{ borderColor: "#E2E8F0" }}
       >
         <ArrowLeft className="size-4" />
       </button>
@@ -164,22 +164,22 @@ function ApplicantsPage() {
             <div
               className="mb-5 rounded-[18px] border p-5"
               style={{
-                borderColor: "#c4deb8",
-                background: "linear-gradient(145deg, #f4fbf0, #eaf3f8)",
+                borderColor: "#E2E8F0",
+                background: "linear-gradient(145deg, #F1F3F5, #eaf3f8)",
               }}
             >
-              <h2 className="text-[1.2rem] font-bold leading-tight text-[#1a1e16]" style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}>{task.title}</h2>
-              <p className="mt-1.5 text-[1.1rem] font-bold text-[#1a7a42]" style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}>
+              <h2 className="text-[1.2rem] font-bold leading-tight text-[#1E293B]" style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}>{task.title}</h2>
+              <p className="mt-1.5 text-[1.1rem] font-bold text-[#15803D]" style={{ fontFamily: "Space Grotesk, Inter, sans-serif" }}>
                 {task.budget_negotiable ? "Negotiable" : naira(task.budget)}
               </p>
             </div>
           )}
 
-          <div className="mb-4 rounded-xl border bg-white p-4" style={{ borderColor: "#c4deb8" }}>
-            <h3 className="text-[0.9rem] font-semibold text-[#1a1e16]">
+          <div className="mb-4 rounded-xl border bg-white p-4" style={{ borderColor: "#E2E8F0" }}>
+            <h3 className="text-[0.9rem] font-semibold text-[#1E293B]">
               {apps?.length ?? 0} applicant{apps?.length === 1 ? "" : "s"}
             </h3>
-            <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">Review pending applicants first, then check accepted and dismissed history.</p>
+            <p className="mt-0.5 text-[0.75rem] text-[#6B7280]">Review pending applicants first, then check accepted and dismissed history.</p>
           </div>
 
           {isLoading && <div className="mt-4"><ApplicationsSkeleton /></div>}
@@ -190,7 +190,7 @@ function ApplicantsPage() {
 
           {!isLoading && (apps?.length ?? 0) > 0 && (
             <>
-              <div className="mb-5 grid grid-cols-4 gap-0.5 rounded-[10px] p-[3px]" style={{ backgroundColor: "#e4efe0" }}>
+              <div className="mb-5 grid grid-cols-4 gap-0.5 rounded-[10px] p-[3px]" style={{ backgroundColor: "#E2E8F0" }}>
                 <button type="button" className={tabButtonClass(tab === "pending")} onClick={() => setTab("pending")}>Pending ({pendingApps.length})</button>
                 <button type="button" className={tabButtonClass(tab === "accepted")} onClick={() => setTab("accepted")}>Accepted ({acceptedApps.length})</button>
                 <button type="button" className={tabButtonClass(tab === "rejected")} onClick={() => setTab("rejected")}>Dismissed ({rejectedApps.length})</button>
@@ -205,7 +205,7 @@ function ApplicantsPage() {
                     <li
                       key={application.id}
                       className="cursor-pointer rounded-[14px] border bg-white p-[18px]"
-                      style={{ borderColor: "#c4deb8" }}
+                      style={{ borderColor: "#E2E8F0" }}
                       onClick={() => nav({ to: "/app/profile/$userId", params: { userId: application.student_id } })}
                     >
                       <div className="flex items-start gap-3">
@@ -215,23 +215,23 @@ function ApplicantsPage() {
 
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="truncate text-[0.9rem] font-semibold text-[#1a1e16]">{application.student?.full_name}</p>
+                            <p className="truncate text-[0.9rem] font-semibold text-[#1E293B]">{application.student?.full_name}</p>
                             {application.student_profile?.verified && (
-                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold text-[#1a7a42]" style={{ backgroundColor: "rgba(61,203,108,0.12)" }}>
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold text-[#15803D]" style={{ backgroundColor: "rgba(22,163,74,0.12)" }}>
                                 ✓ Verified
                               </span>
                             )}
                           </div>
 
                           {application.student_profile && (
-                            <p className="mt-0.5 truncate text-[0.7rem] text-[#6a8064]">
+                            <p className="mt-0.5 truncate text-[0.7rem] text-[#6B7280]">
                               {application.student_profile.university}
                               {application.student_profile.year_of_study ? ` · ${application.student_profile.year_of_study}` : ""}
                               {application.student_profile.department ? ` · ${application.student_profile.department}` : ""}
                             </p>
                           )}
 
-                          <div className="mt-1 flex items-center gap-3 text-[0.7rem] text-[#6a8064]">
+                          <div className="mt-1 flex items-center gap-3 text-[0.7rem] text-[#6B7280]">
                             <span className="inline-flex items-center gap-1">
                               <Star className="size-3" />
                               {Number(application.student_profile?.rating_average ?? 0).toFixed(1)}
@@ -241,22 +241,22 @@ function ApplicantsPage() {
                         </div>
 
                         <span
-                          className={`shrink-0 rounded-full px-2.5 py-[3px] text-[0.65rem] font-semibold capitalize ${statusClass[application.status] ?? "bg-[#f4fbf0] text-[#6a8064]"}`}
+                          className={`shrink-0 rounded-full px-2.5 py-[3px] text-[0.65rem] font-semibold capitalize ${statusClass[application.status] ?? "bg-[#F1F3F5] text-[#6B7280]"}`}
                         >
                           {application.status === "rejected" ? "Dismissed" : application.status}
                         </span>
                       </div>
 
-                      {application.message && <p className="mt-2.5 line-clamp-2 text-[0.8rem] leading-[1.5] text-[#1a1e16]">{application.message}</p>}
+                      {application.message && <p className="mt-2.5 line-clamp-2 text-[0.8rem] leading-[1.5] text-[#1E293B]">{application.message}</p>}
 
                       {(application as any).proposed_rate && (
-                        <p className="mt-2 text-[0.8rem] font-medium text-[#1a7a42]">Proposed rate: {naira((application as any).proposed_rate)}</p>
+                        <p className="mt-2 text-[0.8rem] font-medium text-[#15803D]">Proposed rate: {naira((application as any).proposed_rate)}</p>
                       )}
 
                       {Array.isArray(application.student_profile?.skills) && application.student_profile.skills.length > 0 && (
                         <div className="mt-2.5 flex flex-wrap gap-1">
                           {application.student_profile.skills.slice(0, 3).map((skill: string) => (
-                            <span key={skill} className="rounded-full px-2 py-0.5 text-[0.6rem] font-medium text-[#1a7a42]" style={{ backgroundColor: "#d8f5e4" }}>
+                            <span key={skill} className="rounded-full px-2 py-0.5 text-[0.6rem] font-medium text-[#15803D]" style={{ backgroundColor: "#DCFCE7" }}>
                               {skill}
                             </span>
                           ))}
@@ -283,13 +283,13 @@ function ApplicantsPage() {
                             posterId={task.poster_id}
                             label="Message"
                             variant="outline"
-                            className="h-9 border-[#c4deb8] bg-transparent px-4 text-[0.8rem] font-semibold text-[#3dcb6c] hover:bg-transparent"
+                            className="h-9 border-[#E2E8F0] bg-transparent px-4 text-[0.8rem] font-semibold text-[#16A34A] hover:bg-transparent"
                           />
 
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 border-[#e4efe0] bg-transparent px-4 text-[0.8rem] font-semibold text-[#6a8064] hover:bg-transparent"
+                            className="h-9 border-[#E2E8F0] bg-transparent px-4 text-[0.8rem] font-semibold text-[#6B7280] hover:bg-transparent"
                             disabled={dismiss.isPending}
                             onClick={(event) => {
                               event.stopPropagation();
@@ -306,7 +306,7 @@ function ApplicantsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 border-[#e4efe0] bg-transparent px-4 text-[0.8rem] font-semibold text-[#6a8064] hover:bg-transparent"
+                            className="h-9 border-[#E2E8F0] bg-transparent px-4 text-[0.8rem] font-semibold text-[#6B7280] hover:bg-transparent"
                             disabled={removeAccepted.isPending}
                             onClick={() => removeAccepted.mutate({ appId: application.id, studentId: application.student_id })}
                           >
@@ -343,7 +343,7 @@ function AcceptSheet({ studentName, budget, negotiable, taskId, platformFeePerce
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button className="h-9 w-full bg-[#1a7a42] text-[0.8rem] font-semibold text-white hover:bg-[#156838]" size="sm">Accept</Button>
+        <Button className="h-9 w-full bg-[#15803D] text-[0.8rem] font-semibold text-white hover:bg-[#156838]" size="sm">Accept</Button>
       </SheetTrigger>
       <SheetContent side="bottom" className="rounded-t-2xl">
         <SheetHeader className="text-left">

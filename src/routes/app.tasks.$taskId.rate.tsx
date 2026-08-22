@@ -104,23 +104,23 @@ function RatePage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+    <div className="relative min-h-screen bg-[#F8FAFC] text-[#1E293B] [font-family:'Inter',sans-serif]">
       <button
         onClick={() => {
           if (window.history.length > 1) window.history.back();
           else nav({ to: "/app/tasks/$taskId", params: { taskId } });
         }}
         aria-label="Back"
-        className="absolute left-6 top-7 z-10 grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white sm:left-10"
+        className="absolute left-6 top-7 z-10 grid size-9 place-items-center rounded-full border border-[#E2E8F0] bg-white sm:left-10"
       >
         <ArrowLeft className="size-4" />
       </button>
 
       <div className="mx-auto flex min-h-screen w-full max-w-[640px] items-center justify-center px-6 py-12 sm:px-10">
-        <div className="w-full max-w-[440px] rounded-[20px] border border-[#c4deb8] bg-white p-10 text-center">
+        <div className="w-full max-w-[440px] rounded-[20px] border border-[#E2E8F0] bg-white p-10 text-center">
           <div className="text-[2.5rem] leading-none">⭐</div>
-          <h1 className="mt-4 font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1a1e16]">Leave a review</h1>
-          <p className="mt-1.5 text-[0.85rem] text-[#6a8064]">{task.title}</p>
+          <h1 className="mt-4 font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1E293B]">Leave a review</h1>
+          <p className="mt-1.5 text-[0.85rem] text-[#6B7280]">{task.title}</p>
 
           <div className="mt-7 flex justify-center gap-2">
             {[1, 2, 3, 4, 5].map((n) => (
@@ -130,16 +130,16 @@ function RatePage() {
                 aria-label={`${n} stars`}
                 className="transition-transform duration-150 hover:scale-110"
               >
-                <Star className={`size-10 ${n <= rating ? "fill-[#b5771a] text-[#b5771a]" : "text-[#e4efe0]"}`} />
+                <Star className={`size-10 ${n <= rating ? "fill-[#F97316] text-[#F97316]" : "text-[#E2E8F0]"}`} />
               </button>
             ))}
           </div>
 
-          <p className="mt-5 text-left text-[0.9rem] font-semibold text-[#1a1e16]">
-            Comment <span className="font-normal text-[#9eb79c]">(optional)</span>
+          <p className="mt-5 text-left text-[0.9rem] font-semibold text-[#1E293B]">
+            Comment <span className="font-normal text-[#94A3B8]">(optional)</span>
           </p>
           <Textarea
-            className="mt-2 min-h-[100px] rounded-[12px] border-[#c4deb8] bg-[#f9fdf7] px-3.5 py-3.5 text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
+            className="mt-2 min-h-[100px] rounded-[12px] border-[#E2E8F0] bg-[#FFFFFF] px-3.5 py-3.5 text-[0.85rem] text-[#1E293B] placeholder:text-[#94A3B8] focus-visible:ring-[#16A34A]/20"
             rows={4}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
@@ -147,17 +147,17 @@ function RatePage() {
           />
 
           {meId === task.poster_id && task.is_team_task && (teamMembers?.length ?? 0) > 0 && (
-            <p className="mt-2 text-left text-[0.75rem] text-[#9eb79c]">This review will be applied to all accepted team members.</p>
+            <p className="mt-2 text-left text-[0.75rem] text-[#94A3B8]">This review will be applied to all accepted team members.</p>
           )}
 
           <Button
-            className="mt-5 h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.9rem] font-semibold text-white hover:bg-[#34b35d] disabled:bg-[#c4deb8]"
+            className="mt-5 h-12 w-full rounded-[10px] bg-[#16A34A] text-[0.9rem] font-semibold text-white hover:bg-[#15803D] disabled:bg-[#E2E8F0]"
             disabled={busy}
             onClick={submit}
           >
             {busy ? "Submitting..." : "Submit review"}
           </Button>
-          <p className="mt-2.5 text-[0.75rem] text-[#9eb79c]">Your review helps other students and posters make informed decisions.</p>
+          <p className="mt-2.5 text-[0.75rem] text-[#94A3B8]">Your review helps other students and posters make informed decisions.</p>
         </div>
       </div>
     </div>

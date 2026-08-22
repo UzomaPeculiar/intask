@@ -809,28 +809,28 @@ function PosterDashboard({ userId, role }: { userId?: string; role: string }) {
 
       {/* Two-column: chart + notifications */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px]">
-        <div className="border border-[#e4efe0] bg-white p-5">
-          <h3 className="mb-4 text-[0.9rem] font-semibold text-[#1a1e16]">Page Views</h3>
+        <div className="border border-[#E2E8F0] bg-white p-5">
+          <h3 className="mb-4 text-[0.9rem] font-semibold text-[#1E293B]">Page Views</h3>
           <div className="flex h-48 items-end gap-1">
             {Array.from({ length: 14 }).map((_, i) => (
               <div key={i} className="flex-1">
                 <div
-                  className="rounded-t bg-[#3dcb6c] transition-all"
+                  className="rounded-t bg-[#16A34A] transition-all"
                   style={{ height: `${Math.max(4, Math.random() * 100)}%` }}
                 />
               </div>
             ))}
           </div>
-          <div className="mt-2 flex justify-between text-[0.65rem] text-[#9eb79c]">
+          <div className="mt-2 flex justify-between text-[0.65rem] text-[#94A3B8]">
             <span>1.0</span><span>0.8</span><span>0.6</span><span>0.4</span><span>0.2</span><span>0</span>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
-              <p className="mb-1.5 text-[0.8rem] font-semibold text-[#1a1e16]">Projects</p>
+              <p className="mb-1.5 text-[0.8rem] font-semibold text-[#1E293B]">Projects</p>
               <select
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
-                className="h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.85rem] text-[#1a1e16] focus:border-[#3dcb6c] focus:outline-none"
+                className="h-10 w-full border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.85rem] text-[#1E293B] focus:border-[#16A34A] focus:outline-none"
               >
                 <option value="all">All Projects</option>
                 {myTasksList?.map((t) => (
@@ -839,11 +839,11 @@ function PosterDashboard({ userId, role }: { userId?: string; role: string }) {
               </select>
             </div>
             <div>
-              <p className="mb-1.5 text-[0.8rem] font-semibold text-[#1a1e16]">Number Days</p>
+              <p className="mb-1.5 text-[0.8rem] font-semibold text-[#1E293B]">Number Days</p>
               <select
                 value={selectedDays}
                 onChange={(e) => setSelectedDays(e.target.value)}
-                className="h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.85rem] text-[#1a1e16] focus:border-[#3dcb6c] focus:outline-none"
+                className="h-10 w-full border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.85rem] text-[#1E293B] focus:border-[#16A34A] focus:outline-none"
               >
                 <option value="7">7 days</option>
                 <option value="15">15 days</option>
@@ -854,25 +854,25 @@ function PosterDashboard({ userId, role }: { userId?: string; role: string }) {
           </div>
         </div>
 
-        <div className="border border-[#e4efe0] bg-white p-5">
-          <h3 className="mb-4 text-[0.9rem] font-semibold text-[#1a1e16]">Notifications</h3>
+        <div className="border border-[#E2E8F0] bg-white p-5">
+          <h3 className="mb-4 text-[0.9rem] font-semibold text-[#1E293B]">Notifications</h3>
           {notifs && notifs.length > 0 ? (
             <div className="space-y-3">
               {notifs.map((n) => (
                 <div key={n.id} className="flex items-start gap-3">
-                  <div className="mt-0.5 size-2 shrink-0 rounded-full bg-[#3dcb6c]" />
+                  <div className="mt-0.5 size-2 shrink-0 rounded-full bg-[#16A34A]" />
                   <div className="min-w-0">
-                    <p className="text-[0.8rem] font-medium text-[#1a1e16] line-clamp-1">{n.type}</p>
-                    <p className="text-[0.7rem] text-[#6a8064] line-clamp-1">{n.message}</p>
+                    <p className="text-[0.8rem] font-medium text-[#1E293B] line-clamp-1">{n.type}</p>
+                    <p className="text-[0.7rem] text-[#6B7280] line-clamp-1">{n.message}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-[0.8rem] text-[#6a8064]">No notifications yet.</p>
+            <p className="text-[0.8rem] text-[#6B7280]">No notifications yet.</p>
           )}
           {notifs && notifs.length > 0 && (
-            <Link to="/app/notifications" className="mt-3 block text-center text-[0.75rem] font-medium text-[#3dcb6c] hover:underline">
+            <Link to="/app/notifications" className="mt-3 block text-center text-[0.75rem] font-medium text-[#16A34A] hover:underline">
               View all →
             </Link>
           )}
@@ -880,23 +880,23 @@ function PosterDashboard({ userId, role }: { userId?: string; role: string }) {
       </div>
 
       {/* Recent Proposals */}
-      <div className="border border-[#e4efe0] bg-white p-5">
-        <h3 className="mb-4 text-[0.9rem] font-semibold text-[#1a1e16]">Recent Proposals</h3>
+      <div className="border border-[#E2E8F0] bg-white p-5">
+        <h3 className="mb-4 text-[0.9rem] font-semibold text-[#1E293B]">Recent Proposals</h3>
         {!recentProposals || recentProposals.length === 0 ? (
-          <p className="text-[0.8rem] text-[#6a8064]">No proposals found.</p>
+          <p className="text-[0.8rem] text-[#6B7280]">No proposals found.</p>
         ) : (
           <div className="space-y-3">
             {recentProposals.map((p: any) => (
-              <div key={p.id} className="flex items-center justify-between border border-[#e4efe0] bg-[#f9fdf7] p-3">
+              <div key={p.id} className="flex items-center justify-between border border-[#E2E8F0] bg-[#FFFFFF] p-3">
                 <div className="flex items-center gap-3">
                   <InitialsAvatar name={p.student?.full_name ?? "User"} size={36} avatarUrl={p.student?.avatar_url} />
                   <div>
-                    <p className="text-[0.8rem] font-semibold text-[#1a1e16]">{p.student?.full_name ?? "Anonymous"}</p>
-                    <p className="text-[0.7rem] text-[#6a8064]">{p.task?.title ?? "Task"}</p>
+                    <p className="text-[0.8rem] font-semibold text-[#1E293B]">{p.student?.full_name ?? "Anonymous"}</p>
+                    <p className="text-[0.7rem] text-[#6B7280]">{p.task?.title ?? "Task"}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  {p.price && <p className="text-[0.8rem] font-semibold text-[#1a1e16]">₦{Number(p.price).toLocaleString("en-NG")}</p>}
+                  {p.price && <p className="text-[0.8rem] font-semibold text-[#1E293B]">₦{Number(p.price).toLocaleString("en-NG")}</p>}
                   <span className={`inline-block px-2 py-0.5 text-[0.65rem] font-medium ${
                     p.status === "accepted" ? "bg-[#e8f5e9] text-[#2e7d32]" :
                     p.status === "rejected" ? "bg-[#fce4ec] text-[#c62828]" :
@@ -916,13 +916,13 @@ function PosterDashboard({ userId, role }: { userId?: string; role: string }) {
 
 function PosterStatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
   return (
-    <div className="border border-[#e4efe0] bg-white p-4">
+    <div className="border border-[#E2E8F0] bg-white p-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[0.75rem] text-[#6a8064]">{label}</p>
-          <p className="mt-1 text-[1.4rem] font-bold text-[#1a1e16]">{value}</p>
+          <p className="text-[0.75rem] text-[#6B7280]">{label}</p>
+          <p className="mt-1 text-[1.4rem] font-bold text-[#1E293B]">{value}</p>
         </div>
-        <div className="grid size-10 place-items-center rounded-full bg-[#f0f7ec] text-[#3dcb6c]">
+        <div className="grid size-10 place-items-center rounded-full bg-[#DCFCE7] text-[#16A34A]">
           {icon}
         </div>
       </div>

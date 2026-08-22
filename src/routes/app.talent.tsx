@@ -202,33 +202,33 @@ function TalentSearchPage() {
       : "Find verified student talent";
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-[1240px] bg-[#eff8ea] px-5 py-7 text-[#1a1e16] lg:px-9">
+    <div className="mx-auto min-h-screen w-full max-w-[1240px] bg-[#F8FAFC] px-5 py-7 text-[#1E293B] lg:px-9">
       <header className="mb-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => window.history.back()}
-            className="grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white"
+            className="grid size-9 place-items-center rounded-full border border-[#E2E8F0] bg-white"
             aria-label="Back"
           >
             <ArrowLeft className="size-4" />
           </button>
-          <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">Talent Search</h1>
+          <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1E293B]">Talent Search</h1>
         </div>
-        <p className="text-[0.8rem] text-[#6a8064]">{countLabel}</p>
+        <p className="text-[0.8rem] text-[#6B7280]">{countLabel}</p>
       </header>
 
       {MVP_FEATURES.subscriptions && !canSearchTalent && (
-        <div className="mb-4 flex items-start justify-between gap-3 border border-[#e6c79a] bg-[#f7ecd9] p-4 shadow-sm">
+        <div className="mb-4 flex items-start justify-between gap-3 border border-[#FCD34D] bg-[#f7ecd9] p-4 shadow-sm">
           <div>
-            <p className="text-[0.85rem] font-semibold text-[#8b5f17]">Pro feature</p>
-            <p className="mt-0.5 text-[0.8rem] text-[#8b5f17]/90">
+            <p className="text-[0.85rem] font-semibold text-[#92400E]">Pro feature</p>
+            <p className="mt-0.5 text-[0.8rem] text-[#92400E]/90">
               Upgrade to the Pro plan to unlock full talent search with direct contact details.
             </p>
           </div>
           <Button
             size="sm"
             onClick={() => nav({ to: "/app/subscription" as any })}
-            className="shrink-0 rounded-[10px] bg-[#3dcb6c] px-4 text-[0.8rem] font-semibold text-white hover:bg-[#35b860]"
+            className="shrink-0 rounded-[10px] bg-[#16A34A] px-4 text-[0.8rem] font-semibold text-white hover:bg-[#15803D]"
           >
             Upgrade
           </Button>
@@ -237,10 +237,10 @@ function TalentSearchPage() {
 
       <div className="mb-4 flex gap-2.5">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#6a8064]" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#6B7280]" />
           <Input
             placeholder="Search by name, skill, or keyword..."
-            className="h-11 rounded-[10px] border-[#c4deb8] bg-white pl-10 text-[0.9rem]"
+            className="h-11 rounded-[10px] border-[#E2E8F0] bg-white pl-10 text-[0.9rem]"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -250,7 +250,7 @@ function TalentSearchPage() {
           type="button"
           onClick={handleSearch}
           disabled={isLoading}
-          className="h-11 min-w-[106px] rounded-[10px] bg-[#3dcb6c] px-5 text-[0.85rem] font-semibold text-white hover:bg-[#35b860]"
+          className="h-11 min-w-[106px] rounded-[10px] bg-[#16A34A] px-5 text-[0.85rem] font-semibold text-white hover:bg-[#15803D]"
         >
           {isLoading ? "Searching…" : "Search"}
         </Button>
@@ -260,7 +260,7 @@ function TalentSearchPage() {
         <select
           value={skill}
           onChange={(e) => setSkill(e.target.value)}
-          className="h-9 border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+          className="h-9 border border-[#E2E8F0] bg-white px-3 text-[0.8rem]"
         >
           <option value="All Skills">All Skills</option>
           {SKILLS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -268,21 +268,21 @@ function TalentSearchPage() {
         <select
           value={university}
           onChange={(e) => setUniversity(e.target.value)}
-          className="h-9 border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+          className="h-9 border border-[#E2E8F0] bg-white px-3 text-[0.8rem]"
         >
           {UNIVERSITIES.map((u) => <option key={u} value={u}>{u}</option>)}
         </select>
         <select
           value={yearLevel}
           onChange={(e) => setYearLevel(e.target.value)}
-          className="h-9 border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+          className="h-9 border border-[#E2E8F0] bg-white px-3 text-[0.8rem]"
         >
           {YEAR_LEVELS.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
         <select
           value={minRating}
           onChange={(e) => setMinRating(e.target.value)}
-          className="h-9 border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+          className="h-9 border border-[#E2E8F0] bg-white px-3 text-[0.8rem]"
         >
           <option value="">Rating: Any</option>
           <option value="3">3+ stars</option>
@@ -293,7 +293,7 @@ function TalentSearchPage() {
           <button
             type="button"
             onClick={clearFilters}
-            className="text-[0.8rem] font-medium text-[#1a7a42] hover:underline"
+            className="text-[0.8rem] font-medium text-[#15803D] hover:underline"
           >
             Clear filters
           </button>
@@ -315,28 +315,28 @@ function TalentSearchPage() {
             return (
               <div
                 key={p.id}
-                className="flex min-h-[240px] flex-col border border-[#c4deb8] bg-white p-[18px]"
+                className="flex min-h-[240px] flex-col border border-[#E2E8F0] bg-white p-[18px]"
               >
                 <div className="flex items-start gap-3">
                   <InitialsAvatar name={showFullProfile ? p.full_name : "??"} size={44} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="[font-family:'Space_Grotesk',sans-serif] text-[0.95rem] font-semibold leading-[1.3] text-[#1a1e16]">
+                      <p className="[font-family:'Space_Grotesk',sans-serif] text-[0.95rem] font-semibold leading-[1.3] text-[#1E293B]">
                         {showFullProfile ? p.full_name : `${p.full_name?.charAt(0) ?? "?"}*** ${p.full_name?.split(" ")[1]?.charAt(0) ?? "?"}***`}
                       </p>
                       <VerifiedBadge role={p.role} verified={p.student?.verified} />
                     </div>
                     {p.student?.university && (
-                      <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">
+                      <p className="mt-0.5 text-[0.75rem] text-[#6B7280]">
                         {p.student.university}
                         {p.student.year_of_study ? ` · ${p.student.year_of_study}` : ""}
                       </p>
                     )}
-                    <div className="mt-1 flex items-center gap-3 text-[0.75rem] text-[#6a8064]">
+                    <div className="mt-1 flex items-center gap-3 text-[0.75rem] text-[#6B7280]">
                       {(p.student?.rating_count ?? 0) > 0 && (
                         <span className="flex items-center gap-1">
-                          <Star className="size-3 fill-[#b5771a] text-[#b5771a]" />
-                          <span className="font-semibold text-[#1a1e16]">{Number(p.student.rating_average).toFixed(1)}</span>
+                          <Star className="size-3 fill-[#F97316] text-[#F97316]" />
+                          <span className="font-semibold text-[#1E293B]">{Number(p.student.rating_average).toFixed(1)}</span>
                         </span>
                       )}
                       {(p.student?.tasks_completed ?? 0) > 0 && (
@@ -349,10 +349,10 @@ function TalentSearchPage() {
                 {p.student?.skills && p.student.skills.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1">
                     {p.student.skills.slice(0, 3).map((s: string) => (
-                      <span key={s} className="bg-[#f4fbf0] px-2 py-0.5 text-[0.6rem] font-medium text-[#6a8064]">{s}</span>
+                      <span key={s} className="bg-[#F1F3F5] px-2 py-0.5 text-[0.6rem] font-medium text-[#6B7280]">{s}</span>
                     ))}
                     {p.student.skills.length > 3 && (
-                      <span className="bg-[#f4fbf0] px-2 py-0.5 text-[0.6rem] font-medium text-[#6a8064]">+{p.student.skills.length - 3}</span>
+                      <span className="bg-[#F1F3F5] px-2 py-0.5 text-[0.6rem] font-medium text-[#6B7280]">+{p.student.skills.length - 3}</span>
                     )}
                   </div>
                 )}
@@ -360,7 +360,7 @@ function TalentSearchPage() {
                 {p.badges && p.badges.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {p.badges.slice(0, 2).map((b: string) => (
-                      <span key={b} className="inline-flex items-center gap-1 border border-[#1a7a42] bg-[#d8f5e4] px-2 py-0.5 text-[0.6rem] font-medium text-[#1a7a42]">
+                      <span key={b} className="inline-flex items-center gap-1 border border-[#15803D] bg-[#DCFCE7] px-2 py-0.5 text-[0.6rem] font-medium text-[#15803D]">
                         <Award className="size-2.5" /> {b}
                       </span>
                     ))}
@@ -373,7 +373,7 @@ function TalentSearchPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 w-full gap-1 rounded-[10px] border-[#c4deb8] bg-transparent text-[0.8rem] font-semibold text-[#1a1e16] hover:border-[#3dcb6c] hover:bg-[#d8f5e4]"
+                        className="h-9 w-full gap-1 rounded-[10px] border-[#E2E8F0] bg-transparent text-[0.8rem] font-semibold text-[#1E293B] hover:border-[#16A34A] hover:bg-[#DCFCE7]"
                       >
                         <Unlock className="size-3.5" /> View full profile
                       </Button>
@@ -381,7 +381,7 @@ function TalentSearchPage() {
                   ) : canSearchTalent ? (
                     <Button
                       size="sm"
-                      className="h-9 flex-1 gap-1 rounded-[10px] bg-[#3dcb6c] text-[0.8rem] font-semibold text-white hover:bg-[#35b860]"
+                      className="h-9 flex-1 gap-1 rounded-[10px] bg-[#16A34A] text-[0.8rem] font-semibold text-white hover:bg-[#15803D]"
                       disabled={unlock.isPending}
                       onClick={() => unlock.mutate(p.id)}
                     >
@@ -391,7 +391,7 @@ function TalentSearchPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-9 flex-1 gap-1 rounded-[10px] border-[#c4deb8] bg-transparent text-[0.8rem] font-semibold text-[#6a8064] hover:border-[#3dcb6c] hover:bg-[#d8f5e4]"
+                      className="h-9 flex-1 gap-1 rounded-[10px] border-[#E2E8F0] bg-transparent text-[0.8rem] font-semibold text-[#6B7280] hover:border-[#16A34A] hover:bg-[#DCFCE7]"
                       onClick={() => nav({ to: "/app/subscription" as any })}
                     >
                       <Lock className="size-3.5" /> Upgrade to unlock
@@ -400,7 +400,7 @@ function TalentSearchPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 rounded-[10px] border-[#c4deb8] bg-transparent px-3 text-[0.8rem] font-semibold text-[#1a1e16] hover:border-[#3dcb6c] hover:bg-[#d8f5e4]"
+                    className="h-9 rounded-[10px] border-[#E2E8F0] bg-transparent px-3 text-[0.8rem] font-semibold text-[#1E293B] hover:border-[#16A34A] hover:bg-[#DCFCE7]"
                     onClick={() => nav({ to: "/app/tasks/create" as any })}
                   >
                     Invite to task

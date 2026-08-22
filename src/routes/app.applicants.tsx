@@ -127,9 +127,9 @@ function ApplicantsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-10 pt-7 sm:px-8">
-      <h1 className="mb-6 font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">All Applicants</h1>
+      <h1 className="mb-6 font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1E293B]">All Applicants</h1>
 
-      <div className="border border-[#e4efe0] bg-white p-5">
+      <div className="border border-[#E2E8F0] bg-white p-5">
         {/* Filter bar */}
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div className="relative min-w-[200px] flex-1">
@@ -138,28 +138,28 @@ function ApplicantsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search ..."
-              className="h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus:border-[#3dcb6c] focus:outline-none focus:ring-1 focus:ring-[#3dcb6c]"
+              className="h-10 w-full border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.85rem] text-[#1E293B] placeholder:text-[#94A3B8] focus:border-[#16A34A] focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
             />
           </div>
           <select
             value={filterTask}
             onChange={(e) => setFilterTask(e.target.value)}
-            className="h-10 border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.8rem] text-[#1a1e16] focus:border-[#3dcb6c] focus:outline-none"
+            className="h-10 border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.8rem] text-[#1E293B] focus:border-[#16A34A] focus:outline-none"
           >
             <option value="all">Filter by Job</option>
             {tasks?.map((t) => (
               <option key={t.id} value={t.id}>{t.title}</option>
             ))}
           </select>
-          <button className="grid size-10 place-items-center bg-[#3dcb6c] text-white transition-colors hover:bg-[#34b85e]">
+          <button className="grid size-10 place-items-center bg-[#16A34A] text-white transition-colors hover:bg-[#34b85e]">
             <Search className="size-4" />
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-[0.8rem] text-[#6a8064]">Sort by:</span>
+            <span className="text-[0.8rem] text-[#6B7280]">Sort by:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="h-10 border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.8rem] text-[#1a1e16] focus:border-[#3dcb6c] focus:outline-none"
+              className="h-10 border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.8rem] text-[#1E293B] focus:border-[#16A34A] focus:outline-none"
             >
               <option value="newest">Newest</option>
               <option value="oldest">Oldest</option>
@@ -169,24 +169,24 @@ function ApplicantsPage() {
 
         {/* Overall stats */}
         <div className="mb-5 flex items-center justify-end gap-6 text-[0.8rem]">
-          <span className="text-[#6a8064]">Total(s): <span className="font-semibold text-[#1a1e16]">{totalApps}</span></span>
-          <span className="text-[#6a8064]">Approved: <span className="font-semibold text-[#2e7d32]">{approvedApps}</span></span>
-          <span className="text-[#6a8064]">Rejected(s): <span className="font-semibold text-[#d64545]">{rejectedApps}</span></span>
+          <span className="text-[#6B7280]">Total(s): <span className="font-semibold text-[#1E293B]">{totalApps}</span></span>
+          <span className="text-[#6B7280]">Approved: <span className="font-semibold text-[#2e7d32]">{approvedApps}</span></span>
+          <span className="text-[#6B7280]">Rejected(s): <span className="font-semibold text-[#d64545]">{rejectedApps}</span></span>
         </div>
 
         {/* Applicants grouped by task */}
         {isLoading ? (
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse bg-[#f9fdf7]" />
+              <div key={i} className="h-24 animate-pulse bg-[#FFFFFF]" />
             ))}
           </div>
         ) : grouped.size === 0 ? (
           <div className="py-16 text-center">
-            <div className="mx-auto grid size-12 place-items-center bg-[#f0f7ec]">
-              <Users className="size-6 text-[#3dcb6c]" />
+            <div className="mx-auto grid size-12 place-items-center bg-[#DCFCE7]">
+              <Users className="size-6 text-[#16A34A]" />
             </div>
-            <p className="mt-3 text-[0.9rem] font-medium text-[#1a1e16]">No applicants found</p>
+            <p className="mt-3 text-[0.9rem] font-medium text-[#1E293B]">No applicants found</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -197,10 +197,10 @@ function ApplicantsPage() {
               return (
                 <div key={taskId}>
                   {/* Task header */}
-                  <div className="mb-3 flex items-center justify-between border-b border-[#e4efe0] pb-2">
-                    <h2 className="text-[0.95rem] font-semibold text-[#1a1e16]">{taskTitle}</h2>
-                    <div className="flex items-center gap-4 text-[0.75rem] text-[#6a8064]">
-                      <span>Total(s): <span className="font-semibold text-[#1a1e16]">{apps.length}</span></span>
+                  <div className="mb-3 flex items-center justify-between border-b border-[#E2E8F0] pb-2">
+                    <h2 className="text-[0.95rem] font-semibold text-[#1E293B]">{taskTitle}</h2>
+                    <div className="flex items-center gap-4 text-[0.75rem] text-[#6B7280]">
+                      <span>Total(s): <span className="font-semibold text-[#1E293B]">{apps.length}</span></span>
                       <span>Approved: <span className="font-semibold text-[#2e7d32]">{taskApproved}</span></span>
                       <span>Rejected(s): <span className="font-semibold text-[#d64545]">{taskRejected}</span></span>
                     </div>
@@ -209,7 +209,7 @@ function ApplicantsPage() {
                   {/* Applicant cards */}
                   <div className="space-y-3">
                     {apps.map((app: any) => (
-                      <div key={app.id} className="border border-[#e4efe0] bg-[#f9fdf7] p-4">
+                      <div key={app.id} className="border border-[#E2E8F0] bg-[#FFFFFF] p-4">
                         <div className="flex items-start gap-3">
                           <InitialsAvatar
                             name={app.student?.full_name ?? "User"}
@@ -221,7 +221,7 @@ function ApplicantsPage() {
                               <Link
                                 to="/app/profile/$userId"
                                 params={{ userId: app.student_id }}
-                                className="text-[0.85rem] font-semibold text-[#1a1e16] hover:text-[#3dcb6c]"
+                                className="text-[0.85rem] font-semibold text-[#1E293B] hover:text-[#16A34A]"
                               >
                                 {app.student?.full_name ?? "Anonymous"}
                               </Link>
@@ -237,7 +237,7 @@ function ApplicantsPage() {
                                  app.status === "rejected" ? "Rejected" : "Pending"}
                               </span>
                             </div>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[0.75rem] text-[#6a8064]">
+                            <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[0.75rem] text-[#6B7280]">
                               {app.studentProfile?.location && (
                                 <span className="inline-flex items-center gap-1">
                                   <MapPin className="size-3" /> {app.studentProfile.location}
@@ -255,7 +255,7 @@ function ApplicantsPage() {
                               </span>
                             </div>
                             {app.message && (
-                              <p className="mt-2 line-clamp-2 text-[0.8rem] leading-relaxed text-[#1a1e16]">{app.message}</p>
+                              <p className="mt-2 line-clamp-2 text-[0.8rem] leading-relaxed text-[#1E293B]">{app.message}</p>
                             )}
                           </div>
 
@@ -266,7 +266,7 @@ function ApplicantsPage() {
                                 type="button"
                                 onClick={() => handleStatusChange(app.id, "accepted")}
                                 disabled={actionLoading === app.id}
-                                className="grid size-8 place-items-center bg-[#3dcb6c] text-white transition-colors hover:bg-[#34b85e] disabled:opacity-50"
+                                className="grid size-8 place-items-center bg-[#16A34A] text-white transition-colors hover:bg-[#34b85e] disabled:opacity-50"
                                 title="Accept"
                               >
                                 {actionLoading === app.id ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
@@ -277,7 +277,7 @@ function ApplicantsPage() {
                                 type="button"
                                 onClick={() => handleStatusChange(app.id, "rejected")}
                                 disabled={actionLoading === app.id}
-                                className="grid size-8 place-items-center border border-[#e4efe0] bg-white text-[#6a8064] transition-colors hover:border-[#d64545] hover:text-[#d64545] disabled:opacity-50"
+                                className="grid size-8 place-items-center border border-[#E2E8F0] bg-white text-[#6B7280] transition-colors hover:border-[#d64545] hover:text-[#d64545] disabled:opacity-50"
                                 title="Reject"
                               >
                                 <span className="text-[1.1rem] leading-none">×</span>
@@ -286,7 +286,7 @@ function ApplicantsPage() {
                             <Link
                               to="/app/messages"
                               search={undefined as any}
-                              className="grid size-8 place-items-center border border-[#e4efe0] bg-white text-[#6a8064] transition-colors hover:border-[#3dcb6c] hover:text-[#3dcb6c]"
+                              className="grid size-8 place-items-center border border-[#E2E8F0] bg-white text-[#6B7280] transition-colors hover:border-[#16A34A] hover:text-[#16A34A]"
                               title="Message"
                             >
                               <Link2 className="size-4" />
@@ -295,7 +295,7 @@ function ApplicantsPage() {
                               type="button"
                               onClick={() => handleDelete(app.id)}
                               disabled={actionLoading === app.id}
-                              className="grid size-8 place-items-center border border-[#e4efe0] bg-[#fef4f4] text-[#d64545] transition-colors hover:border-[#d64545] disabled:opacity-50"
+                              className="grid size-8 place-items-center border border-[#E2E8F0] bg-[#fef4f4] text-[#d64545] transition-colors hover:border-[#d64545] disabled:opacity-50"
                               title="Remove"
                             >
                               <Trash2 className="size-4" />

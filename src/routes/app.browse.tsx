@@ -103,7 +103,7 @@ function BrowsePage() {
                 onChange={(e) => setQ(e.target.value)}
               />
             </div>
-            <Button type="button" className="h-12 rounded-l-none rounded-r-xl bg-[#3dcb6c] px-8 text-sm font-semibold text-white hover:bg-[#35b860]">
+            <Button type="button" className="h-12 rounded-l-none rounded-r-xl bg-[#16A34A] px-8 text-sm font-semibold text-white hover:bg-[#15803D]">
               Search
             </Button>
           </div>
@@ -176,11 +176,11 @@ function BrowsePage() {
         <div className="mt-8 text-center">
           <p className="text-sm text-muted-foreground">
             Looking to hire?{" "}
-            <Link to="/app/tasks/create" className="font-medium text-[#1a7a42] hover:underline">Post a task</Link>
+            <Link to="/app/tasks/create" className="font-medium text-[#15803D] hover:underline">Post a task</Link>
             {MVP_FEATURES.internships && (
               <>
                 {" · "}
-                <Link to="/app/internships" className="font-medium text-[#1a7a42] hover:underline">Browse internships</Link>
+                <Link to="/app/internships" className="font-medium text-[#15803D] hover:underline">Browse internships</Link>
               </>
             )}
           </p>
@@ -380,7 +380,7 @@ function FilterDrawer({
             {TASK_CATEGORIES.length > categoriesToShow && (
               <button
                 onClick={() => setCategoriesToShow(TASK_CATEGORIES.length)}
-                className="mt-2 flex items-center gap-1 text-xs font-medium text-[#3dcb6c] hover:underline"
+                className="mt-2 flex items-center gap-1 text-xs font-medium text-[#16A34A] hover:underline"
               >
                 <span>+</span> Show More
               </button>
@@ -415,7 +415,7 @@ function FilterDrawer({
             <div className="relative h-2">
               <div className="absolute inset-0 bg-border" />
               <div
-                className="absolute inset-y-0 bg-[#3dcb6c]"
+                className="absolute inset-y-0 bg-[#16A34A]"
                 style={{
                   left: `${(budgetMin / 100000) * 100}%`,
                   right: `${100 - (budgetMax / 100000) * 100}%`,
@@ -467,7 +467,7 @@ function FilterDrawer({
             {SKILLS.length > skillsToShow && (
               <button
                 onClick={() => setSkillsToShow(SKILLS.length)}
-                className="mt-2 flex items-center gap-1 text-xs font-medium text-[#3dcb6c] hover:underline"
+                className="mt-2 flex items-center gap-1 text-xs font-medium text-[#16A34A] hover:underline"
               >
                 <span>+</span> Show More
               </button>
@@ -477,7 +477,7 @@ function FilterDrawer({
 
         {/* Search Button */}
         <div className="sticky bottom-0 border-t border-border bg-card px-5 py-4">
-          <Button onClick={onClose} className="w-full bg-[#3dcb6c] text-white hover:bg-[#35b860]">
+          <Button onClick={onClose} className="w-full bg-[#16A34A] text-white hover:bg-[#15803D]">
             Search
           </Button>
         </div>
@@ -525,7 +525,7 @@ function BrowseTaskCard({ task, userId }: { task: any; userId?: string }) {
         </div>
 
         {/* Title */}
-        <h3 className="mb-2 text-sm font-semibold leading-snug text-foreground line-clamp-2 group-hover:text-[#1a7a42]">
+        <h3 className="mb-2 text-sm font-semibold leading-snug text-foreground line-clamp-2 group-hover:text-[#15803D]">
           {task.title}
         </h3>
 
@@ -540,7 +540,7 @@ function BrowseTaskCard({ task, userId }: { task: any; userId?: string }) {
             {tags.map((tag: string) => (
               <span
                 key={tag}
-                className="bg-[#f4fbf0] px-2.5 py-0.5 text-[10px] font-medium text-[#3a7a4a]"
+                className="bg-[#F1F3F5] px-2.5 py-0.5 text-[10px] font-medium text-[#15803D]"
               >
                 {tag}
               </span>
@@ -560,7 +560,7 @@ function BrowseTaskCard({ task, userId }: { task: any; userId?: string }) {
         <div className="mt-auto">
           <Button
             variant="outline"
-            className="w-full justify-between border-[#3dcb6c] text-[#1a7a42] hover:bg-[#d8f5e4] hover:text-[#1a7a42]"
+            className="w-full justify-between border-[#16A34A] text-[#15803D] hover:bg-[#DCFCE7] hover:text-[#15803D]"
           >
             <span>Apply</span>
             <ArrowUpRight className="size-4" />

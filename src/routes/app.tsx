@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasSupabaseClientConfig } from "@/integrations/supabase/env";
 import { AuthProvider } from "@/hooks/useAuth.tsx";
-import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2, PanelLeft, Search, Gift, Heart, Wallet, FolderGit2, Users } from "lucide-react";
+import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2, PanelLeft, Search, Gift, Heart, Wallet, FolderGit2, Users, ShieldCheck, Briefcase } from "lucide-react";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app")({
@@ -208,7 +208,7 @@ function DesktopSidebar({ path, mode, collapsed, onToggleCollapsed }: { path: st
         ) : (
           <DesktopNavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} search={navSearch} collapsed={collapsed} />
         )}
-        {isPoster && (
+        {showingTalent && (
           <>
             <DesktopNavItem to="/app/my-tasks" label="My Tasks" icon={FolderGit2} active={path.startsWith("/app/my-tasks")} search={navSearch} collapsed={collapsed} />
             <DesktopNavItem to="/app/applicants" label="Applicants" icon={Users} active={path.startsWith("/app/applicants")} search={navSearch} collapsed={collapsed} />
@@ -216,9 +216,11 @@ function DesktopSidebar({ path, mode, collapsed, onToggleCollapsed }: { path: st
         )}
         <DesktopNavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} search={navSearch} collapsed={collapsed} />
         <DesktopNavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} search={navSearch} collapsed={collapsed} />
-        {!isPoster && <DesktopNavItem to="/app/saved" label="Saved Tasks" icon={Heart} active={path.startsWith("/app/saved")} search={navSearch} collapsed={collapsed} />}
+        {!showingTalent && <DesktopNavItem to="/app/saved" label="Saved Tasks" icon={Heart} active={path.startsWith("/app/saved")} search={navSearch} collapsed={collapsed} />}
+        {!showingTalent && <DesktopNavItem to="/app/applied" label="Tasks Applied" icon={Briefcase} active={path.startsWith("/app/applied")} search={navSearch} collapsed={collapsed} />}
         <DesktopNavItem to="/app/wallet" label="Wallet" icon={Wallet} active={path.startsWith("/app/wallet")} search={navSearch} collapsed={collapsed} />
         <DesktopNavItem to="/app/referrals" label="Referrals" icon={Gift} active={path.startsWith("/app/referrals")} search={navSearch} collapsed={collapsed} />
+        <DesktopNavItem to="/app/verify" label="Verify" icon={ShieldCheck} active={path.startsWith("/app/verify")} search={navSearch} collapsed={collapsed} />
         <DesktopNavItem to="/app/profile/$userId" label="Profile" icon={UserIcon} active={path.startsWith("/app/profile")} params={{ userId: "me" }} search={navSearch} collapsed={collapsed} />
       </nav>
     </aside>

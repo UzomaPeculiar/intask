@@ -25,6 +25,7 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-passw
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as AppWalletRouteImport } from './routes/app.wallet'
+import { Route as AppVerifyRouteImport } from './routes/app.verify'
 import { Route as AppTalentRouteImport } from './routes/app.talent'
 import { Route as AppSubscriptionRouteImport } from './routes/app.subscription'
 import { Route as AppSavedRouteImport } from './routes/app.saved'
@@ -38,6 +39,7 @@ import { Route as AppLearnRouteImport } from './routes/app.learn'
 import { Route as AppInternshipsRouteImport } from './routes/app.internships'
 import { Route as AppBrowseRouteImport } from './routes/app.browse'
 import { Route as AppAssessmentsRouteImport } from './routes/app.assessments'
+import { Route as AppAppliedRouteImport } from './routes/app.applied'
 import { Route as AppApplicantsRouteImport } from './routes/app.applicants'
 import { Route as AppAlumniProRouteImport } from './routes/app.alumni-pro'
 import { Route as AppTasksCreateRouteImport } from './routes/app.tasks.create'
@@ -140,6 +142,11 @@ const AppWalletRoute = AppWalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => AppRoute,
 } as any)
+const AppVerifyRoute = AppVerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTalentRoute = AppTalentRouteImport.update({
   id: '/talent',
   path: '/talent',
@@ -203,6 +210,11 @@ const AppBrowseRoute = AppBrowseRouteImport.update({
 const AppAssessmentsRoute = AppAssessmentsRouteImport.update({
   id: '/assessments',
   path: '/assessments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAppliedRoute = AppAppliedRouteImport.update({
+  id: '/applied',
+  path: '/applied',
   getParentRoute: () => AppRoute,
 } as any)
 const AppApplicantsRoute = AppApplicantsRouteImport.update({
@@ -327,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/waitlist': typeof WaitlistRoute
   '/app/alumni-pro': typeof AppAlumniProRoute
   '/app/applicants': typeof AppApplicantsRoute
+  '/app/applied': typeof AppAppliedRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/internships': typeof AppInternshipsRoute
@@ -340,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/app/saved': typeof AppSavedRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
+  '/app/verify': typeof AppVerifyRoute
   '/app/wallet': typeof AppWalletRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -378,6 +392,7 @@ export interface FileRoutesByTo {
   '/waitlist': typeof WaitlistRoute
   '/app/alumni-pro': typeof AppAlumniProRoute
   '/app/applicants': typeof AppApplicantsRoute
+  '/app/applied': typeof AppAppliedRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/internships': typeof AppInternshipsRoute
@@ -391,6 +406,7 @@ export interface FileRoutesByTo {
   '/app/saved': typeof AppSavedRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
+  '/app/verify': typeof AppVerifyRoute
   '/app/wallet': typeof AppWalletRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -431,6 +447,7 @@ export interface FileRoutesById {
   '/waitlist': typeof WaitlistRoute
   '/app/alumni-pro': typeof AppAlumniProRoute
   '/app/applicants': typeof AppApplicantsRoute
+  '/app/applied': typeof AppAppliedRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/internships': typeof AppInternshipsRoute
@@ -444,6 +461,7 @@ export interface FileRoutesById {
   '/app/saved': typeof AppSavedRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
+  '/app/verify': typeof AppVerifyRoute
   '/app/wallet': typeof AppWalletRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -485,6 +503,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/app/alumni-pro'
     | '/app/applicants'
+    | '/app/applied'
     | '/app/assessments'
     | '/app/browse'
     | '/app/internships'
@@ -498,6 +517,7 @@ export interface FileRouteTypes {
     | '/app/saved'
     | '/app/subscription'
     | '/app/talent'
+    | '/app/verify'
     | '/app/wallet'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -536,6 +556,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/app/alumni-pro'
     | '/app/applicants'
+    | '/app/applied'
     | '/app/assessments'
     | '/app/browse'
     | '/app/internships'
@@ -549,6 +570,7 @@ export interface FileRouteTypes {
     | '/app/saved'
     | '/app/subscription'
     | '/app/talent'
+    | '/app/verify'
     | '/app/wallet'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -588,6 +610,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/app/alumni-pro'
     | '/app/applicants'
+    | '/app/applied'
     | '/app/assessments'
     | '/app/browse'
     | '/app/internships'
@@ -601,6 +624,7 @@ export interface FileRouteTypes {
     | '/app/saved'
     | '/app/subscription'
     | '/app/talent'
+    | '/app/verify'
     | '/app/wallet'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -760,6 +784,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWalletRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/verify': {
+      id: '/app/verify'
+      path: '/verify'
+      fullPath: '/app/verify'
+      preLoaderRoute: typeof AppVerifyRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/talent': {
       id: '/app/talent'
       path: '/talent'
@@ -849,6 +880,13 @@ declare module '@tanstack/react-router' {
       path: '/assessments'
       fullPath: '/app/assessments'
       preLoaderRoute: typeof AppAssessmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/applied': {
+      id: '/app/applied'
+      path: '/applied'
+      fullPath: '/app/applied'
+      preLoaderRoute: typeof AppAppliedRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/applicants': {
@@ -1057,6 +1095,7 @@ const AppMessagesRouteWithChildren = AppMessagesRoute._addFileChildren(
 interface AppRouteChildren {
   AppAlumniProRoute: typeof AppAlumniProRoute
   AppApplicantsRoute: typeof AppApplicantsRoute
+  AppAppliedRoute: typeof AppAppliedRoute
   AppAssessmentsRoute: typeof AppAssessmentsRoute
   AppBrowseRoute: typeof AppBrowseRoute
   AppInternshipsRoute: typeof AppInternshipsRoute
@@ -1070,6 +1109,7 @@ interface AppRouteChildren {
   AppSavedRoute: typeof AppSavedRoute
   AppSubscriptionRoute: typeof AppSubscriptionRoute
   AppTalentRoute: typeof AppTalentRoute
+  AppVerifyRoute: typeof AppVerifyRoute
   AppWalletRoute: typeof AppWalletRoute
   AppIndexRoute: typeof AppIndexRoute
   AppPaymentTaskIdRoute: typeof AppPaymentTaskIdRoute
@@ -1088,6 +1128,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAlumniProRoute: AppAlumniProRoute,
   AppApplicantsRoute: AppApplicantsRoute,
+  AppAppliedRoute: AppAppliedRoute,
   AppAssessmentsRoute: AppAssessmentsRoute,
   AppBrowseRoute: AppBrowseRoute,
   AppInternshipsRoute: AppInternshipsRoute,
@@ -1101,6 +1142,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSavedRoute: AppSavedRoute,
   AppSubscriptionRoute: AppSubscriptionRoute,
   AppTalentRoute: AppTalentRoute,
+  AppVerifyRoute: AppVerifyRoute,
   AppWalletRoute: AppWalletRoute,
   AppIndexRoute: AppIndexRoute,
   AppPaymentTaskIdRoute: AppPaymentTaskIdRoute,

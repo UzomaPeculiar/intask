@@ -205,13 +205,13 @@ function TaskDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f7ec] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+    <div className="min-h-screen bg-[#DCFCE7] text-[#1E293B] [font-family:'Inter',sans-serif]">
       <div className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-10">
         {/* Back button */}
         <nav className="mb-5">
           <button
             onClick={() => nav({ to: "/app/browse", search: { q: "" } })}
-            className="inline-flex items-center gap-2 rounded-full border border-[#c4deb8] bg-white px-4 py-2 text-[0.8rem] font-medium text-[#1a1e16] hover:bg-[#f4fbf0] transition-colors"
+            className="inline-flex items-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-4 py-2 text-[0.8rem] font-medium text-[#1E293B] hover:bg-[#F1F3F5] transition-colors"
           >
             <ArrowLeft className="size-4" /> Browse Tasks
           </button>
@@ -221,7 +221,7 @@ function TaskDetail() {
         <div className="absolute right-4 top-5 flex items-center gap-2 sm:right-8 lg:right-10">
           <button
             onClick={handleShare}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[#c4deb8] bg-white px-3 py-1.5 text-[0.75rem] font-medium text-[#1a1e16] hover:bg-[#f4fbf0] transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#E2E8F0] bg-white px-3 py-1.5 text-[0.75rem] font-medium text-[#1E293B] hover:bg-[#F1F3F5] transition-colors"
           >
             <Share2 className="size-3.5" /> Share
           </button>
@@ -238,60 +238,60 @@ function TaskDetail() {
           {/* Left column - Main content */}
           <div className="min-w-0 space-y-5">
             {/* Task Title Card */}
-            <div className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
-              <h1 className="text-[1.5rem] font-bold leading-[1.25] text-[#1a1e16]">
+            <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
+              <h1 className="text-[1.5rem] font-bold leading-[1.25] text-[#1E293B]">
                 {task.title}
               </h1>
-              <div className="mt-3 flex flex-wrap items-center gap-4 text-[0.8rem] text-[#6a8064]">
+              <div className="mt-3 flex flex-wrap items-center gap-4 text-[0.8rem] text-[#6B7280]">
                 {task.work_type && (
                   <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="size-4 text-[#3dcb6c]" />
+                    <MapPin className="size-4 text-[#16A34A]" />
                     {task.work_type === "remote" ? "Remote" : task.work_type === "on_campus" ? "On-campus" : "Remote or On-campus"}
                   </span>
                 )}
                 {task.deadline && (
                   <span className="inline-flex items-center gap-1.5">
-                    <CalIcon className="size-4 text-[#3dcb6c]" />
+                    <CalIcon className="size-4 text-[#16A34A]" />
                     {shortDate(task.deadline)}
                   </span>
                 )}
                 <span className="inline-flex items-center gap-1.5">
-                  <Eye className="size-4 text-[#3dcb6c]" />
+                  <Eye className="size-4 text-[#16A34A]" />
                   {task.views_count ?? 0} Views
                 </span>
               </div>
             </div>
 
             {/* Task Details Grid */}
-            <div className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
+            <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
               <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
                 <TaskDetailItem
-                  icon={<MapPin className="size-5 text-[#3dcb6c]" />}
+                  icon={<MapPin className="size-5 text-[#16A34A]" />}
                   label="Project Location"
                   value={task.work_type === "remote" ? "Remote" : task.work_type === "on_campus" ? "On-campus" : "Hybrid"}
                 />
                 <TaskDetailItem
-                  icon={<Briefcase className="size-5 text-[#3dcb6c]" />}
+                  icon={<Briefcase className="size-5 text-[#16A34A]" />}
                   label="Project Type"
                   value={task.budget_negotiable ? "Negotiable" : "Fixed"}
                 />
                 <TaskDetailItem
-                  icon={<Clock className="size-5 text-[#3dcb6c]" />}
+                  icon={<Clock className="size-5 text-[#16A34A]" />}
                   label="Duration"
                   value={task.deadline ? shortDate(task.deadline) : "Open"}
                 />
                 <TaskDetailItem
-                  icon={<BarChart3 className="size-5 text-[#3dcb6c]" />}
+                  icon={<BarChart3 className="size-5 text-[#16A34A]" />}
                   label="Level"
                   value={task.difficulty_level || "Any Level"}
                 />
                 <TaskDetailItem
-                  icon={<Languages className="size-5 text-[#3dcb6c]" />}
+                  icon={<Languages className="size-5 text-[#16A34A]" />}
                   label="Category"
                   value={task.category || "General"}
                 />
                 <TaskDetailItem
-                  icon={<Globe className="size-5 text-[#3dcb6c]" />}
+                  icon={<Globe className="size-5 text-[#16A34A]" />}
                   label="Work Type"
                   value={task.work_type === "remote" ? "Remote" : task.work_type === "on_campus" ? "On-campus" : "Flexible"}
                 />
@@ -299,15 +299,15 @@ function TaskDetail() {
             </div>
 
             {/* Project Description */}
-            <div className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
-              <h2 className="mb-4 text-[1.1rem] font-bold text-[#1a1e16]">Project Description</h2>
+            <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
+              <h2 className="mb-4 text-[1.1rem] font-bold text-[#1E293B]">Project Description</h2>
               <p className="whitespace-pre-wrap text-[0.88rem] leading-[1.7] text-[#3a3f36]">{task.description}</p>
             </div>
 
             {/* Attachments placeholder - if task has files */}
             {task.attachments_url && task.attachments_url.length > 0 && (
-              <div className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
-                <h2 className="mb-4 text-[1.1rem] font-bold text-[#1a1e16]">Attachments</h2>
+              <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
+                <h2 className="mb-4 text-[1.1rem] font-bold text-[#1E293B]">Attachments</h2>
                 <div className="flex flex-wrap gap-3">
                   {(task.attachments_url as string[]).map((url: string, idx: number) => (
                     <a
@@ -315,12 +315,12 @@ function TaskDetail() {
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 rounded-[10px] border border-[#e4efe0] bg-[#f9fdf7] px-4 py-3 transition-colors hover:bg-[#f0f8ec]"
+                      className="flex items-center gap-3 rounded-[10px] border border-[#E2E8F0] bg-[#FFFFFF] px-4 py-3 transition-colors hover:bg-[#f0f8ec]"
                     >
-                      <FileText className="size-8 text-[#3dcb6c]" />
+                      <FileText className="size-8 text-[#16A34A]" />
                       <div>
-                        <p className="text-[0.8rem] font-semibold text-[#1a1e16]">Attachment {idx + 1}</p>
-                        <p className="text-[0.7rem] text-[#6a8064]">PDF</p>
+                        <p className="text-[0.8rem] font-semibold text-[#1E293B]">Attachment {idx + 1}</p>
+                        <p className="text-[0.7rem] text-[#6B7280]">PDF</p>
                       </div>
                     </a>
                   ))}
@@ -330,13 +330,13 @@ function TaskDetail() {
 
             {/* Skills Required */}
             {task.skills_needed?.length > 0 && (
-              <div className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
-                <h2 className="mb-4 text-[1.1rem] font-bold text-[#1a1e16]">Skills Required</h2>
+              <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
+                <h2 className="mb-4 text-[1.1rem] font-bold text-[#1E293B]">Skills Required</h2>
                 <div className="flex flex-wrap gap-2">
                   {task.skills_needed.map((skill: string) => (
                     <span
                       key={skill}
-                      className="rounded-full border border-[#c4deb8] bg-[#f4fbf0] px-4 py-1.5 text-[0.78rem] font-medium text-[#1a7a42]"
+                      className="rounded-full border border-[#E2E8F0] bg-[#F1F3F5] px-4 py-1.5 text-[0.78rem] font-medium text-[#15803D]"
                     >
                       {skill}
                     </span>
@@ -350,19 +350,19 @@ function TaskDetail() {
 
             {/* Apply form for non-owners */}
             {!isOwn && !isAssignedStudent && (
-              <div id="proposal-form" className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
-                <h2 className="mb-4 text-[1.1rem] font-bold text-[#1a1e16]">Send Your Application</h2>
+              <div id="proposal-form" className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
+                <h2 className="mb-4 text-[1.1rem] font-bold text-[#1E293B]">Send Your Application</h2>
                 {canApply ? (
                   myApp ? (
-                    <div className="rounded-[10px] border border-[#c4deb8] bg-[#f4fbf0] p-4 text-center">
-                      <p className="text-[0.85rem] font-medium text-[#1a7a42]">✓ Application submitted</p>
-                      <p className="mt-1 text-[0.75rem] text-[#6a8064]">You've already applied to this task.</p>
+                    <div className="rounded-[10px] border border-[#E2E8F0] bg-[#F1F3F5] p-4 text-center">
+                      <p className="text-[0.85rem] font-medium text-[#15803D]">✓ Application submitted</p>
+                      <p className="mt-1 text-[0.75rem] text-[#6B7280]">You've already applied to this task.</p>
                     </div>
                   ) : (
                     <ApplyForm taskId={task.id} budget={task.budget} negotiable={task.budget_negotiable} />
                   )
                 ) : (
-                  <p className="text-center text-[0.8rem] text-[#6a8064]">Only verified students can apply for tasks.</p>
+                  <p className="text-center text-[0.8rem] text-[#6B7280]">Only verified students can apply for tasks.</p>
                 )}
               </div>
             )}
@@ -375,11 +375,11 @@ function TaskDetail() {
           <aside className="hidden lg:block">
             <div className="sticky top-6 space-y-5">
               {/* Price Card */}
-              <div className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
-                <p className="text-[1.8rem] font-bold text-[#1a1e16]">
+              <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
+                <p className="text-[1.8rem] font-bold text-[#1E293B]">
                   {task.budget_negotiable ? "Negotiable" : naira(task.budget)}
                 </p>
-                <p className="mt-1 text-[0.8rem] text-[#6a8064]">{task.budget_negotiable ? "Open to negotiation" : "Fixed"}</p>
+                <p className="mt-1 text-[0.8rem] text-[#6B7280]">{task.budget_negotiable ? "Open to negotiation" : "Fixed"}</p>
 
                 <div className="mt-4">
                   {isOwn ? (
@@ -401,12 +401,12 @@ function TaskDetail() {
                     />
                   ) : canApply ? (
                     myApp ? (
-                      <Button disabled className="h-11 w-full rounded-[10px] border border-[#c4deb8] bg-white text-[0.85rem] font-medium text-[#1a1e16]">
+                      <Button disabled className="h-11 w-full rounded-[10px] border border-[#E2E8F0] bg-white text-[0.85rem] font-medium text-[#1E293B]">
                         Application submitted
                       </Button>
                     ) : (
                       <Button
-                        className="h-11 w-full rounded-[10px] bg-[#3dcb6c] text-white text-[0.85rem] font-semibold hover:bg-[#33b45f]"
+                        className="h-11 w-full rounded-[10px] bg-[#16A34A] text-white text-[0.85rem] font-semibold hover:bg-[#33b45f]"
                         onClick={() => {
                           document.getElementById("proposal-form")?.scrollIntoView({ behavior: "smooth" });
                         }}
@@ -415,18 +415,18 @@ function TaskDetail() {
                       </Button>
                     )
                   ) : (
-                    <p className="text-center text-[0.75rem] text-[#6a8064]">Only verified students can apply.</p>
+                    <p className="text-center text-[0.75rem] text-[#6B7280]">Only verified students can apply.</p>
                   )}
                 </div>
 
                 {canApply && (
-                  <p className="mt-2 text-center text-[0.75rem] text-[#6a8064]">{liveApplicantCount} student{liveApplicantCount === 1 ? "" : "s"} applied</p>
+                  <p className="mt-2 text-center text-[0.75rem] text-[#6B7280]">{liveApplicantCount} student{liveApplicantCount === 1 ? "" : "s"} applied</p>
                 )}
               </div>
 
               {/* About Poster Card */}
-              <div className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
-                <h3 className="mb-4 text-[1rem] font-bold text-[#1a1e16]">About Poster</h3>
+              <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
+                <h3 className="mb-4 text-[1rem] font-bold text-[#1E293B]">About Poster</h3>
                 <Link
                   to="/app/profile/$userId"
                   params={{ userId: task.poster_id }}
@@ -434,25 +434,25 @@ function TaskDetail() {
                 >
                   <InitialsAvatar name={task.poster?.full_name} size={56} />
                   <div className="min-w-0">
-                    <p className="truncate text-[0.9rem] font-semibold text-[#1a1e16]">{task.poster?.full_name}</p>
+                    <p className="truncate text-[0.9rem] font-semibold text-[#1E293B]">{task.poster?.full_name}</p>
                     <div className="mt-0.5">
                       <VerifiedBadge role={task.poster?.role} verified={true} />
                     </div>
                   </div>
                 </Link>
 
-                <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#e4efe0] pt-4">
+                <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#E2E8F0] pt-4">
                   <div className="text-center">
-                    <p className="text-[0.65rem] text-[#6a8064]">Location</p>
-                    <p className="mt-0.5 text-[0.75rem] font-medium text-[#1a1e16]">Campus</p>
+                    <p className="text-[0.65rem] text-[#6B7280]">Location</p>
+                    <p className="mt-0.5 text-[0.75rem] font-medium text-[#1E293B]">Campus</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[0.65rem] text-[#6a8064]">Posted</p>
-                    <p className="mt-0.5 text-[0.75rem] font-medium text-[#1a1e16]">{shortDate(task.created_at)}</p>
+                    <p className="text-[0.65rem] text-[#6B7280]">Posted</p>
+                    <p className="mt-0.5 text-[0.75rem] font-medium text-[#1E293B]">{shortDate(task.created_at)}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[0.65rem] text-[#6a8064]">Category</p>
-                    <p className="mt-0.5 text-[0.75rem] font-medium text-[#1a1e16]">{task.category || "General"}</p>
+                    <p className="text-[0.65rem] text-[#6B7280]">Category</p>
+                    <p className="mt-0.5 text-[0.75rem] font-medium text-[#1E293B]">{task.category || "General"}</p>
                   </div>
                 </div>
               </div>
@@ -461,7 +461,7 @@ function TaskDetail() {
               {canMessagePoster && (
                 <Button
                   variant="outline"
-                  className="h-11 w-full rounded-[10px] border-[#3dcb6c] bg-white text-[0.85rem] font-semibold text-[#3dcb6c] hover:bg-[#f4fbf0]"
+                  className="h-11 w-full rounded-[10px] border-[#16A34A] bg-white text-[0.85rem] font-semibold text-[#16A34A] hover:bg-[#F1F3F5]"
                   disabled={messagePoster.isPending}
                   onClick={() => messagePoster.mutate()}
                 >
@@ -470,9 +470,9 @@ function TaskDetail() {
               )}
 
               {/* Escrow info */}
-              <div className="rounded-[10px] border border-[#c4deb8] bg-[#f4fbf0] p-4">
-                <p className="flex items-start gap-2 text-[0.75rem] leading-[1.5] text-[#6a8064]">
-                  <ShieldCheck className="mt-[1px] size-4 shrink-0 text-[#1a7a42]" />
+              <div className="rounded-[10px] border border-[#E2E8F0] bg-[#F1F3F5] p-4">
+                <p className="flex items-start gap-2 text-[0.75rem] leading-[1.5] text-[#6B7280]">
+                  <ShieldCheck className="mt-[1px] size-4 shrink-0 text-[#15803D]" />
                   Payment is held securely in escrow via Paystack and released only when you approve delivered work.
                 </p>
               </div>
@@ -506,10 +506,10 @@ function TaskDetail() {
 function TaskDetailItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="grid size-10 place-items-center rounded-full bg-[#f0f7ec]">{icon}</div>
+      <div className="grid size-10 place-items-center rounded-full bg-[#DCFCE7]">{icon}</div>
       <div>
-        <p className="text-[0.72rem] text-[#6a8064]">{label}</p>
-        <p className="mt-0.5 text-[0.85rem] font-semibold text-[#1a1e16]">{value}</p>
+        <p className="text-[0.72rem] text-[#6B7280]">{label}</p>
+        <p className="mt-0.5 text-[0.85rem] font-semibold text-[#1E293B]">{value}</p>
       </div>
     </div>
   );
@@ -533,27 +533,27 @@ function ProposalsSection({ taskId, task, me, isOwn, canApply, liveApplicantCoun
   if (appsLoading || !apps || apps.length === 0) return null;
 
   return (
-    <div className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
-      <h2 className="mb-4 text-[1.1rem] font-bold text-[#1a1e16]">Proposals ({apps.length})</h2>
+    <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
+      <h2 className="mb-4 text-[1.1rem] font-bold text-[#1E293B]">Proposals ({apps.length})</h2>
       <div className="space-y-3">
         {apps.map((app: any) => (
-          <div key={app.id} className="flex items-start gap-3 rounded-[10px] border border-[#e4efe0] bg-[#f9fdf7] p-4">
+          <div key={app.id} className="flex items-start gap-3 rounded-[10px] border border-[#E2E8F0] bg-[#FFFFFF] p-4">
             <InitialsAvatar name={app.student?.full_name} avatarUrl={app.student?.avatar_url} size={44} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <p className="truncate text-[0.85rem] font-semibold text-[#1a1e16]">{app.student?.full_name}</p>
-                <span className="inline-flex items-center gap-0.5 text-[0.7rem] text-[#6a8064]">
+                <p className="truncate text-[0.85rem] font-semibold text-[#1E293B]">{app.student?.full_name}</p>
+                <span className="inline-flex items-center gap-0.5 text-[0.7rem] text-[#6B7280]">
                   <Star className="size-3 fill-[#f5a623] text-[#f5a623]" /> 0.0
                 </span>
               </div>
-              <p className="mt-0.5 text-[0.7rem] text-[#6a8064]">
+              <p className="mt-0.5 text-[0.7rem] text-[#6B7280]">
                 {shortDate(app.created_at)}
               </p>
               {app.message && <p className="mt-1.5 line-clamp-2 text-[0.8rem] text-[#3a3f36]">{app.message}</p>}
             </div>
             <div className="shrink-0 text-right">
               {app.proposed_rate && (
-                <p className="text-[0.85rem] font-bold text-[#1a1e16]">{naira(app.proposed_rate)}</p>
+                <p className="text-[0.85rem] font-bold text-[#1E293B]">{naira(app.proposed_rate)}</p>
               )}
             </div>
           </div>
@@ -565,8 +565,8 @@ function ProposalsSection({ taskId, task, me, isOwn, canApply, liveApplicantCoun
 
 function OwnerActions({ task, taskId, escrowTx, isTaskEditable, liveApplicantCount, ownerCanLeaveReview, loadProjectRoomForTask }: any) {
   const nav = useNavigate();
-  const actionPrimaryClass = "h-11 w-full rounded-[10px] bg-[#3dcb6c] text-white text-[0.85rem] font-semibold hover:bg-[#33b45f]";
-  const actionSecondaryClass = "h-11 w-full rounded-[10px] border border-[#c4deb8] bg-white text-[#1a1e16] text-[0.85rem] font-medium hover:bg-[#f3f9f0]";
+  const actionPrimaryClass = "h-11 w-full rounded-[10px] bg-[#16A34A] text-white text-[0.85rem] font-semibold hover:bg-[#33b45f]";
+  const actionSecondaryClass = "h-11 w-full rounded-[10px] border border-[#E2E8F0] bg-white text-[#1E293B] text-[0.85rem] font-medium hover:bg-[#f3f9f0]";
 
   return (
     <div className="space-y-2.5">
@@ -620,8 +620,8 @@ function OwnerActions({ task, taskId, escrowTx, isTaskEditable, liveApplicantCou
 
 function AssignedStudentActions({ task, taskId, studentCanLeaveReview, loadProjectRoomForTask }: any) {
   const nav = useNavigate();
-  const actionPrimaryClass = "h-11 w-full rounded-[10px] bg-[#3dcb6c] text-white text-[0.85rem] font-semibold hover:bg-[#33b45f]";
-  const actionSecondaryClass = "h-11 w-full rounded-[10px] border border-[#c4deb8] bg-white text-[#1a1e16] text-[0.85rem] font-medium hover:bg-[#f3f9f0]";
+  const actionPrimaryClass = "h-11 w-full rounded-[10px] bg-[#16A34A] text-white text-[0.85rem] font-semibold hover:bg-[#33b45f]";
+  const actionSecondaryClass = "h-11 w-full rounded-[10px] border border-[#E2E8F0] bg-white text-[#1E293B] text-[0.85rem] font-medium hover:bg-[#f3f9f0]";
 
   return (
     <div className="space-y-2.5">
@@ -675,34 +675,34 @@ function RelatedTasksSection({ taskId, category }: { taskId: string; category?: 
   if (isLoading || !relatedTasks || relatedTasks.length === 0) return null;
 
   return (
-    <div className="rounded-[14px] border border-[#c4deb8] bg-white p-6">
-      <h2 className="mb-4 text-[1.1rem] font-bold text-[#1a1e16]">Related Projects</h2>
+    <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-6">
+      <h2 className="mb-4 text-[1.1rem] font-bold text-[#1E293B]">Related Projects</h2>
       <div className="space-y-3">
         {relatedTasks.map((rt: any) => (
           <Link
             key={rt.id}
             to="/app/tasks/$taskId"
             params={{ taskId: rt.id }}
-            className="flex items-center gap-4 rounded-[10px] border border-[#e4efe0] bg-[#f9fdf7] p-4 transition-colors hover:bg-[#f0f8ec]"
+            className="flex items-center gap-4 rounded-[10px] border border-[#E2E8F0] bg-[#FFFFFF] p-4 transition-colors hover:bg-[#f0f8ec]"
           >
             <InitialsAvatar name={rt.poster?.full_name} avatarUrl={rt.poster?.avatar_url} size={44} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.85rem] font-semibold text-[#1a1e16]">{rt.title}</p>
-              <p className="mt-0.5 text-[0.7rem] text-[#6a8064]">{rt.category}</p>
+              <p className="truncate text-[0.85rem] font-semibold text-[#1E293B]">{rt.title}</p>
+              <p className="mt-0.5 text-[0.7rem] text-[#6B7280]">{rt.category}</p>
               {rt.skills_needed?.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {rt.skills_needed.slice(0, 3).map((s: string) => (
-                    <span key={s} className="rounded-full border border-[#c4deb8] bg-[#f4fbf0] px-2 py-0.5 text-[0.65rem] text-[#1a7a42]">{s}</span>
+                    <span key={s} className="rounded-full border border-[#E2E8F0] bg-[#F1F3F5] px-2 py-0.5 text-[0.65rem] text-[#15803D]">{s}</span>
                   ))}
                   {rt.skills_needed.length > 3 && (
-                    <span className="text-[0.65rem] text-[#6a8064]">+{rt.skills_needed.length - 3}</span>
+                    <span className="text-[0.65rem] text-[#6B7280]">+{rt.skills_needed.length - 3}</span>
                   )}
                 </div>
               )}
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[0.9rem] font-bold text-[#1a1e16]">{rt.budget_negotiable ? "Negotiable" : naira(rt.budget)}</p>
-              <p className="text-[0.65rem] text-[#6a8064]">{rt.budget_negotiable ? "Open" : "Fixed"}</p>
+              <p className="text-[0.9rem] font-bold text-[#1E293B]">{rt.budget_negotiable ? "Negotiable" : naira(rt.budget)}</p>
+              <p className="text-[0.65rem] text-[#6B7280]">{rt.budget_negotiable ? "Open" : "Fixed"}</p>
             </div>
           </Link>
         ))}
@@ -769,39 +769,39 @@ function ApplyForm({ taskId, budget, negotiable }: { taskId: string; budget: num
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-[0.8rem] font-medium text-[#1a1e16]">Your Total Price</label>
+          <label className="text-[0.8rem] font-medium text-[#1E293B]">Your Total Price</label>
           <Input
             type="number"
             value={proposedRate}
             onChange={(e) => setProposedRate(e.target.value)}
             placeholder="Price"
-            className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7]"
+            className="h-11 rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF]"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-[0.8rem] font-medium text-[#1a1e16]">Estimated Hours</label>
+          <label className="text-[0.8rem] font-medium text-[#1E293B]">Estimated Hours</label>
           <Input
             type="number"
             value={hours}
             onChange={(e) => setHours(e.target.value)}
             placeholder="4"
-            className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7]"
+            className="h-11 rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF]"
           />
         </div>
       </div>
       <div className="space-y-1.5">
-        <label className="text-[0.8rem] font-medium text-[#1a1e16]">Cover Letter</label>
+        <label className="text-[0.8rem] font-medium text-[#1E293B]">Cover Letter</label>
         <Textarea
           rows={6}
           value={msg}
           onChange={(e) => setMsg(e.target.value)}
           placeholder="Why are you the right person for this task? Mention relevant experience..."
           maxLength={1000}
-          className="rounded-[10px] border-[#c4deb8] bg-[#f9fdf7]"
+          className="rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF]"
         />
       </div>
       <Button
-        className="h-11 rounded-[10px] bg-[#3dcb6c] text-[0.85rem] font-semibold text-white hover:bg-[#33b45f]"
+        className="h-11 rounded-[10px] bg-[#16A34A] text-[0.85rem] font-semibold text-white hover:bg-[#33b45f]"
         disabled={!msg.trim() || apply.isPending}
         onClick={() => apply.mutate()}
       >

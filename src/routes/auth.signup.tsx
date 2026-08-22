@@ -66,7 +66,7 @@ function Stepper({ current, total }: { current: number; total: number }) {
           <span
             key={i}
             className={`h-1.5 rounded-full transition-all ${
-              active ? "w-8 bg-[#3dcb6c]" : done ? "w-1.5 bg-[rgba(61,203,108,0.5)]" : "w-1.5 bg-[#e4efe0]"
+              active ? "w-8 bg-[#16A34A]" : done ? "w-1.5 bg-[rgba(22,163,74,0.5)]" : "w-1.5 bg-[#E2E8F0]"
             }`}
           />
         );
@@ -419,20 +419,20 @@ function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] [font-family:'Inter',sans-serif]">
       <div className="grid min-h-screen grid-cols-1 md:grid-cols-2">
         <section className="relative overflow-hidden bg-[linear-gradient(160deg,#0d2818_0%,#1a3a2a_60%,#2d5a3d_100%)] px-8 py-12 md:px-14 md:py-16 lg:px-20 lg:py-20">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_70%,rgba(61,203,108,0.12)_0%,transparent_50%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_70%,rgba(22,163,74,0.12)_0%,transparent_50%)]" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(181,119,26,0.06)_0%,transparent_40%)]" />
 
           <div className="relative z-10 flex h-full flex-col justify-center">
             <Link to="/" className="mb-12 flex w-fit items-center gap-2.5 no-underline">
-              <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#3dcb6c] text-base text-white">✦</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#16A34A] text-base text-white">✦</span>
               <span className="[font-family:'Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-white">InTask</span>
             </Link>
 
             <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[2.2rem] leading-[1.1] font-bold tracking-[-0.03em] text-white md:text-[2.8rem]">
-              Start earning in <span className="text-[#3dcb6c]">minutes.</span>
+              Start earning in <span className="text-[#16A34A]">minutes.</span>
             </h1>
             <p className="mt-5 max-w-[400px] text-[1.05rem] leading-[1.6] text-white/60">
               Create your account, verify your student status, and start finding paid tasks that match your skills.
@@ -442,7 +442,7 @@ function SignupPage() {
 
         <section className="flex flex-col justify-center bg-white px-8 py-12 md:px-14 md:py-16 lg:px-20 lg:py-12">
           {step > 1 && (
-            <button onClick={back} aria-label="Back" className="mb-4 inline-flex w-fit items-center gap-1 text-[0.8rem] font-medium text-[#6a8064] hover:text-[#1a1e16]">
+            <button onClick={back} aria-label="Back" className="mb-4 inline-flex w-fit items-center gap-1 text-[0.8rem] font-medium text-[#6B7280] hover:text-[#1E293B]">
               <ArrowLeft className="size-4" />
               Back
             </button>
@@ -456,8 +456,8 @@ function SignupPage() {
           {loading && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
               <div className="flex flex-col items-center gap-3">
-                <Loader2 className="size-8 animate-spin text-[#3dcb6c]" />
-                <p className="text-sm font-medium text-[#1a1e16]">Setting up your account...</p>
+                <Loader2 className="size-8 animate-spin text-[#16A34A]" />
+                <p className="text-sm font-medium text-[#1E293B]">Setting up your account...</p>
               </div>
             </div>
           )}
@@ -467,8 +467,8 @@ function SignupPage() {
         {step === 1 && (
           <div>
             <div className="mb-7">
-              <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1a1e16]">Welcome to InTask</h1>
-              <p className="mt-1 text-[0.85rem] text-[#6a8064]">What brings you here?</p>
+              <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1E293B]">Welcome to InTask</h1>
+              <p className="mt-1 text-[0.85rem] text-[#6B7280]">What brings you here?</p>
             </div>
             <div className="grid grid-cols-1 gap-3">
               <button
@@ -476,16 +476,16 @@ function SignupPage() {
                 onClick={() => { set("intent", "find_work"); set("role", null); }}
                 className={`flex items-center gap-4 rounded-[14px] border p-5 text-left transition-all ${
                   s.intent === "find_work"
-                    ? "border-[#3dcb6c] bg-[rgba(61,203,108,0.06)] shadow-[0_0_0_3px_rgba(61,203,108,0.1)]"
-                    : "border-[#c4deb8] bg-white hover:border-[#3dcb6c] hover:bg-[#f9fdf7]"
+                    ? "border-[#16A34A] bg-[rgba(22,163,74,0.06)] shadow-[0_0_0_3px_rgba(22,163,74,0.1)]"
+                    : "border-[#E2E8F0] bg-white hover:border-[#16A34A] hover:bg-[#FFFFFF]"
                 }`}
               >
-                <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-[rgba(61,203,108,0.12)] text-[#1a7a42]">
+                <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-[rgba(22,163,74,0.12)] text-[#15803D]">
                   <GraduationCap className="size-6" />
                 </div>
                 <div>
-                  <p className="text-[1rem] font-semibold text-[#1a1e16]">Find work</p>
-                  <p className="text-[0.8rem] text-[#6a8064]">I'm a student or graduate looking for paid tasks.</p>
+                  <p className="text-[1rem] font-semibold text-[#1E293B]">Find work</p>
+                  <p className="text-[0.8rem] text-[#6B7280]">I'm a student or graduate looking for paid tasks.</p>
                 </div>
               </button>
               <button
@@ -493,24 +493,24 @@ function SignupPage() {
                 onClick={() => { set("intent", "hire_talent"); set("role", null); }}
                 className={`flex items-center gap-4 rounded-[14px] border p-5 text-left transition-all ${
                   s.intent === "hire_talent"
-                    ? "border-[#3dcb6c] bg-[rgba(61,203,108,0.06)] shadow-[0_0_0_3px_rgba(61,203,108,0.1)]"
-                    : "border-[#c4deb8] bg-white hover:border-[#3dcb6c] hover:bg-[#f9fdf7]"
+                    ? "border-[#16A34A] bg-[rgba(22,163,74,0.06)] shadow-[0_0_0_3px_rgba(22,163,74,0.1)]"
+                    : "border-[#E2E8F0] bg-white hover:border-[#16A34A] hover:bg-[#FFFFFF]"
                 }`}
               >
                 <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-[rgba(37,99,235,0.10)] text-[#2563eb]">
                   <Briefcase className="size-6" />
                 </div>
                 <div>
-                  <p className="text-[1rem] font-semibold text-[#1a1e16]">Hire talent</p>
-                  <p className="text-[0.8rem] text-[#6a8064]">I need skilled students or graduates for a project.</p>
+                  <p className="text-[1rem] font-semibold text-[#1E293B]">Hire talent</p>
+                  <p className="text-[0.8rem] text-[#6B7280]">I need skilled students or graduates for a project.</p>
                 </div>
               </button>
             </div>
-            <Button size="lg" className="mt-6 h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.95rem] font-semibold text-white hover:bg-[#35b860]" disabled={!s.intent} onClick={next}>
+            <Button size="lg" className="mt-6 h-12 w-full rounded-[10px] bg-[#16A34A] text-[0.95rem] font-semibold text-white hover:bg-[#15803D]" disabled={!s.intent} onClick={next}>
               Continue <ArrowRight className="size-4" />
             </Button>
-            <p className="mt-5 text-center text-[0.85rem] text-[#6a8064]">
-              Already have an account? <Link to="/auth/login" search={{ redirect: "" }} className="font-semibold text-[#3dcb6c] no-underline">Log in</Link>
+            <p className="mt-5 text-center text-[0.85rem] text-[#6B7280]">
+              Already have an account? <Link to="/auth/login" search={{ redirect: "" }} className="font-semibold text-[#16A34A] no-underline">Log in</Link>
             </p>
           </div>
         )}
@@ -519,10 +519,10 @@ function SignupPage() {
         {step === 2 && (
           <div>
             <div className="mb-7">
-              <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1a1e16]">
+              <h1 className="[font-family:'Space_Grotesk',sans-serif] text-[1.6rem] font-bold tracking-[-0.02em] text-[#1E293B]">
                 {s.intent === "find_work" ? "Are you currently a student?" : "How will you use InTask?"}
               </h1>
-              <p className="mt-1 text-[0.85rem] text-[#6a8064]">Pick the option that fits you best.</p>
+              <p className="mt-1 text-[0.85rem] text-[#6B7280]">Pick the option that fits you best.</p>
             </div>
             <div className="grid grid-cols-1 gap-3">
               {s.intent === "find_work" ? (
@@ -537,7 +537,7 @@ function SignupPage() {
                 </>
               )}
             </div>
-            <Button size="lg" className="mt-6 h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.95rem] font-semibold text-white hover:bg-[#35b860]" disabled={!s.role} onClick={next}>
+            <Button size="lg" className="mt-6 h-12 w-full rounded-[10px] bg-[#16A34A] text-[0.95rem] font-semibold text-white hover:bg-[#15803D]" disabled={!s.role} onClick={next}>
               Continue <ArrowRight className="size-4" />
             </Button>
           </div>
@@ -928,12 +928,12 @@ function RoleCard({
 }: { icon: typeof GraduationCap; title: string; desc: string; selected: boolean; onClick: () => void }) {
   const iconTone =
     title.includes("student")
-      ? "bg-[rgba(61,203,108,0.12)] text-[#1a7a42]"
+      ? "bg-[rgba(22,163,74,0.12)] text-[#15803D]"
       : title.includes("post a task")
         ? "bg-[rgba(37,99,235,0.10)] text-[#2563eb]"
         : title.includes("alumni")
-          ? "bg-[rgba(181,119,26,0.12)] text-[#b5771a]"
-          : "bg-[rgba(26,122,66,0.12)] text-[#1a7a42]";
+          ? "bg-[rgba(181,119,26,0.12)] text-[#F97316]"
+          : "bg-[rgba(26,122,66,0.12)] text-[#15803D]";
 
   return (
     <button
@@ -941,16 +941,16 @@ function RoleCard({
       onClick={onClick}
       className={`flex w-full items-start gap-3.5 rounded-[14px] border p-[18px] text-left transition-all ${
         selected
-          ? "border-[#3dcb6c] bg-[rgba(61,203,108,0.06)] shadow-[0_0_0_3px_rgba(61,203,108,0.1)]"
-          : "border-[#c4deb8] bg-white hover:border-[#3dcb6c] hover:bg-[#f9fdf7]"
+          ? "border-[#16A34A] bg-[rgba(22,163,74,0.06)] shadow-[0_0_0_3px_rgba(22,163,74,0.1)]"
+          : "border-[#E2E8F0] bg-white hover:border-[#16A34A] hover:bg-[#FFFFFF]"
       }`}
     >
       <div className={`grid h-10 w-10 place-items-center rounded-[10px] ${iconTone}`}>
         <Icon className="size-5" />
       </div>
       <div className="min-w-0">
-        <p className="mb-0.5 text-[0.9rem] font-semibold text-[#1a1e16]">{title}</p>
-        <p className="text-[0.75rem] leading-[1.4] text-[#6a8064]">{desc}</p>
+        <p className="mb-0.5 text-[0.9rem] font-semibold text-[#1E293B]">{title}</p>
+        <p className="text-[0.75rem] leading-[1.4] text-[#6B7280]">{desc}</p>
       </div>
     </button>
   );

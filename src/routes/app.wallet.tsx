@@ -546,50 +546,50 @@ function WalletPage() {
 
   if (!me || !wallet) {
     return (
-      <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+      <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] [font-family:'Inter',sans-serif]">
         <WalletSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] [font-family:'Inter',sans-serif]">
       <div className="mx-auto w-full max-w-[1280px] px-4 pb-10 pt-8 sm:px-8 lg:px-12">
         <header className="mb-7 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => window.history.back()}
-              className="grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white"
+              className="grid size-9 place-items-center rounded-full border border-[#E2E8F0] bg-white"
               aria-label="Back"
             >
               <ArrowLeft className="size-4" />
             </button>
-            <h1 className="font-['Space_Grotesk',sans-serif] text-[1.6rem] font-bold text-[#1a1e16]">Wallet</h1>
+            <h1 className="font-['Space_Grotesk',sans-serif] text-[1.6rem] font-bold text-[#1E293B]">Wallet</h1>
           </div>
           <button
             onClick={() => {
               refetchWallet();
               qc.invalidateQueries({ queryKey: ["wallet-transactions"] });
             }}
-            className="grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white"
+            className="grid size-9 place-items-center rounded-full border border-[#E2E8F0] bg-white"
             aria-label="Refresh wallet"
           >
-            <RefreshCw className="size-4 text-[#1a1e16]" />
+            <RefreshCw className="size-4 text-[#1E293B]" />
           </button>
         </header>
 
         <div className="mb-6">
           <Tabs value={walletTab} onValueChange={(value) => setWalletTab(value as "overview" | "activity")}>
-            <TabsList className="grid h-auto w-full grid-cols-2 rounded-[12px] border border-[#c4deb8] bg-white p-1">
+            <TabsList className="grid h-auto w-full grid-cols-2 rounded-[12px] border border-[#E2E8F0] bg-white p-1">
               <TabsTrigger
                 value="overview"
-                className="rounded-[8px] py-2.5 text-[0.85rem] font-semibold data-[state=active]:bg-[#3dcb6c] data-[state=active]:text-[#0f2b1b]"
+                className="rounded-[8px] py-2.5 text-[0.85rem] font-semibold data-[state=active]:bg-[#16A34A] data-[state=active]:text-[#0F172A]"
               >
                 Overview
               </TabsTrigger>
               <TabsTrigger
                 value="activity"
-                className="rounded-[8px] py-2.5 text-[0.85rem] font-semibold data-[state=active]:bg-[#3dcb6c] data-[state=active]:text-[#0f2b1b]"
+                className="rounded-[8px] py-2.5 text-[0.85rem] font-semibold data-[state=active]:bg-[#16A34A] data-[state=active]:text-[#0F172A]"
               >
                 Activity
               </TabsTrigger>
@@ -600,7 +600,7 @@ function WalletPage() {
         {walletTab === "overview" ? (
           <>
             <section className="relative mb-7 overflow-hidden rounded-[20px] bg-[linear-gradient(135deg,#1a3a2a_0%,#2d5a3d_50%,#1a4a30_100%)] p-7 text-white lg:p-9">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(61,203,108,0.15)_0%,transparent_50%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(22,163,74,0.15)_0%,transparent_50%)]" />
               <div className="relative z-[1]">
                 <p className="text-[0.8rem] text-white/50">Available balance</p>
                 <p className="mt-1 font-['Space_Grotesk',sans-serif] text-[2.3rem] font-bold tracking-[-0.02em] sm:text-[2.8rem]">
@@ -612,7 +612,7 @@ function WalletPage() {
                       <button
                         type="button"
                         disabled={availableBalance < minWithdrawalAmount}
-                        className="inline-flex items-center gap-1 rounded-[10px] bg-[#3dcb6c] px-5 py-2.5 text-[0.85rem] font-semibold text-white disabled:opacity-50"
+                        className="inline-flex items-center gap-1 rounded-[10px] bg-[#16A34A] px-5 py-2.5 text-[0.85rem] font-semibold text-white disabled:opacity-50"
                       >
                         <ArrowUpRight className="size-4" /> Withdraw
                       </button>
@@ -747,15 +747,15 @@ function WalletPage() {
             </section>
 
             <section className="mb-7 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[14px] border border-[#c4deb8] bg-white p-4">
-                <div className="mb-2 text-[#1a7a42]"><Wallet className="size-5" /></div>
-                <p className="font-['Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-[#1a1e16]">₦{compactNaira(totalEarned)}</p>
-                <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">Total earned</p>
+              <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-4">
+                <div className="mb-2 text-[#15803D]"><Wallet className="size-5" /></div>
+                <p className="font-['Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-[#1E293B]">₦{compactNaira(totalEarned)}</p>
+                <p className="mt-0.5 text-[0.75rem] text-[#6B7280]">Total earned</p>
               </div>
-              <div className="rounded-[14px] border border-[#c4deb8] bg-white p-4">
-                <div className="mb-2 text-[#b5771a]"><ArrowUpRight className="size-5" /></div>
-                <p className="font-['Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-[#1a1e16]">₦{compactNaira(totalWithdrawn)}</p>
-                <p className="mt-0.5 text-[0.75rem] text-[#6a8064]">Total withdrawn</p>
+              <div className="rounded-[14px] border border-[#E2E8F0] bg-white p-4">
+                <div className="mb-2 text-[#F97316]"><ArrowUpRight className="size-5" /></div>
+                <p className="font-['Space_Grotesk',sans-serif] text-[1.3rem] font-bold text-[#1E293B]">₦{compactNaira(totalWithdrawn)}</p>
+                <p className="mt-0.5 text-[0.75rem] text-[#6B7280]">Total withdrawn</p>
               </div>
             </section>
 
@@ -780,9 +780,9 @@ function WalletPage() {
               </div>
             )}
 
-            <div className="rounded-[16px] border border-[#c4deb8] bg-white p-4">
+            <div className="rounded-[16px] border border-[#E2E8F0] bg-white p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1a1e16]">Bank accounts</h2>
+                <h2 className="font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1E293B]">Bank accounts</h2>
                 <button onClick={() => setAddBankOpen(true)} className="it-link-accent flex items-center gap-1 text-xs hover:underline">
                   <Plus className="size-3" /> Add
                 </button>
@@ -823,8 +823,8 @@ function WalletPage() {
         ) : (
           <div className="space-y-6">
             {withdrawals && withdrawals.length > 0 && (
-              <div className="rounded-[16px] border border-[#c4deb8] bg-white p-4">
-                <h2 className="mb-3 font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1a1e16]">Withdrawal history</h2>
+              <div className="rounded-[16px] border border-[#E2E8F0] bg-white p-4">
+                <h2 className="mb-3 font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1E293B]">Withdrawal history</h2>
                 <div className="space-y-2">
                   {withdrawals.map((w: any) => (
                     <div key={w.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
@@ -848,8 +848,8 @@ function WalletPage() {
               </div>
             )}
 
-            <div className="rounded-[16px] border border-[#c4deb8] bg-white p-4">
-              <h2 className="mb-3 font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1a1e16]">Transaction history</h2>
+            <div className="rounded-[16px] border border-[#E2E8F0] bg-white p-4">
+              <h2 className="mb-3 font-['Space_Grotesk',sans-serif] text-[1rem] font-semibold text-[#1E293B]">Transaction history</h2>
               {(!transactions || transactions.length === 0) && (
                 <EmptyState icon={Wallet} title="No transactions yet" description="Complete tasks or add money to get started." />
               )}

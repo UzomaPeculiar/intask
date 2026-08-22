@@ -239,30 +239,30 @@ function EditTaskPage() {
 
   if (loading) {
     return (
-      <div className="grid min-h-screen place-items-center bg-[#eff8ea] text-muted-foreground">
-        <Loader2 className="size-5 animate-spin text-[#1a7a42]" />
+      <div className="grid min-h-screen place-items-center bg-[#F8FAFC] text-muted-foreground">
+        <Loader2 className="size-5 animate-spin text-[#15803D]" />
       </div>
     );
   }
 
   if (!editable) {
     return (
-      <div className="min-h-screen bg-[#eff8ea] px-6 py-7 [font-family:'Inter',sans-serif]">
+      <div className="min-h-screen bg-[#F8FAFC] px-6 py-7 [font-family:'Inter',sans-serif]">
         <div className="mx-auto w-full max-w-[640px]">
-          <button onClick={() => window.history.back()} aria-label="Back" className="mb-4 inline-flex size-9 items-center justify-center rounded-full border border-[#c4deb8] bg-white text-[#1a1e16] shadow-sm transition-transform duration-150 hover:-translate-y-0.5">
+          <button onClick={() => window.history.back()} aria-label="Back" className="mb-4 inline-flex size-9 items-center justify-center rounded-full border border-[#E2E8F0] bg-white text-[#1E293B] shadow-sm transition-transform duration-150 hover:-translate-y-0.5">
             <ArrowLeft className="size-4" />
           </button>
 
-          <section className="rounded-[18px] border border-[#c4deb8] bg-[linear-gradient(145deg,#f4fbf0,#eaf3f8)] p-4 shadow-sm">
-            <h1 className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1a1e16]">
-              <FileText className="size-5 text-[#1a7a42]" /> Edit task
+          <section className="rounded-[18px] border border-[#E2E8F0] bg-[linear-gradient(145deg,#F1F3F5,#eaf3f8)] p-4 shadow-sm">
+            <h1 className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1E293B]">
+              <FileText className="size-5 text-[#15803D]" /> Edit task
             </h1>
-            <p className="mt-2 text-[0.85rem] text-[#6a8064]">You can change the task details while it is still awaiting escrow funding.</p>
+            <p className="mt-2 text-[0.85rem] text-[#6B7280]">You can change the task details while it is still awaiting escrow funding.</p>
           </section>
 
-          <section className="mt-4 rounded-[14px] border border-[#c4deb8] bg-white p-4 shadow-sm">
-            <p className="text-sm text-[#6a8064]">{errorMessage}</p>
-            <Button className="mt-4 w-full rounded-[10px] bg-[#3dcb6c] text-white hover:bg-[#36ba61]" onClick={() => nav({ to: "/app/tasks/$taskId", params: { taskId } })}>
+          <section className="mt-4 rounded-[14px] border border-[#E2E8F0] bg-white p-4 shadow-sm">
+            <p className="text-sm text-[#6B7280]">{errorMessage}</p>
+            <Button className="mt-4 w-full rounded-[10px] bg-[#16A34A] text-white hover:bg-[#36ba61]" onClick={() => nav({ to: "/app/tasks/$taskId", params: { taskId } })}>
               Back to task
             </Button>
           </section>
@@ -272,57 +272,57 @@ function EditTaskPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#eff8ea] pb-24 text-[#1a1e16] [font-family:'Inter',sans-serif]">
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 text-[#1E293B] [font-family:'Inter',sans-serif]">
       <div className="mx-auto min-h-screen w-full max-w-[640px] px-6 py-7">
-        <button onClick={() => window.history.back()} aria-label="Back" className="mb-4 inline-flex size-9 items-center justify-center rounded-full border border-[#c4deb8] bg-white text-[#1a1e16] shadow-sm transition-transform duration-150 hover:-translate-y-0.5">
+        <button onClick={() => window.history.back()} aria-label="Back" className="mb-4 inline-flex size-9 items-center justify-center rounded-full border border-[#E2E8F0] bg-white text-[#1E293B] shadow-sm transition-transform duration-150 hover:-translate-y-0.5">
           <ArrowLeft className="size-4" />
         </button>
 
-        <section className="rounded-[18px] border border-[#c4deb8] bg-[linear-gradient(145deg,#f4fbf0,#eaf3f8)] p-5 shadow-sm">
-          <h1 className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1a1e16]">
-            <FileText className="size-5 text-[#1a7a42]" /> Edit task
+        <section className="rounded-[18px] border border-[#E2E8F0] bg-[linear-gradient(145deg,#F1F3F5,#eaf3f8)] p-5 shadow-sm">
+          <h1 className="flex items-center gap-2 font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1E293B]">
+            <FileText className="size-5 text-[#15803D]" /> Edit task
           </h1>
-          <p className="mt-2 text-[0.85rem] text-[#6a8064]">You can change the task details while it is still awaiting escrow funding.</p>
+          <p className="mt-2 text-[0.85rem] text-[#6B7280]">You can change the task details while it is still awaiting escrow funding.</p>
         </section>
 
-        <div className="mt-4 rounded-[14px] border border-[#c4deb8] bg-white p-5 shadow-sm">
-          <div className="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-[#9eb79c]">Update task details</div>
-          <p className="mt-1 text-[0.85rem] text-[#6a8064]">You can change the task details while it is still awaiting escrow funding.</p>
+        <div className="mt-4 rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-sm">
+          <div className="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">Update task details</div>
+          <p className="mt-1 text-[0.85rem] text-[#6B7280]">You can change the task details while it is still awaiting escrow funding.</p>
         </div>
 
         <div className="mt-3 space-y-3">
-          <section className="rounded-[14px] border border-[#c4deb8] bg-white p-5 shadow-sm">
+          <section className="rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-sm">
             <Field label="Task title">
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Design a logo for my clothing brand" className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] text-[0.85rem]" />
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Design a logo for my clothing brand" className="h-11 rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
             </Field>
 
             <Field label="Category">
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="flex h-11 w-full rounded-[10px] border border-[#c4deb8] bg-[#f9fdf7] px-3.5 text-[0.85rem] outline-none focus:border-[#3dcb6c]">
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className="flex h-11 w-full rounded-[10px] border border-[#E2E8F0] bg-[#FFFFFF] px-3.5 text-[0.85rem] outline-none focus:border-[#16A34A]">
                 <option value="">Select a category</option>
                 {TASK_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
 
             <Field label="Description">
-              <Textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe what you need done, what the deliverable looks like, and any specific requirements." className="min-h-[100px] resize-y rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] px-3.5 py-3 text-[0.85rem]" />
+              <Textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe what you need done, what the deliverable looks like, and any specific requirements." className="min-h-[100px] resize-y rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF] px-3.5 py-3 text-[0.85rem]" />
             </Field>
           </section>
 
-          <section className="rounded-[14px] border border-[#c4deb8] bg-white p-5 shadow-sm">
+          <section className="rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-sm">
             <Field label="Budget (₦)">
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6a8064]">₦</span>
-                <Input type="number" min={0} value={budget} disabled={negotiable} onChange={(e) => setBudget(e.target.value)} placeholder="e.g. 15000" className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] pl-7 text-[0.85rem]" />
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">₦</span>
+                <Input type="number" min={0} value={budget} disabled={negotiable} onChange={(e) => setBudget(e.target.value)} placeholder="e.g. 15000" className="h-11 rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF] pl-7 text-[0.85rem]" />
               </div>
-              <label className="mt-2 flex items-center justify-between rounded-[10px] border border-[#c4deb8] bg-white px-3 py-2.5 text-[0.8rem]">
+              <label className="mt-2 flex items-center justify-between rounded-[10px] border border-[#E2E8F0] bg-white px-3 py-2.5 text-[0.8rem]">
                 <span>I&apos;m open to negotiation</span>
                 <Switch checked={negotiable} onCheckedChange={setNegotiable} />
               </label>
               {category && !negotiable && (
-                <div className="mt-2 rounded-[8px] border border-[#e4efe0] bg-[#f4fbf0] px-3 py-2 text-[0.7rem] text-[#6a8064]">
+                <div className="mt-2 rounded-[8px] border border-[#E2E8F0] bg-[#F1F3F5] px-3 py-2 text-[0.7rem] text-[#6B7280]">
                   {CATEGORY_MINIMUMS[category] ? (
                     <>
-                      <span className="font-semibold text-[#1a1e16]">Suggested range for {category}:</span>{" "}
+                      <span className="font-semibold text-[#1E293B]">Suggested range for {category}:</span>{" "}
                       ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")} – ₦{(CATEGORY_MINIMUMS[category] * 8).toLocaleString("en-NG")}
                       {" · "}Minimum: ₦{CATEGORY_MINIMUMS[category].toLocaleString("en-NG")}
                     </>
@@ -331,26 +331,26 @@ function EditTaskPage() {
                   )}
                 </div>
               )}
-              <p className="mt-2 flex items-center gap-1.5 text-[0.7rem] text-[#6a8064]">
-                <ShieldCheck className="size-3.5 text-[#1a7a42]" /> Funds are held safely in escrow until you approve the work.
+              <p className="mt-2 flex items-center gap-1.5 text-[0.7rem] text-[#6B7280]">
+                <ShieldCheck className="size-3.5 text-[#15803D]" /> Funds are held safely in escrow until you approve the work.
               </p>
             </Field>
           </section>
 
-          <section className="rounded-[14px] border border-[#c4deb8] bg-white p-5 shadow-sm">
+          <section className="rounded-[14px] border border-[#E2E8F0] bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <p className="text-[0.9rem] font-semibold text-[#1a1e16]">Additional details</p>
-                <p className="text-[0.75rem] text-[#6a8064]">Deadline, format, team setup, and skills</p>
+                <p className="text-[0.9rem] font-semibold text-[#1E293B]">Additional details</p>
+                <p className="text-[0.75rem] text-[#6B7280]">Deadline, format, team setup, and skills</p>
               </div>
-              <button type="button" className="text-[0.75rem] font-medium text-[#3dcb6c]" onClick={() => setShowAdvanced((value) => !value)}>
+              <button type="button" className="text-[0.75rem] font-medium text-[#16A34A]" onClick={() => setShowAdvanced((value) => !value)}>
                 {showAdvanced ? "Hide ▴" : "Show ▾"}
               </button>
             </div>
 
             <div className={showAdvanced ? "space-y-3" : "space-y-3"}>
               <Field label="Deadline">
-                <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] text-[0.85rem]" />
+                <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="h-11 rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
               </Field>
 
               <Field label="Work type">
@@ -358,7 +358,7 @@ function EditTaskPage() {
                   {(["remote", "on_campus", "either"] as const).map((w) => {
                     const active = workType === w;
                     return (
-                      <button key={w} type="button" onClick={() => setWorkType(w)} className={`rounded-[8px] border px-2 py-2 text-[0.8rem] font-medium transition-all duration-150 ${active ? "border-[#3dcb6c] bg-[#d8f5e4] text-[#1a7a42]" : "border-[#c4deb8] bg-white text-[#1a1e16]"}`}>
+                      <button key={w} type="button" onClick={() => setWorkType(w)} className={`rounded-[8px] border px-2 py-2 text-[0.8rem] font-medium transition-all duration-150 ${active ? "border-[#16A34A] bg-[#DCFCE7] text-[#15803D]" : "border-[#E2E8F0] bg-white text-[#1E293B]"}`}>
                         {w === "remote" ? "Remote" : w === "on_campus" ? "On-campus" : "Either"}
                       </button>
                     );
@@ -367,26 +367,26 @@ function EditTaskPage() {
               </Field>
 
               <Field label="Team task">
-                <label className="flex items-center justify-between rounded-[10px] border border-[#e4efe0] bg-white px-3 py-2.5 text-[0.8rem]">
+                <label className="flex items-center justify-between rounded-[10px] border border-[#E2E8F0] bg-white px-3 py-2.5 text-[0.8rem]">
                   <div>
-                    <p className="font-medium text-[#1a1e16]">This is a team task</p>
-                    <p className="mt-0.5 text-[0.7rem] text-[#6a8064]">Hire multiple students to work together</p>
+                    <p className="font-medium text-[#1E293B]">This is a team task</p>
+                    <p className="mt-0.5 text-[0.7rem] text-[#6B7280]">Hire multiple students to work together</p>
                   </div>
                   <Switch checked={isTeamTask} onCheckedChange={setIsTeamTask} />
                 </label>
                 {isTeamTask && (
                   <div className="mt-2 space-y-1.5">
-                    <label className="text-[0.75rem] font-medium text-[#6a8064]">Number of students needed</label>
+                    <label className="text-[0.75rem] font-medium text-[#6B7280]">Number of students needed</label>
                     <select
                       value={teamSize}
                       onChange={(e) => setTeamSize(Number(e.target.value))}
-                      className="flex h-11 w-full rounded-[10px] border border-[#c4deb8] bg-[#f9fdf7] px-3.5 text-[0.85rem] outline-none focus:border-[#3dcb6c]"
+                      className="flex h-11 w-full rounded-[10px] border border-[#E2E8F0] bg-[#FFFFFF] px-3.5 text-[0.85rem] outline-none focus:border-[#16A34A]"
                     >
                       {[2, 3, 4, 5].map((n) => (
                         <option key={n} value={n}>{n} students</option>
                       ))}
                     </select>
-                    <p className="text-[0.7rem] text-[#6a8064]">
+                    <p className="text-[0.7rem] text-[#6B7280]">
                       Budget of ₦{budget ? Number(budget).toLocaleString("en-NG") : "0"} will be split equally - ₦{budget && teamSize ? Math.floor(Number(budget) / teamSize).toLocaleString("en-NG") : "0"} per student
                     </p>
                   </div>
@@ -398,7 +398,7 @@ function EditTaskPage() {
                   {categorySkills.map((sk) => {
                     const sel = skills.includes(sk);
                     return (
-                      <button key={sk} type="button" onClick={() => setSkills(sel ? skills.filter((x) => x !== sk) : [...skills, sk])} className={`rounded-full border px-3 py-1.5 text-[0.75rem] font-medium ${sel ? "border-[#3dcb6c] bg-[#3dcb6c] text-white" : "border-[#c4deb8] bg-white text-[#1a1e16]"}`}>
+                      <button key={sk} type="button" onClick={() => setSkills(sel ? skills.filter((x) => x !== sk) : [...skills, sk])} className={`rounded-full border px-3 py-1.5 text-[0.75rem] font-medium ${sel ? "border-[#16A34A] bg-[#16A34A] text-white" : "border-[#E2E8F0] bg-white text-[#1E293B]"}`}>
                         {sk}
                       </button>
                     );
@@ -408,12 +408,12 @@ function EditTaskPage() {
             </div>
           </section>
 
-          <section className="rounded-[14px] border border-[#c4deb8] bg-white p-4 shadow-sm">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-[#9eb79c]">Warning</p>
-            <p className="mt-1 text-[0.85rem] text-[#6a8064]">Once someone applies, this task can no longer be edited. Double-check your details before saving.</p>
+          <section className="rounded-[14px] border border-[#E2E8F0] bg-white p-4 shadow-sm">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">Warning</p>
+            <p className="mt-1 text-[0.85rem] text-[#6B7280]">Once someone applies, this task can no longer be edited. Double-check your details before saving.</p>
           </section>
 
-          <button type="button" onClick={submit} disabled={saving} className="mt-2 flex h-12 w-full items-center justify-center rounded-[10px] bg-[#3dcb6c] px-6 text-[0.9rem] font-semibold text-white transition-colors duration-150 hover:bg-[#36ba61] disabled:cursor-not-allowed disabled:bg-[#c4deb8]">
+          <button type="button" onClick={submit} disabled={saving} className="mt-2 flex h-12 w-full items-center justify-center rounded-[10px] bg-[#16A34A] px-6 text-[0.9rem] font-semibold text-white transition-colors duration-150 hover:bg-[#36ba61] disabled:cursor-not-allowed disabled:bg-[#E2E8F0]">
             {saving ? "Saving…" : "Save changes"}
           </button>
         </div>
@@ -425,7 +425,7 @@ function EditTaskPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <Label className="block text-[0.8rem] font-semibold text-[#1a1e16]">{label}</Label>
+      <Label className="block text-[0.8rem] font-semibold text-[#1E293B]">{label}</Label>
       {children}
     </div>
   );

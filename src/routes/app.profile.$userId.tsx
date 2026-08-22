@@ -231,63 +231,82 @@ function ProfilePage() {
   const isIndividual = profile.role === "individual";
   const fromBottomNav = userId === "me";
   const profileActionButtonClass =
-    "inline-flex items-center gap-1 rounded-[8px] border border-[#c4deb8] bg-white px-3.5 py-1.5 text-[0.75rem] font-medium text-[#1a1e16] transition-colors hover:bg-[#f6fbf4]";
+    "inline-flex items-center gap-1 rounded-[8px] border border-[#E2E8F0] bg-white px-3.5 py-1.5 text-[0.75rem] font-medium text-[#1E293B] transition-colors hover:bg-[#f6fbf4]";
   const profileTabButtonBaseClass =
     "rounded-[8px] px-3 py-2 text-[0.8rem] font-semibold transition-colors";
 
+  // ── Company profile: Freeio-style layout ──
+  if (isCompany) {
+    return (
+      <CompanyProfileView
+        profile={profile}
+        company={company}
+        reviews={reviews}
+        postedTasks={postedTasks ?? []}
+        isOwn={!!isOwn}
+        targetId={targetId!}
+        nav={nav}
+        onEdit={() => setEditing(true)}
+        onCancel={() => { setEditing(false); qc.invalidateQueries({ queryKey: ["profile", targetId] }); }}
+        user={user}
+        editing={editing}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] [font-family:'Inter',sans-serif]">
       <div className="mx-auto grid w-full max-w-[1280px] lg:grid-cols-[1fr_380px]">
         <div className="px-4 pb-10 pt-7 sm:px-8 lg:px-10">
           <header className="mb-4 flex items-center justify-between gap-2">
             {fromBottomNav ? (
               <div />
             ) : (
-              <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white">
+              <button onClick={() => window.history.back()} aria-label="Back" className="grid size-9 place-items-center rounded-full border border-[#E2E8F0] bg-white">
                 <ArrowLeft className="size-4" />
               </button>
             )}
             {isOwn && (
-              <button onClick={async () => { await supabase.auth.signOut(); nav({ to: "/" }); }} className="inline-flex items-center gap-1 text-sm text-[#6a8064]">
+              <button onClick={async () => { await supabase.auth.signOut(); nav({ to: "/" }); }} className="inline-flex items-center gap-1 text-sm text-[#6B7280]">
                 <LogOut className="size-4" /> Sign out
               </button>
             )}
           </header>
 
-          <section className="mb-5 rounded-[18px] border border-[#c4deb8] bg-[linear-gradient(145deg,#f4fbf0,#eaf3f8)] p-7">
+          <section className="mb-5 rounded-[18px] border border-[#E2E8F0] bg-[linear-gradient(145deg,#F1F3F5,#eaf3f8)] p-7">
             <div className="flex items-start gap-5">
               <div className="shrink-0">
                 <InitialsAvatar name={profile.full_name} size={80} avatarUrl={profile.avatar_url} />
               </div>
 
               <div className="min-w-0 flex-1">
-                <h1 className="truncate font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">{profile.full_name}</h1>
+                <h1 className="truncate font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1E293B]">{profile.full_name}</h1>
                 {isStudentOrAlumni && student?.university && (
-                  <p className="mt-0.5 truncate text-[0.8rem] text-[#6a8064]">
+                  <p className="mt-0.5 truncate text-[0.8rem] text-[#6B7280]">
                     {student.university}
                     {student.year_of_study ? ` · ${student.year_of_study}` : ""}
                     {student.department ? ` · ${student.department}` : ""}
                   </p>
                 )}
                 {isCompany && company?.company_name && (
-                  <p className="mt-0.5 truncate text-[0.8rem] text-[#6a8064]">{company.company_name}</p>
+                  <p className="mt-0.5 truncate text-[0.8rem] text-[#6B7280]">{company.company_name}</p>
                 )}
 
                 <div className="mt-1.5">
                   <VerifiedBadge role={profile.role} verified={isCompany ? company?.verified : isIndividual ? individual?.verified : student?.verified} isPro={!!alumniProSub} />
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-5 text-[0.8rem] text-[#6a8064]">
+                <div className="mt-3 flex flex-wrap items-center gap-5 text-[0.8rem] text-[#6B7280]">
                   {isStudentOrAlumni ? (
                     <span className="inline-flex items-center gap-1">
-                      <Star className="size-4 fill-[#b5771a] text-[#b5771a]" />
-                      <span className="font-semibold text-[#1a1e16]">{(student?.rating_count ?? 0) > 0 ? Number(student?.rating_average ?? 0).toFixed(1) : "0.0"}</span>
+                      <Star className="size-4 fill-[#F97316] text-[#F97316]" />
+                      <span className="font-semibold text-[#1E293B]">{(student?.rating_count ?? 0) > 0 ? Number(student?.rating_average ?? 0).toFixed(1) : "0.0"}</span>
                       <span>({student?.rating_count ?? 0} reviews)</span>
                     </span>
                   ) : null}
                   <span className="inline-flex items-center gap-1">
                     <Briefcase className="size-4" />
-                    <span className="font-semibold text-[#1a1e16]">{student?.tasks_completed ?? 0}</span>
+                    <span className="font-semibold text-[#1E293B]">{student?.tasks_completed ?? 0}</span>
                     <span>tasks done</span>
                   </span>
                 </div>
@@ -329,7 +348,7 @@ function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => nav({ to: "/app/assessments" as any })}
-                      className="inline-flex items-center gap-1 rounded-[8px] border border-[#c4deb8] bg-white px-3.5 py-1.5 text-[0.75rem] font-medium text-[#1a1e16]"
+                      className="inline-flex items-center gap-1 rounded-[8px] border border-[#E2E8F0] bg-white px-3.5 py-1.5 text-[0.75rem] font-medium text-[#1E293B]"
                     >
                       <Award className="size-3.5" /> Assessments
                     </button>
@@ -342,7 +361,7 @@ function ProfilePage() {
                   )}
                 </div>
 
-                {profile.bio && !editing && <p className="mt-3 text-[0.82rem] leading-[1.6] text-[#1a1e16]">{profile.bio}</p>}
+                {profile.bio && !editing && <p className="mt-3 text-[0.82rem] leading-[1.6] text-[#1E293B]">{profile.bio}</p>}
               </div>
             </div>
 
@@ -374,25 +393,25 @@ function ProfilePage() {
             <EditPanel profile={profile} student={student} company={company} onDone={() => { setEditing(false); qc.invalidateQueries({ queryKey: ["profile", targetId] }); }} />
           ) : (
             <>
-              <div className="mb-6 grid grid-cols-3 gap-[2px] rounded-[10px] bg-[#e4efe0] p-[3px]">
+              <div className="mb-6 grid grid-cols-3 gap-[2px] rounded-[10px] bg-[#E2E8F0] p-[3px]">
                 <button
                   type="button"
                   onClick={() => setActiveTab("overview")}
-                  className={`${profileTabButtonBaseClass} ${activeTab === "overview" ? "bg-white text-[#1a1e16] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[#6a8064] hover:bg-[#edf5e9]"}`}
+                  className={`${profileTabButtonBaseClass} ${activeTab === "overview" ? "bg-white text-[#1E293B] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[#6B7280] hover:bg-[#edf5e9]"}`}
                 >
                   Overview
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("reviews")}
-                  className={`${profileTabButtonBaseClass} ${activeTab === "reviews" ? "bg-white text-[#1a1e16] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[#6a8064] hover:bg-[#edf5e9]"}`}
+                  className={`${profileTabButtonBaseClass} ${activeTab === "reviews" ? "bg-white text-[#1E293B] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[#6B7280] hover:bg-[#edf5e9]"}`}
                 >
                   Reviews
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("activity")}
-                  className={`${profileTabButtonBaseClass} ${activeTab === "activity" ? "bg-white text-[#1a1e16] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[#6a8064] hover:bg-[#edf5e9]"}`}
+                  className={`${profileTabButtonBaseClass} ${activeTab === "activity" ? "bg-white text-[#1E293B] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" : "text-[#6B7280] hover:bg-[#edf5e9]"}`}
                 >
                   Activities
                 </button>
@@ -402,16 +421,16 @@ function ProfilePage() {
                 <div className="space-y-6">
                   {isStudentOrAlumni && student && (student.skills?.length ?? 0) > 0 && (
                     <section>
-                      <h2 className="mb-2.5 font-['Space_Grotesk',sans-serif] text-[0.9rem] font-semibold text-[#1a1e16]">Skills</h2>
+                      <h2 className="mb-2.5 font-['Space_Grotesk',sans-serif] text-[0.9rem] font-semibold text-[#1E293B]">Skills</h2>
                       <div className="flex flex-wrap gap-1.5">
                         {student.skills.map((s: string) => (
-                          <span key={s} className="rounded-full bg-[#d8f5e4] px-3.5 py-1.5 text-[0.75rem] font-medium text-[#1a7a42]">{s}</span>
+                          <span key={s} className="rounded-full bg-[#DCFCE7] px-3.5 py-1.5 text-[0.75rem] font-medium text-[#15803D]">{s}</span>
                         ))}
                       </div>
                       {skillBadges && skillBadges.length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {skillBadges.map((b: any) => (
-                            <span key={b.skill} className="inline-flex items-center gap-1 rounded-full border border-[#c4deb8] bg-white px-3 py-1 text-[0.7rem] font-medium text-[#1a1e16]">
+                            <span key={b.skill} className="inline-flex items-center gap-1 rounded-full border border-[#E2E8F0] bg-white px-3 py-1 text-[0.7rem] font-medium text-[#1E293B]">
                               <Award className="size-3" /> {b.skill}
                             </span>
                           ))}
@@ -425,7 +444,7 @@ function ProfilePage() {
                   )}
 
                   {!editing && (isIndividual || isCompany) && (
-                    <div className="space-y-2 rounded-2xl border border-[#c4deb8] bg-white p-4 text-sm">
+                    <div className="space-y-2 rounded-2xl border border-[#E2E8F0] bg-white p-4 text-sm">
                       {isCompany && company?.company_name && (
                         <Row icon={<Building2 className="size-4" />} label="Business" value={company.company_name} />
                       )}
@@ -440,7 +459,7 @@ function ProfilePage() {
                       )}
                       {isCompany && company?.website && (
                         <Row icon={<Globe className="size-4" />} label="Website" value={
-                          <a href={/^https?:\/\//.test(company.website) ? company.website : `https://${company.website}`} target="_blank" rel="noreferrer" className="text-[#1a7a42] underline underline-offset-2">
+                          <a href={/^https?:\/\//.test(company.website) ? company.website : `https://${company.website}`} target="_blank" rel="noreferrer" className="text-[#15803D] underline underline-offset-2">
                             {company.website}
                           </a>
                         } />
@@ -455,7 +474,7 @@ function ProfilePage() {
                   )}
 
                   {isStudent && (
-                    <p className="inline-flex items-center gap-1 text-xs text-[#6a8064]">
+                    <p className="inline-flex items-center gap-1 text-xs text-[#6B7280]">
                       <GraduationCap className="size-3.5" /> Alumni status is handled by support.
                     </p>
                   )}
@@ -465,20 +484,20 @@ function ProfilePage() {
               {activeTab === "reviews" && (
                 <section>
                   {reviews.length === 0 ? (
-                    <p className="text-sm text-[#6a8064]">No reviews yet.</p>
+                    <p className="text-sm text-[#6B7280]">No reviews yet.</p>
                   ) : (
                     <ul className="space-y-2.5">                          {reviews.map((r: any) => (
-                        <li key={r.id} className="rounded-[12px] border border-[#e4efe0] bg-white p-4">
+                        <li key={r.id} className="rounded-[12px] border border-[#E2E8F0] bg-white p-4">
                           <div className="flex items-center justify-between gap-3">
                             <div>
-                              <p className="text-[0.85rem] font-semibold text-[#1a1e16]">{r.reviewer?.full_name ?? "Anonymous"}</p>
-                              {r.task?.title && <p className="mt-0.5 text-[0.7rem] text-[#6a8064]">{r.task.title}</p>}
+                              <p className="text-[0.85rem] font-semibold text-[#1E293B]">{r.reviewer?.full_name ?? "Anonymous"}</p>
+                              {r.task?.title && <p className="mt-0.5 text-[0.7rem] text-[#6B7280]">{r.task.title}</p>}
                             </div>
-                            <span className="inline-flex items-center gap-0.5 text-[0.8rem] text-[#b5771a]">
-                              {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-[#b5771a] text-[#b5771a]" />)}
+                            <span className="inline-flex items-center gap-0.5 text-[0.8rem] text-[#F97316]">
+                              {Array.from({ length: r.rating }).map((_, i) => <Star key={i} className="size-3.5 fill-[#F97316] text-[#F97316]" />)}
                             </span>
                           </div>
-                          {r.comment && <p className="mt-2 text-[0.8rem] leading-[1.5] text-[#1a1e16]">{r.comment}</p>}
+                          {r.comment && <p className="mt-2 text-[0.8rem] leading-[1.5] text-[#1E293B]">{r.comment}</p>}
                         </li>
                       ))}
                     </ul>
@@ -501,47 +520,47 @@ function ProfilePage() {
           )}
         </div>
 
-        <aside className="hidden border-l border-[#c4deb8] bg-white px-6 py-7 lg:block">
+        <aside className="hidden border-l border-[#E2E8F0] bg-white px-6 py-7 lg:block">
           <section className="mb-6">
-            <p className="mb-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Profile stats</p>
-            <div className="rounded-[12px] border border-[#e4efe0] bg-[#f9fdf7] p-3.5">
-              <div className="flex items-center justify-between border-b border-[#e4efe0] py-2">
-                <span className="text-[0.8rem] text-[#6a8064]">Rating</span>
-                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">
+            <p className="mb-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#94A3B8]">Profile stats</p>
+            <div className="rounded-[12px] border border-[#E2E8F0] bg-[#FFFFFF] p-3.5">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] py-2">
+                <span className="text-[0.8rem] text-[#6B7280]">Rating</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1E293B]">
                   {(student?.rating_count ?? 0) > 0 ? `${Number(student?.rating_average ?? 0).toFixed(1)} ⭐` : "0.0 ⭐"}
                 </span>
               </div>
-              <div className="flex items-center justify-between border-b border-[#e4efe0] py-2">
-                <span className="text-[0.8rem] text-[#6a8064]">Tasks completed</span>
-                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">{student?.tasks_completed ?? 0}</span>
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] py-2">
+                <span className="text-[0.8rem] text-[#6B7280]">Tasks completed</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1E293B]">{student?.tasks_completed ?? 0}</span>
               </div>
-              <div className="flex items-center justify-between border-b border-[#e4efe0] py-2">
-                <span className="text-[0.8rem] text-[#6a8064]">Member since</span>
-                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">
+              <div className="flex items-center justify-between border-b border-[#E2E8F0] py-2">
+                <span className="text-[0.8rem] text-[#6B7280]">Member since</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1E293B]">
                   {profile.created_at ? new Date(profile.created_at).toLocaleDateString("en-NG", { month: "short", year: "numeric" }) : "—"}
                 </span>
               </div>
               <div className="flex items-center justify-between py-2">
-                <span className="text-[0.8rem] text-[#6a8064]">Response time</span>
-                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1a1e16]">{(resolved as any).responseTimeLabel ?? "—"}</span>
+                <span className="text-[0.8rem] text-[#6B7280]">Response time</span>
+                <span className="font-['Space_Grotesk',sans-serif] text-[0.85rem] font-semibold text-[#1E293B]">{(resolved as any).responseTimeLabel ?? "—"}</span>
               </div>
             </div>
           </section>
 
           <section>
-            <p className="mb-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#9eb79c]">Recent reviews</p>
+            <p className="mb-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-[#94A3B8]">Recent reviews</p>
             {reviews.length === 0 ? (
-              <div className="rounded-[12px] border border-[#e4efe0] bg-[#f9fdf7] p-4 text-[0.8rem] text-[#6a8064]">No reviews yet.</div>
+              <div className="rounded-[12px] border border-[#E2E8F0] bg-[#FFFFFF] p-4 text-[0.8rem] text-[#6B7280]">No reviews yet.</div>
             ) : (
               <div className="space-y-2.5">
                 {reviews.slice(0, 2).map((r: any) => (
-                  <div key={r.id} className="rounded-[12px] border border-[#e4efe0] bg-white p-4">
+                  <div key={r.id} className="rounded-[12px] border border-[#E2E8F0] bg-white p-4">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[0.85rem] font-semibold text-[#1a1e16]">{r.reviewer?.full_name ?? "Anonymous"}</p>
-                      <span className="text-[0.8rem] text-[#b5771a]">{"★".repeat(Math.max(1, Math.min(5, r.rating || 0)))}</span>
+                      <p className="text-[0.85rem] font-semibold text-[#1E293B]">{r.reviewer?.full_name ?? "Anonymous"}</p>
+                      <span className="text-[0.8rem] text-[#F97316]">{"★".repeat(Math.max(1, Math.min(5, r.rating || 0)))}</span>
                     </div>
-                    {r.task?.title && <p className="mt-0.5 text-[0.7rem] text-[#6a8064]">{r.task.title}</p>}
-                    {r.comment && <p className="mt-2 text-[0.8rem] leading-[1.5] text-[#1a1e16]">{r.comment}</p>}
+                    {r.task?.title && <p className="mt-0.5 text-[0.7rem] text-[#6B7280]">{r.task.title}</p>}
+                    {r.comment && <p className="mt-2 text-[0.8rem] leading-[1.5] text-[#1E293B]">{r.comment}</p>}
                   </div>
                 ))}
               </div>
@@ -621,6 +640,472 @@ function formatResponseTime(samplesMs: number[]) {
   return `${roundedDays % 1 === 0 ? roundedDays.toFixed(0) : roundedDays.toFixed(1)} days`;
 }
 
+function CompanyProfileView({ profile, company, reviews, postedTasks, isOwn, targetId, nav, onEdit, onCancel, user, editing }: {
+  profile: any;
+  company: any;
+  reviews: any[];
+  postedTasks: any[];
+  isOwn: boolean;
+  targetId: string;
+  nav: any;
+  onEdit: () => void;
+  onCancel: () => void;
+  user: any;
+  editing: boolean;
+}) {
+  const qc = useQueryClient();
+  const saveProfile = useServerFn(saveProfileEdits);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit form state
+  const [fullName, setFullName] = useState(profile.full_name ?? "");
+  const [email, setEmail] = useState(profile.email ?? "");
+  const [phone, setPhone] = useState(profile.phone ?? "");
+  const [bio, setBio] = useState(profile.bio ?? "");
+  const [companyName, setCompanyName] = useState(company?.company_name ?? "");
+  const [industry, setIndustry] = useState(company?.industry ?? "");
+  const [location, setLocation] = useState(company?.location ?? "");
+  const [website, setWebsite] = useState(company?.website ?? "");
+  const [logoUrl, setLogoUrl] = useState(profile.avatar_url ?? null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function uploadLogo(file: File) {
+    if (!file || !profile.id) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
+    setLogoUploading(true);
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${profile.id}/logo.${ext}`;
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (error) { toast.error("Upload failed"); setLogoUploading(false); return; }
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    setLogoUrl(`${urlData.publicUrl}?t=${Date.now()}`);
+    setLogoUploading(false);
+  }
+
+  async function save() {
+    setSaving(true);
+    const profileUpdate: any = {
+      bio: bio.trim() || null,
+      avatar_url: logoUrl || null,
+      full_name: fullName.trim() || profile.full_name,
+      email: email.trim() || null,
+      phone: phone.trim() || null,
+    };
+    const companyUpdate: any = {
+      company_name: companyName.trim() || profile.full_name,
+      industry: industry.trim() || null,
+      location: location.trim() || null,
+      website: website.trim() || null,
+    };
+    try {
+      await saveProfile({ data: { profileUpdate, studentUpdate: undefined, companyUpdate } });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not save profile");
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
+    toast.success("Profile saved");
+    onCancel();
+    qc.invalidateQueries({ queryKey: ["profile", targetId] });
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] [font-family:'Inter',sans-serif]">
+      {/* Top bar */}
+      <div className="mx-auto flex max-w-[1280px] items-center justify-between px-4 py-4 sm:px-8 lg:px-10">
+        <button onClick={() => window.history.back()} aria-label="Back" className="inline-flex items-center gap-1 text-[0.85rem] text-[#6B7280] hover:text-[#1E293B]">
+          <ArrowLeft className="size-4" /> Home / Employers / {company?.company_name || profile.full_name}
+        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              const url = `${window.location.origin}/app/profile/${targetId}`;
+              navigator.clipboard.writeText(url);
+              toast.success("Profile link copied to clipboard");
+            }}
+            className="inline-flex items-center gap-1.5 text-[0.85rem] text-[#6B7280] hover:text-[#1E293B]"
+          >
+            <Share2 className="size-4" /> Share
+          </button>
+          <span className="inline-flex items-center gap-1.5 text-[0.85rem] text-[#16A34A]">
+            <span className="grid size-7 place-items-center rounded-full bg-[#16A34A] text-white"><svg className="size-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg></span> Saved
+          </span>
+          {!isOwn && (
+            <ReportButton reportedId={profile.id} reportedName={profile.full_name ?? "this user"} />
+          )}
+        </div>
+      </div>
+
+      {/* Hero section */}
+      <section className="mx-auto max-w-[1280px] px-4 sm:px-8 lg:px-10">
+        <div className="relative overflow-hidden border border-[#E2E8F0] bg-[linear-gradient(135deg,#fef0f0,#fdf5f0)] p-7 sm:p-10">
+          <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-5">
+              <div className="shrink-0">
+                <InitialsAvatar name={profile.full_name} size={90} avatarUrl={profile.avatar_url} />
+              </div>
+              <div>
+                <h1 className="font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1E293B]">
+                  {company?.company_name || profile.full_name}
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-4 text-[0.85rem] text-[#6B7280]">
+                  <span className="inline-flex items-center gap-1">
+                    <Star className="size-4 fill-[#F97316] text-[#F97316]" />
+                    <span className="font-semibold text-[#1E293B]">{(reviews.length > 0 ? (reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1) : "0.0")}</span>
+                    <span>{reviews.length} Review{reviews.length !== 1 ? "s" : ""}</span>
+                  </span>
+                  {company?.location && (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="size-4" /> {company.location}
+                    </span>
+                  )}
+                  {profile.email && (
+                    <span className="inline-flex items-center gap-1">
+                      <Mail className="size-4" /> {profile.email}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {isOwn ? (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="inline-flex items-center gap-1.5 border border-[#E2E8F0] bg-white px-5 py-2.5 text-[0.85rem] font-medium text-[#1E293B] transition-colors hover:bg-[#f6fbf4]"
+                >
+                  <Edit3 className="size-4" /> Edit Profile
+                </button>
+              ) : (
+                !!user && (
+                  <button
+                    type="button"
+                    onClick={() => nav({ to: "/app/messages" })}
+                    className="inline-flex items-center gap-1.5 bg-[#16A34A] px-6 py-2.5 text-[0.85rem] font-semibold text-white transition-colors hover:bg-[#15803D]"
+                  >
+                    Message
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Two-column content */}
+      <div className="mx-auto grid max-w-[1280px] gap-8 px-4 pt-8 sm:px-8 lg:grid-cols-[1fr_380px] lg:px-10">
+        {/* Left column */}
+        <div className="space-y-8">
+          {editing ? (
+            /* ── Edit Form ── */
+            <section className="space-y-6">
+              <h2 className="font-['Space_Grotesk',sans-serif] text-[1.1rem] font-bold text-[#1E293B]">Edit Profile</h2>
+
+              {/* Logo upload */}
+              <div className="border border-[#E2E8F0] bg-white p-6">
+                <h3 className="mb-4 text-[0.95rem] font-semibold text-[#1E293B]">My Profile</h3>
+                <div className="border-t border-[#E2E8F0] pt-4">
+                  <p className="mb-3 text-[0.8rem] font-medium text-[#1E293B]">Logo Image</p>
+                  <div className="flex items-start gap-4">
+                    <div className="relative size-24 shrink-0 overflow-hidden border border-[#E2E8F0] bg-[#FFFFFF]">
+                      {logoUrl ? (
+                        <img src={logoUrl} alt="Logo" className="size-full object-cover" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center">
+                          <Building2 className="size-8 text-[#E2E8F0]" />
+                        </div>
+                      )}
+                      {logoUploading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                          <Loader2 className="size-5 animate-spin text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        className="border border-dashed border-[#E2E8F0] bg-[#fef4f4] px-4 py-2 text-[0.8rem] font-medium text-[#1E293B] transition-colors hover:bg-[#fde8e8]"
+                      >
+                        Browse
+                      </button>
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); }}
+                      />
+                      <p className="mt-1 text-[0.7rem] text-[#94A3B8]">JPG, PNG or WebP · Max 5MB</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form fields */}
+              <div className="border border-[#E2E8F0] bg-white p-6">
+                <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-[0.8rem] font-medium text-[#1E293B]">Employer name</Label>
+                    <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Employer" className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[0.8rem] font-medium text-[#1E293B]">Categories</Label>
+                    <select
+                      value={industry}
+                      onChange={(e) => setIndustry(e.target.value)}
+                      className="flex h-10 w-full border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.85rem] text-[#1E293B]"
+                    >
+                      <option value="">Select category</option>
+                      <option value="Digital Marketing">Digital Marketing</option>
+                      <option value="Technology">Technology</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Education">Education</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Media">Media</option>
+                      <option value="Consulting">Consulting</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[0.8rem] font-medium text-[#1E293B]">Email</Label>
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="employer@company.com" className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[0.8rem] font-medium text-[#1E293B]">Phone Number</Label>
+                    <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(+234)000-000-0000" className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[0.8rem] font-medium text-[#1E293B]">Website</Label>
+                    <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="envato.com" className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[0.8rem] font-medium text-[#1E293B]">Location</Label>
+                    <select
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="flex h-10 w-full border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.85rem] text-[#1E293B]"
+                    >
+                      <option value="">Select location</option>
+                      <option value="Lagos">Lagos</option>
+                      <option value="Abuja">Abuja</option>
+                      <option value="Port Harcourt">Port Harcourt</option>
+                      <option value="Ibadan">Ibadan</option>
+                      <option value="Kano">Kano</option>
+                      <option value="Enugu">Enugu</option>
+                      <option value="Remote">Remote</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-1.5">
+                  <Label className="text-[0.8rem] font-medium text-[#1E293B]">Description</Label>
+                  <Textarea
+                    rows={6}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Tell students about your business and the kind of work you typically post."
+                    className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem] leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              {/* Save / Cancel buttons */}
+              <div className="flex gap-3 pb-6">
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 bg-[#16A34A] px-7 py-3 text-[0.9rem] font-semibold text-white shadow-[0_4px_14px_rgba(22,163,74,0.3)] transition-all hover:bg-[#15803D] hover:shadow-[0_6px_20px_rgba(22,163,74,0.4)] disabled:opacity-60"
+                >
+                  {saving ? "Saving…" : "Save Profile"}
+                  {!saving && <span className="text-[1.1rem]">↗</span>}
+                </button>
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="border border-[#E2E8F0] bg-white px-6 py-3 text-[0.9rem] font-medium text-[#1E293B] transition-colors hover:bg-[#f6fbf4]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </section>
+          ) : (
+            /* ── View Mode ── */
+            <>
+              {/* Bio */}
+              {profile.bio && (
+                <section>
+                  <div className="text-[0.9rem] leading-[1.7] text-[#1E293B]">
+                    <p>{profile.bio}</p>
+                  </div>
+                </section>
+              )}
+
+              {/* Open Positions */}
+              {postedTasks && postedTasks.length > 0 && (
+                <section>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="font-['Space_Grotesk',sans-serif] text-[1.1rem] font-bold text-[#1E293B]">Open Position</h2>
+                <Link to="/app/my-tasks" className="inline-flex items-center gap-1 text-[0.85rem] font-medium text-[#16A34A] hover:underline">
+                  Browse Full List <ExternalLink className="size-3.5" />
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {postedTasks.slice(0, 3).map((task: any) => (
+                  <Link key={task.id} to="/app/tasks/$taskId" params={{ taskId: task.id }} className="block border border-[#E2E8F0] bg-white p-5 transition-colors hover:border-[#16A34A]/30">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <InitialsAvatar name={company?.company_name || profile.full_name} size={44} avatarUrl={profile.avatar_url} />
+                        <div>
+                          <h3 className="text-[0.95rem] font-semibold text-[#1E293B]">{task.title}</h3>
+                          <p className="mt-0.5 text-[0.8rem] text-[#16A34A]">{company?.company_name || profile.full_name}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.75rem] text-[#6B7280]">
+                            <span className="font-semibold text-[#1E293B]">₦{task.budget?.toLocaleString()}</span>
+                            <span>·</span>
+                            <span>{task.category}</span>
+                            <span>·</span>
+                            <span>{task.status === "open" ? "Open" : task.status}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+              {/* Reviews */}
+              <section>
+                <h2 className="mb-4 font-['Space_Grotesk',sans-serif] text-[1.1rem] font-bold text-[#1E293B]">{reviews.length} Review{reviews.length !== 1 ? "s" : ""}</h2>
+            {reviews.length > 0 ? (
+              <div className="space-y-6">
+                {/* Rating summary */}
+                <div className="flex gap-8">
+                  <div className="flex flex-col items-center justify-center bg-[#fef4f4] px-8 py-6 text-center">
+                    <span className="font-['Space_Grotesk',sans-serif] text-[2.5rem] font-bold text-[#F97316]">
+                      {(reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1)}
+                    </span>
+                    <div className="mt-1 flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className={`size-4 ${i < Math.round(reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / reviews.length) ? "fill-[#F97316] text-[#F97316]" : "text-[#E2E8F0]"}`} />
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[0.8rem] text-[#6B7280]">{reviews.length} rating{reviews.length !== 1 ? "s" : ""}</p>
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count = reviews.filter((r: any) => Math.round(r.rating) === star).length;
+                      const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+                      return (
+                        <div key={star} className="flex items-center gap-3 text-[0.8rem]">
+                          <span className="w-12 text-[#6B7280]">{star} Star</span>
+                          <div className="h-2 flex-1 overflow-hidden bg-[#E2E8F0]">
+                            <div className="h-full bg-[#F97316]" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="w-10 text-right text-[#6B7280]">{Math.round(pct)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Individual reviews */}
+                {reviews.map((r: any) => (
+                  <div key={r.id} className="border-t border-[#E2E8F0] pt-5">
+                    <div className="flex items-center gap-3">
+                      <InitialsAvatar name={r.reviewer?.full_name ?? "Anonymous"} size={40} />
+                      <div>
+                        <p className="text-[0.9rem] font-semibold text-[#1E293B]">{r.reviewer?.full_name ?? "Anonymous"}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-0.5 text-[0.8rem] text-[#F97316]">
+                            <Star className="size-3.5 fill-[#F97316] text-[#F97316]" /> {r.rating}
+                          </span>
+                          <span className="text-[0.8rem] text-[#6B7280]">{r.created_at ? new Date(r.created_at).toLocaleDateString("en-NG", { month: "long", day: "numeric", year: "numeric" }) : ""}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {r.comment && <p className="mt-3 text-[0.9rem] leading-[1.6] text-[#1E293B]">{r.comment}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[0.9rem] text-[#6B7280]">No reviews yet.</p>
+            )}
+          </section>
+            </>
+          )}
+        </div>
+
+        {/* Right sidebar (sticky) */}
+        <aside className="hidden lg:block">
+          <div className="sticky top-6 space-y-5">
+            {/* About Me card */}
+            <div className="border border-[#E2E8F0] bg-white p-6">
+              <h3 className="mb-5 font-['Space_Grotesk',sans-serif] text-[1.1rem] font-bold text-[#1E293B]">About Me</h3>
+              <div className="space-y-4">
+                {company?.industry && (
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-2 text-[0.85rem] text-[#6B7280]"><FolderGit2 className="size-4" /> Categories</span>
+                    <span className="text-[0.85rem] font-semibold text-[#1E293B]">{company.industry}</span>
+                  </div>
+                )}
+                {profile.email && (
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-2 text-[0.85rem] text-[#6B7280]"><Mail className="size-4" /> Email</span>
+                    <span className="text-[0.85rem] font-semibold text-[#1E293B]">{profile.email}</span>
+                  </div>
+                )}
+                {profile.phone && (
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-2 text-[0.85rem] text-[#6B7280]"><Phone className="size-4" /> Phone Number</span>
+                    <span className="text-[0.85rem] font-semibold text-[#1E293B]">{profile.phone}</span>
+                  </div>
+                )}
+                {company?.location && (
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-2 text-[0.85rem] text-[#6B7280]"><MapPin className="size-4" /> Location</span>
+                    <span className="text-[0.85rem] font-semibold text-[#1E293B]">{company.location}</span>
+                  </div>
+                )}
+                {company?.website && (
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-2 text-[0.85rem] text-[#6B7280]"><Globe className="size-4" /> Website</span>
+                    <a
+                      href={/^https?:\/\//.test(company.website) ? company.website : `https://${company.website}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[0.85rem] font-semibold text-[#16A34A] hover:underline"
+                    >
+                      {company.website}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Contact Me button */}
+            {!isOwn && !!user && (
+              <button
+                type="button"
+                onClick={() => nav({ to: "/app/messages" })}
+                className="w-full border border-[#16A34A] bg-white py-3 text-[0.9rem] font-semibold text-[#16A34A] transition-colors hover:bg-[#16A34A] hover:text-white"
+              >
+                Contact Me ↗
+              </button>
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 function EditPanel({ profile, student, company, onDone }: any) {
   const isStudentOrAlumni = profile.role === "student" || profile.role === "alumni";
   const isCompany = profile.role === "company";
@@ -667,7 +1152,7 @@ function EditPanel({ profile, student, company, onDone }: any) {
   async function save() {
     setSaving(true);
     const profileUpdate: any = {
-      bio: bio.slice(0, 200) || null,
+      bio: bio.trim() || null,
       avatar_url: logoUrl || null,
     };
     if (isIndividual || isCompany) {
@@ -705,19 +1190,19 @@ function EditPanel({ profile, student, company, onDone }: any) {
   if (isCompany) {
     return (
       <section className="space-y-0">
-        <h2 className="px-4 pt-5 font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">Edit Profile</h2>
+        <h2 className="px-4 pt-5 font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1E293B]">Edit Profile</h2>
 
-        <div className="mt-4 border border-[#e4efe0] bg-white p-6">
-          <h3 className="mb-4 text-[0.95rem] font-semibold text-[#1a1e16]">My Profile</h3>
-          <div className="border-t border-[#e4efe0] pt-4">
-            <p className="mb-3 text-[0.8rem] font-medium text-[#1a1e16]">Logo Image</p>
+        <div className="mt-4 border border-[#E2E8F0] bg-white p-6">
+          <h3 className="mb-4 text-[0.95rem] font-semibold text-[#1E293B]">My Profile</h3>
+          <div className="border-t border-[#E2E8F0] pt-4">
+            <p className="mb-3 text-[0.8rem] font-medium text-[#1E293B]">Logo Image</p>
             <div className="flex items-start gap-4">
-              <div className="relative size-24 shrink-0 overflow-hidden border border-[#e4efe0] bg-[#f9fdf7]">
+              <div className="relative size-24 shrink-0 overflow-hidden border border-[#E2E8F0] bg-[#FFFFFF]">
                 {logoUrl ? (
                   <img src={logoUrl} alt="Logo" className="size-full object-cover" />
                 ) : (
                   <div className="flex size-full items-center justify-center">
-                    <Building2 className="size-8 text-[#c4deb8]" />
+                    <Building2 className="size-8 text-[#E2E8F0]" />
                   </div>
                 )}
                 {logoUploading && (
@@ -730,7 +1215,7 @@ function EditPanel({ profile, student, company, onDone }: any) {
                 <button
                   type="button"
                   onClick={() => logoInputRef.current?.click()}
-                  className="border border-dashed border-[#c4deb8] bg-[#fef4f4] px-4 py-2 text-[0.8rem] font-medium text-[#1a1e16] transition-colors hover:bg-[#fde8e8]"
+                  className="border border-dashed border-[#E2E8F0] bg-[#fef4f4] px-4 py-2 text-[0.8rem] font-medium text-[#1E293B] transition-colors hover:bg-[#fde8e8]"
                 >
                   Browse
                 </button>
@@ -741,33 +1226,33 @@ function EditPanel({ profile, student, company, onDone }: any) {
                   className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); }}
                 />
-                <p className="mt-1 text-[0.7rem] text-[#9eb79c]">JPG, PNG or WebP · Max 5MB</p>
+                <p className="mt-1 text-[0.7rem] text-[#94A3B8]">JPG, PNG or WebP · Max 5MB</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 border border-[#e4efe0] bg-white p-6">
+        <div className="mt-4 border border-[#E2E8F0] bg-white p-6">
           <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Employer name</Label>
-              <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Employer" className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem]" />
+              <Label className="text-[0.8rem] font-medium text-[#1E293B]">Employer name</Label>
+              <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Employer" className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
             </div>
             <div className="space-y-1.5">
 
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Profile url</Label>
+              <Label className="text-[0.8rem] font-medium text-[#1E293B]">Profile url</Label>
               <div className="flex items-center gap-2">
-                <span className="text-[0.8rem] text-[#6a8064]">/app/profile/{profile.id?.slice(0, 8)}…</span>
+                <span className="text-[0.8rem] text-[#6B7280]">/app/profile/{profile.id?.slice(0, 8)}…</span>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Categories</Label>
+              <Label className="text-[0.8rem] font-medium text-[#1E293B]">Categories</Label>
               <select
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                className="flex h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.85rem] text-[#1a1e16]"
+                className="flex h-10 w-full border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.85rem] text-[#1E293B]"
               >
                 <option value="">Select category</option>
                 <option value="Digital Marketing">Digital Marketing</option>
@@ -781,26 +1266,26 @@ function EditPanel({ profile, student, company, onDone }: any) {
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="employer@company.com" className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem]" />
+              <Label className="text-[0.8rem] font-medium text-[#1E293B]">Email</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="employer@company.com" className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
             </div>
             <div className="space-y-1.5">
 
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Website</Label>
-              <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="envato.com" className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem]" />
+              <Label className="text-[0.8rem] font-medium text-[#1E293B]">Website</Label>
+              <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="envato.com" className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Phone Number</Label>
-              <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(+234)000-000-0000" className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem]" />
+              <Label className="text-[0.8rem] font-medium text-[#1E293B]">Phone Number</Label>
+              <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(+234)000-000-0000" className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem]" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Location</Label>
+              <Label className="text-[0.8rem] font-medium text-[#1E293B]">Location</Label>
               <select
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="flex h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.85rem] text-[#1a1e16]"
+                className="flex h-10 w-full border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.85rem] text-[#1E293B]"
               >
                 <option value="">Select location</option>
                 <option value="Lagos">Lagos</option>
@@ -815,16 +1300,16 @@ function EditPanel({ profile, student, company, onDone }: any) {
             </div>
           </div>
 
-          <div className="mt-6 space-y-1.5">              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Description</Label>
+          <div className="mt-6 space-y-1.5">              <Label className="text-[0.8rem] font-medium text-[#1E293B]">Description</Label>
             <Textarea
               rows={6}
               maxLength={200}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell students about your business and the kind of work you typically post."
-              className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem] leading-relaxed"
+              className="border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem] leading-relaxed"
             />
-            <p className="text-right text-[0.7rem] text-[#9eb79c]">{bio.length}/200</p>
+            <p className="text-right text-[0.7rem] text-[#94A3B8]">{bio.length}/200</p>
           </div>
         </div>
 
@@ -833,7 +1318,7 @@ function EditPanel({ profile, student, company, onDone }: any) {
             type="button"
             onClick={save}
             disabled={saving}
-            className="inline-flex items-center gap-2 bg-[#3dcb6c] px-7 py-3 text-[0.9rem] font-semibold text-white shadow-[0_4px_14px_rgba(61,203,108,0.3)] transition-all hover:bg-[#34b85e] hover:shadow-[0_6px_20px_rgba(61,203,108,0.4)] disabled:opacity-60"
+            className="inline-flex items-center gap-2 bg-[#16A34A] px-7 py-3 text-[0.9rem] font-semibold text-white shadow-[0_4px_14px_rgba(22,163,74,0.3)] transition-all hover:bg-[#34b85e] hover:shadow-[0_6px_20px_rgba(22,163,74,0.4)] disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save Profile"}
             {!saving && <span className="text-[1.1rem]">↗</span>}
@@ -1291,7 +1776,7 @@ function PostedTasksSection({
                   onClick={() => onDeleteTask(t.id)}
                   disabled={deletingTaskId === t.id}
                   aria-label="Delete task"
-                  className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-full border border-[#e4efe0] bg-white text-[#6a8064] shadow-sm transition-colors hover:border-[#efb5b5] hover:bg-[#fff3f3] hover:text-[#d64545] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-full border border-[#E2E8F0] bg-white text-[#6B7280] shadow-sm transition-colors hover:border-[#efb5b5] hover:bg-[#fff3f3] hover:text-[#d64545] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {deletingTaskId === t.id ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
                 </button>

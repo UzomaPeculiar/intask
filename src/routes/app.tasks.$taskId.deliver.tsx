@@ -99,7 +99,7 @@ function DeliverPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#eff8ea] text-[#1a1e16] [font-family:'Inter',sans-serif]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] [font-family:'Inter',sans-serif]">
       <div className="mx-auto w-full max-w-[640px] px-6 pb-10 pt-7 sm:px-10">
         <button
           onClick={() => {
@@ -107,56 +107,56 @@ function DeliverPage() {
             else nav({ to: "/app/tasks/$taskId", params: { taskId } });
           }}
           aria-label="Back"
-          className="mb-4 grid size-9 place-items-center rounded-full border border-[#c4deb8] bg-white"
+          className="mb-4 grid size-9 place-items-center rounded-full border border-[#E2E8F0] bg-white"
         >
           <ArrowLeft className="size-4" />
         </button>
 
-        <h1 className="font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1a1e16]">Submit delivery</h1>
-        <p className="mt-1 text-[0.85rem] text-[#6a8064]">{task.title}</p>
+        <h1 className="font-['Space_Grotesk',sans-serif] text-[1.5rem] font-bold text-[#1E293B]">Submit delivery</h1>
+        <p className="mt-1 text-[0.85rem] text-[#6B7280]">{task.title}</p>
 
         {task.revision_notes && (
-          <div className="mt-4 rounded-[10px] border border-[#e6c79a] bg-[#f7ecd9] p-3.5">
-            <p className="text-[0.85rem] font-semibold text-[#b5771a]">⚠️ Revision requested</p>
-            <p className="mt-1 text-[0.8rem] leading-relaxed text-[#8b5f17]">{task.revision_notes}</p>
+          <div className="mt-4 rounded-[10px] border border-[#FCD34D] bg-[#f7ecd9] p-3.5">
+            <p className="text-[0.85rem] font-semibold text-[#F97316]">⚠️ Revision requested</p>
+            <p className="mt-1 text-[0.8rem] leading-relaxed text-[#92400E]">{task.revision_notes}</p>
           </div>
         )}
 
-        <div className="mt-5 rounded-[16px] border border-[#c4deb8] bg-white p-6">
+        <div className="mt-5 rounded-[16px] border border-[#E2E8F0] bg-white p-6">
           <div className="mb-[18px] space-y-1.5">
-            <Label className="text-[0.8rem] font-semibold text-[#1a1e16]">Title of your work</Label>
+            <Label className="text-[0.8rem] font-semibold text-[#1E293B]">Title of your work</Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Final landing page draft"
-              className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
+              className="h-11 rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem] text-[#1E293B] placeholder:text-[#94A3B8] focus-visible:ring-[#16A34A]/20"
             />
           </div>
 
           <div className="mb-[18px] space-y-1.5">
-            <Label className="text-[0.8rem] font-semibold text-[#1a1e16]">Message to poster</Label>
+            <Label className="text-[0.8rem] font-semibold text-[#1E293B]">Message to poster</Label>
             <Textarea
               rows={5}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Summarise what you delivered..."
-              className="min-h-[120px] rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] px-3.5 py-3 text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
+              className="min-h-[120px] rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF] px-3.5 py-3 text-[0.85rem] text-[#1E293B] placeholder:text-[#94A3B8] focus-visible:ring-[#16A34A]/20"
             />
           </div>
 
           <div className="mb-[18px] space-y-1.5">
-            <Label className="text-[0.8rem] font-semibold text-[#1a1e16]">Link to file or work <span className="font-normal text-[#9eb79c]">(optional)</span></Label>
+            <Label className="text-[0.8rem] font-semibold text-[#1E293B]">Link to file or work <span className="font-normal text-[#94A3B8]">(optional)</span></Label>
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://drive.google.com/..."
-              className="h-11 rounded-[10px] border-[#c4deb8] bg-[#f9fdf7] text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus-visible:ring-[#3dcb6c]/20"
+              className="h-11 rounded-[10px] border-[#E2E8F0] bg-[#FFFFFF] text-[0.85rem] text-[#1E293B] placeholder:text-[#94A3B8] focus-visible:ring-[#16A34A]/20"
             />
           </div>
 
           <div className="mb-[18px] space-y-1.5">
-            <Label className="text-[0.8rem] font-semibold text-[#1a1e16]">Attach document <span className="font-normal text-[#9eb79c]">(optional)</span></Label>
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-[10px] border border-dashed border-[#c4deb8] bg-[#f9fdf7] px-3.5 py-3 text-[0.85rem] text-[#6a8064] hover:border-[#3dcb6c]">
+            <Label className="text-[0.8rem] font-semibold text-[#1E293B]">Attach document <span className="font-normal text-[#94A3B8]">(optional)</span></Label>
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-[10px] border border-dashed border-[#E2E8F0] bg-[#FFFFFF] px-3.5 py-3 text-[0.85rem] text-[#6B7280] hover:border-[#16A34A]">
               <Paperclip className="size-4" />
               <span className="truncate">{documentFile ? documentFile.name : "Choose a document to include with this submission"}</span>
               <input
@@ -168,7 +168,7 @@ function DeliverPage() {
           </div>
 
           <Button
-            className="h-12 w-full rounded-[10px] bg-[#3dcb6c] text-[0.9rem] font-semibold text-white hover:bg-[#34b35d]"
+            className="h-12 w-full rounded-[10px] bg-[#16A34A] text-[0.9rem] font-semibold text-white hover:bg-[#15803D]"
             onClick={submit}
             disabled={busy || !title.trim() || !message.trim()}
           >

@@ -60,27 +60,27 @@ function MyTasksPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-10 pt-7 sm:px-8">
-      <h1 className="mb-6 font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">Manage Projects</h1>
+      <h1 className="mb-6 font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1E293B]">Manage Projects</h1>
 
-      <div className="border border-[#e4efe0] bg-white p-5">
+      <div className="border border-[#E2E8F0] bg-white p-5">
         {/* Search & Sort bar */}
         <div className="mb-5 flex items-center justify-between gap-4">
           <div className="relative max-w-xs flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9eb79c]" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#94A3B8]" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search ..."
-              className="h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] pl-9 pr-3 text-[0.85rem] text-[#1a1e16] placeholder:text-[#9eb79c] focus:border-[#3dcb6c] focus:outline-none focus:ring-1 focus:ring-[#3dcb6c]"
+              className="h-10 w-full border border-[#E2E8F0] bg-[#FFFFFF] pl-9 pr-3 text-[0.85rem] text-[#1E293B] placeholder:text-[#94A3B8] focus:border-[#16A34A] focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[0.8rem] text-[#6a8064]">Sort by:</span>
+            <span className="text-[0.8rem] text-[#6B7280]">Sort by:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="h-10 border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.8rem] text-[#1a1e16] focus:border-[#3dcb6c] focus:outline-none"
+              className="h-10 border border-[#E2E8F0] bg-[#FFFFFF] px-3 text-[0.8rem] text-[#1E293B] focus:border-[#16A34A] focus:outline-none"
             >
               <option value="newest">Newest</option>
               <option value="oldest">Oldest</option>
@@ -94,21 +94,21 @@ function MyTasksPage() {
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-20 animate-pulse bg-[#f9fdf7]" />
+              <div key={i} className="h-20 animate-pulse bg-[#FFFFFF]" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center">
-            <div className="mx-auto grid size-12 place-items-center bg-[#f0f7ec]">
-              <FolderGit2 className="size-6 text-[#3dcb6c]" />
+            <div className="mx-auto grid size-12 place-items-center bg-[#DCFCE7]">
+              <FolderGit2 className="size-6 text-[#16A34A]" />
             </div>
-            <p className="mt-3 text-[0.9rem] font-medium text-[#1a1e16]">
+            <p className="mt-3 text-[0.9rem] font-medium text-[#1E293B]">
               {search ? "No tasks match your search" : "No tasks posted yet"}
             </p>
             {!search && (
               <Link
                 to="/app/tasks/create"
-                className="mt-3 inline-flex items-center gap-1.5 rounded-[10px] bg-[#3dcb6c] px-4 py-2 text-[0.8rem] font-semibold text-white"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-[10px] bg-[#16A34A] px-4 py-2 text-[0.8rem] font-semibold text-white"
               >
                 Post Task
               </Link>
@@ -117,7 +117,7 @@ function MyTasksPage() {
         ) : (
           <>
             {/* Table header */}
-            <div className="grid grid-cols-[1fr_100px_120px_120px_160px] gap-4 border-b border-[#e4efe0] px-2 py-3 text-[0.75rem] font-semibold uppercase tracking-wider text-[#9eb79c]">
+            <div className="grid grid-cols-[1fr_100px_120px_120px_160px] gap-4 border-b border-[#E2E8F0] px-2 py-3 text-[0.75rem] font-semibold uppercase tracking-wider text-[#94A3B8]">
               <span>Title</span>
               <span>Expired</span>
               <span>Cost/Type</span>
@@ -126,7 +126,7 @@ function MyTasksPage() {
             </div>
 
             {/* Table rows */}
-            <div className="divide-y divide-[#e4efe0]">
+            <div className="divide-y divide-[#E2E8F0]">
               {filtered.map((task) => {
                 const isExpired = task.deadline && new Date(task.deadline) < new Date();
                 return (
@@ -136,12 +136,12 @@ function MyTasksPage() {
                       <Link
                         to="/app/tasks/$taskId"
                         params={{ taskId: task.id }}
-                        className="text-[0.85rem] font-semibold text-[#1a1e16] hover:text-[#3dcb6c] line-clamp-1"
+                        className="text-[0.85rem] font-semibold text-[#1E293B] hover:text-[#16A34A] line-clamp-1"
                       >
                         {task.title}
                       </Link>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[0.7rem] text-[#6a8064]">
-                        <span className="text-[#3dcb6c]">{task.applicants_count ?? 0} Proposals</span>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[0.7rem] text-[#6B7280]">
+                        <span className="text-[#16A34A]">{task.applicants_count ?? 0} Proposals</span>
                         <span>·</span>
                         <span>{task.category}</span>
                       </div>
@@ -149,7 +149,7 @@ function MyTasksPage() {
                     </div>
 
                     {/* Expired column */}
-                    <div className="text-[0.8rem] text-[#6a8064]">
+                    <div className="text-[0.8rem] text-[#6B7280]">
                       {task.deadline
                         ? isExpired
                           ? <span className="text-[#d64545]">Expired</span>
@@ -158,9 +158,9 @@ function MyTasksPage() {
                     </div>
 
                     {/* Cost/Type column */}
-                    <div className="text-[0.85rem] font-semibold text-[#1a1e16]">
+                    <div className="text-[0.85rem] font-semibold text-[#1E293B]">
                       {task.budget_negotiable ? "Open" : `₦${Number(task.budget).toLocaleString("en-NG")}`}
-                      <p className="text-[0.7rem] font-normal text-[#6a8064] capitalize">{task.work_type ?? "remote"}</p>
+                      <p className="text-[0.7rem] font-normal text-[#6B7280] capitalize">{task.work_type ?? "remote"}</p>
                     </div>
 
                     {/* Status column */}
@@ -183,14 +183,14 @@ function MyTasksPage() {
                       <Link
                         to="/app/tasks/$taskId/applicants"
                         params={{ taskId: task.id }}
-                        className="inline-flex items-center gap-1 bg-[#3dcb6c] px-3 py-1.5 text-[0.75rem] font-semibold text-white transition-colors hover:bg-[#34b85e]"
+                        className="inline-flex items-center gap-1 bg-[#16A34A] px-3 py-1.5 text-[0.75rem] font-semibold text-white transition-colors hover:bg-[#34b85e]"
                       >
                         View Proposals
                       </Link>
                       <Link
                         to="/app/tasks/$taskId"
                         params={{ taskId: task.id }}
-                        className="grid size-8 place-items-center border border-[#e4efe0] bg-[#f9fdf7] text-[#6a8064] transition-colors hover:border-[#3dcb6c] hover:text-[#3dcb6c]"
+                        className="grid size-8 place-items-center border border-[#E2E8F0] bg-[#FFFFFF] text-[#6B7280] transition-colors hover:border-[#16A34A] hover:text-[#16A34A]"
                       >
                         <ArrowRight className="size-4" />
                       </Link>
@@ -198,7 +198,7 @@ function MyTasksPage() {
                         type="button"
                         onClick={() => handleDelete(task.id)}
                         disabled={deletingId === task.id}
-                        className="grid size-8 place-items-center border border-[#e4efe0] bg-[#fef4f4] text-[#d64545] transition-colors hover:border-[#d64545] disabled:opacity-50"
+                        className="grid size-8 place-items-center border border-[#E2E8F0] bg-[#fef4f4] text-[#d64545] transition-colors hover:border-[#d64545] disabled:opacity-50"
                       >
                         {deletingId === task.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
                       </button>
