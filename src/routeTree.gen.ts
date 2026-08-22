@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
@@ -26,6 +27,7 @@ import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-pas
 import { Route as AppWalletRouteImport } from './routes/app.wallet'
 import { Route as AppTalentRouteImport } from './routes/app.talent'
 import { Route as AppSubscriptionRouteImport } from './routes/app.subscription'
+import { Route as AppSavedRouteImport } from './routes/app.saved'
 import { Route as AppReferralsRouteImport } from './routes/app.referrals'
 import { Route as AppPartnershipRouteImport } from './routes/app.partnership'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
@@ -56,6 +58,11 @@ import { Route as AppTasksTaskIdAnalyticsRouteImport } from './routes/app.tasks.
 import { Route as AppLearnCourseIdManageRouteImport } from './routes/app.learn.$courseId.manage'
 import { Route as ApiPublicWebhooksPaystackRouteImport } from './routes/api/public/webhooks/paystack'
 
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -139,6 +146,11 @@ const AppTalentRoute = AppTalentRouteImport.update({
 const AppSubscriptionRoute = AppSubscriptionRouteImport.update({
   id: '/subscription',
   path: '/subscription',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSavedRoute = AppSavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
   getParentRoute: () => AppRoute,
 } as any)
 const AppReferralsRoute = AppReferralsRouteImport.update({
@@ -300,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/waitlist': typeof WaitlistRoute
   '/app/alumni-pro': typeof AppAlumniProRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
@@ -310,6 +323,7 @@ export interface FileRoutesByFullPath {
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/referrals': typeof AppReferralsRoute
+  '/app/saved': typeof AppSavedRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
   '/app/wallet': typeof AppWalletRoute
@@ -347,6 +361,7 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/waitlist': typeof WaitlistRoute
   '/app/alumni-pro': typeof AppAlumniProRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
@@ -357,6 +372,7 @@ export interface FileRoutesByTo {
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/referrals': typeof AppReferralsRoute
+  '/app/saved': typeof AppSavedRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
   '/app/wallet': typeof AppWalletRoute
@@ -396,6 +412,7 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/waitlist': typeof WaitlistRoute
   '/app/alumni-pro': typeof AppAlumniProRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
@@ -406,6 +423,7 @@ export interface FileRoutesById {
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/referrals': typeof AppReferralsRoute
+  '/app/saved': typeof AppSavedRoute
   '/app/subscription': typeof AppSubscriptionRoute
   '/app/talent': typeof AppTalentRoute
   '/app/wallet': typeof AppWalletRoute
@@ -446,6 +464,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/terms'
+    | '/waitlist'
     | '/app/alumni-pro'
     | '/app/assessments'
     | '/app/browse'
@@ -456,6 +475,7 @@ export interface FileRouteTypes {
     | '/app/notifications'
     | '/app/partnership'
     | '/app/referrals'
+    | '/app/saved'
     | '/app/subscription'
     | '/app/talent'
     | '/app/wallet'
@@ -493,6 +513,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/terms'
+    | '/waitlist'
     | '/app/alumni-pro'
     | '/app/assessments'
     | '/app/browse'
@@ -503,6 +524,7 @@ export interface FileRouteTypes {
     | '/app/notifications'
     | '/app/partnership'
     | '/app/referrals'
+    | '/app/saved'
     | '/app/subscription'
     | '/app/talent'
     | '/app/wallet'
@@ -541,6 +563,7 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/terms'
+    | '/waitlist'
     | '/app/alumni-pro'
     | '/app/assessments'
     | '/app/browse'
@@ -551,6 +574,7 @@ export interface FileRouteTypes {
     | '/app/notifications'
     | '/app/partnership'
     | '/app/referrals'
+    | '/app/saved'
     | '/app/subscription'
     | '/app/talent'
     | '/app/wallet'
@@ -590,6 +614,7 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  WaitlistRoute: typeof WaitlistRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
@@ -599,6 +624,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -716,6 +748,13 @@ declare module '@tanstack/react-router' {
       path: '/subscription'
       fullPath: '/app/subscription'
       preLoaderRoute: typeof AppSubscriptionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/saved': {
+      id: '/app/saved'
+      path: '/saved'
+      fullPath: '/app/saved'
+      preLoaderRoute: typeof AppSavedRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/referrals': {
@@ -988,6 +1027,7 @@ interface AppRouteChildren {
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPartnershipRoute: typeof AppPartnershipRoute
   AppReferralsRoute: typeof AppReferralsRoute
+  AppSavedRoute: typeof AppSavedRoute
   AppSubscriptionRoute: typeof AppSubscriptionRoute
   AppTalentRoute: typeof AppTalentRoute
   AppWalletRoute: typeof AppWalletRoute
@@ -1016,6 +1056,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppNotificationsRoute: AppNotificationsRoute,
   AppPartnershipRoute: AppPartnershipRoute,
   AppReferralsRoute: AppReferralsRoute,
+  AppSavedRoute: AppSavedRoute,
   AppSubscriptionRoute: AppSubscriptionRoute,
   AppTalentRoute: AppTalentRoute,
   AppWalletRoute: AppWalletRoute,
@@ -1045,6 +1086,7 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  WaitlistRoute: WaitlistRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,

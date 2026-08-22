@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { naira, timeAgo } from "@/lib/format";
 import { FEED_FILTERS } from "@/lib/constants";
-import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle, Users, Wallet, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Briefcase, Plus, Inbox, ShieldCheck, Star, GraduationCap, AlertTriangle, Users, Wallet, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Clock, CheckCircle, MessageSquare, Bell } from "lucide-react";
 import { OnboardingChecklist } from "@/components/intask/OnboardingChecklist";
 import { useApplicantCount, applicantLabel } from "@/hooks/useApplicantCount";
 import { MessagePartyLink } from "@/components/intask/MessagePartyLink";
@@ -309,7 +309,23 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
         supabase.from("student_profiles").select("rating_average, rating_count, tasks_completed").eq("user_id", userId).maybeSingle(),
       ]);
       const avg = (studentProfile.data?.rating_count ?? 0) > 0 ? studentProfile.data?.rating_average : null;
-      return { applied: apps.count ?? 0, active: (activeTasks ?? []).length, rating: avg };
+      return { applied: apps.count ?? 0, active: (activeTasks ?? []).length, rating: avg, completed: studentProfile.data?.tasks_completed ?? 0 };
+    },
+  });
+
+  // Fetch recent notifications for sidebar
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["dashboard-notifications", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data } = await supabase
+        .from("notifications")
+        .select("id, message, created_at, read")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return data ?? [];
     },
   });
 
@@ -334,89 +350,133 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
   const acceptedApps = (myApplications ?? []).filter((a: any) => a.status === "accepted");
   const rejectedApps = (myApplications ?? []).filter((a: any) => a.status === "rejected");
 
+  // Compute stats for Freeio-style cards
+  const applicationsCount = stats?.applied ?? 0;
+  const activeTasksCount = stats?.active ?? 0;
+  const completedTasksCount = stats?.completed ?? 0;
+  const reviewCount = pendingApps.length;
+
   return (
     <div className="space-y-6 pt-5">
-      {/* Overview stats */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Overview</h2>
-          <span className="text-xs text-muted-foreground">What needs your attention</span>
-        </div>
-        {!stats ? <DashboardStatsSkeleton /> : (
-          <div className="grid grid-cols-3 gap-2">
-            <StatCard label="Applied" value={stats.applied ?? 0} />
-            <StatCard label="Active" value={stats.active ?? 0} />
-            <StatCard label="Rating" value={stats.rating ? Number(stats.rating).toFixed(1) : "—"} icon={<Star className="size-3.5 fill-warning text-warning" />} />
+      {/* Dashboard heading */}
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+      </div>
+
+      {/* Freeio-style stat cards */}
+      {!stats ? <DashboardStatsSkeleton /> : (
+        <section>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <FreeioStatCard
+              label="Applications"
+              value={applicationsCount}
+              icon={<Briefcase className="size-5" />}
+              iconBg="bg-primary/10 text-primary"
+            />
+            <FreeioStatCard
+              label="Active Tasks"
+              value={activeTasksCount}
+              icon={<Clock className="size-5" />}
+              iconBg="bg-success/10 text-success"
+            />
+            <FreeioStatCard
+              label="Completed"
+              value={completedTasksCount}
+              icon={<CheckCircle className="size-5" />}
+              iconBg="bg-accent text-accent-foreground"
+            />
+            <FreeioStatCard
+              label="Pending Review"
+              value={reviewCount}
+              icon={<MessageSquare className="size-5" />}
+              iconBg="bg-warning/10 text-warning"
+            />
           </div>
-        )}
-        <WalletBalanceCard userId={userId} />
-      </section>
+        </section>
+      )}
 
-      {/* Active tasks — the student's matched work */}
-      <section className="space-y-3">
-        <ActiveTasksSection userId={userId} />
-      </section>
+      {/* Two-column: Profile Views chart + Notifications */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Profile Views Chart */}
+        <div className="lg:col-span-2">
+          <ProfileViewsChart userId={userId} />
+        </div>
 
-      {/* My applications */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">My applications</h2>
-          {pendingApps.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">
-              {pendingApps.length} pending
-            </span>
+        {/* Notifications sidebar */}
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Notifications</h2>
+            <Link to="/app/notifications" className="text-xs font-medium text-primary hover:underline">View all</Link>
+          </div>
+          {notifications.length === 0 ? (
+            <p className="mt-4 text-xs text-muted-foreground">No notifications yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {notifications.map((n) => (
+                <li key={n.id} className="flex gap-3">
+                  <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                    <Bell className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs text-foreground line-clamp-2">{n.message}</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{timeAgo(n.created_at)}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
+      </section>
 
-        {appsLoading && <ApplicationsSkeleton />}
-
-        {!appsLoading && (myApplications?.length ?? 0) === 0 && (
-          <EmptyState
-            icon={Inbox}
-            title="No applications yet"
-            description="Browse available tasks and apply to start earning."
-            action={<Button onClick={() => nav({ to: "/app/browse", search: { q: "" } as any })} className="gap-1"><Search className="size-4" /> Browse tasks</Button>}
-          />
-        )}
-
-        {/* Pending applications */}
-        {pendingApps.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Awaiting response</h3>
-            <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
-              {pendingApps.map((app: any) => (
-                <ApplicationRow key={app.id} app={app} />
-              ))}
+      {/* Recent Service Orders (Freeio-style) */}
+      <section className="rounded-xl border border-border bg-card p-4 shadow-card">
+        <h2 className="text-sm font-semibold text-foreground">Recent Applications</h2>
+        <div className="mt-3 border-t border-border pt-3">
+          {appsLoading ? (
+            <ApplicationsSkeleton />
+          ) : (myApplications?.length ?? 0) === 0 ? (
+            <p className="text-xs text-muted-foreground">No applications found.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="pb-2 font-medium">Task</th>
+                    <th className="pb-2 font-medium">Budget</th>
+                    <th className="pb-2 font-medium">Category</th>
+                    <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(myApplications ?? []).slice(0, 5).map((app: any) => (
+                    <tr
+                      key={app.id}
+                      className="border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50"
+                      onClick={() => app.task?.id && nav({ to: "/app/tasks/$taskId", params: { taskId: app.task.id } })}
+                    >
+                      <td className="py-2.5 pr-4 font-medium text-foreground line-clamp-1">{app.task?.title ?? "—"}</td>
+                      <td className="py-2.5 pr-4 text-muted-foreground">
+                        {app.task?.budget && !app.task?.budget_negotiable ? naira(app.task.budget) : "Open"}
+                      </td>
+                      <td className="py-2.5 pr-4 text-muted-foreground">{app.task?.category ?? "—"}</td>
+                      <td className="py-2.5 pr-4">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          app.status === "pending" ? "bg-warning/15 text-warning" :
+                          app.status === "accepted" ? "bg-success/15 text-success" :
+                          "bg-muted text-muted-foreground"
+                        }`}>
+                          {app.status === "pending" ? "Pending" : app.status === "accepted" ? "Accepted" : "Not selected"}
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-muted-foreground whitespace-nowrap">{timeAgo(app.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-        )}
-
-        {/* Accepted applications */}
-        {acceptedApps.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Accepted</h3>
-            <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
-              {acceptedApps.map((app: any) => (
-                <ApplicationRow key={app.id} app={app} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Rejected — show last 3 only */}
-        {rejectedApps.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Not selected</h3>
-            <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
-              {rejectedApps.slice(0, 3).map((app: any) => (
-                <ApplicationRow key={app.id} app={app} />
-              ))}
-            </div>
-            {rejectedApps.length > 3 && (
-              <p className="text-xs text-muted-foreground">And {rejectedApps.length - 3} more</p>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
       {/* Quick links — mentorship, internships, learn */}
@@ -503,6 +563,79 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
       )}
 
 
+    </div>
+  );
+}
+
+function FreeioStatCard({ label, value, icon, iconBg }: { label: string; value: number | string; icon: React.ReactNode; iconBg: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
+        </div>
+        <span className={`grid size-10 place-items-center rounded-lg ${iconBg}`}>
+          {icon}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ProfileViewsChart({ userId }: { userId?: string }) {
+  const nav = useNavigate();
+  // Generate mock data for the last 7 days
+  const labels = [];
+  const values = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    labels.push(d.toLocaleDateString("en-NG", { month: "short", day: "numeric" }));
+    values.push(Math.floor(Math.random() * 5)); // Placeholder data
+  }
+  const maxVal = Math.max(...values, 1);
+  const chartHeight = 160;
+  const barWidth = 100 / labels.length;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-foreground">Your Profile Views</h2>
+        <span className="text-xs text-muted-foreground">Last 7 days</span>
+      </div>
+      <div className="mt-4" style={{ height: chartHeight }}>
+        <svg viewBox="0 0 100 60" className="h-full w-full" preserveAspectRatio="none">
+          {/* Grid lines */}
+          {[0, 1, 2, 3].map((i) => (
+            <line key={i} x1="0" y1={i * 15 + 5} x2="100" y2={i * 15 + 5} stroke="currentColor" className="text-border/60" strokeWidth="0.2" />
+          ))}
+          {/* Line chart */}
+          <polyline
+            fill="none"
+            stroke="currentColor"
+            className="text-primary"
+            strokeWidth="0.8"
+            points={values.map((v, i) => `${(i * barWidth) + barWidth / 2},${55 - (v / maxVal) * 50}`).join(" ")}
+          />
+          {/* Data points */}
+          {values.map((v, i) => (
+            <circle
+              key={i}
+              cx={(i * barWidth) + barWidth / 2}
+              cy={55 - (v / maxVal) * 50}
+              r="1.2"
+              fill="currentColor"
+              className="text-primary"
+            />
+          ))}
+        </svg>
+      </div>
+      <div className="mt-2 flex justify-between">
+        {labels.map((l, i) => (
+          <span key={i} className="text-[9px] text-muted-foreground">{l}</span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -859,6 +992,8 @@ function StatCard({ label, value, icon }: { label: string; value: number | strin
     </div>
   );
 }
+
+
 
 function PosterTaskRow({
   task,

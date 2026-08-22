@@ -29,6 +29,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { naira } from "@/lib/format";
 import { InitialsAvatar } from "@/components/intask/Avatar";
 import { VerifiedBadge } from "@/components/intask/Badges";
+import { WaitlistPage } from "@/components/WaitlistPage";
 
 /* ------------------------------------------------------------------ */
 /*  Route                                                              */
@@ -126,7 +127,7 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  component: Landing,
+  component: () => (import.meta.env.VITE_WAITLIST_MODE !== "false" ? <WaitlistPage /> : <Landing />),
 });
 
 /* ------------------------------------------------------------------ */

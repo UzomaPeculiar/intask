@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasSupabaseClientConfig } from "@/integrations/supabase/env";
 import { AuthProvider } from "@/hooks/useAuth.tsx";
-import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2, PanelLeft, Search, Gift } from "lucide-react";
+import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2, PanelLeft, Search, Gift, Heart, Wallet } from "lucide-react";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app")({
@@ -210,6 +210,8 @@ function DesktopSidebar({ path, mode, collapsed, onToggleCollapsed }: { path: st
         )}
         <DesktopNavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} search={navSearch} collapsed={collapsed} />
         <DesktopNavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} search={navSearch} collapsed={collapsed} />
+        <DesktopNavItem to="/app/saved" label="Saved Tasks" icon={Heart} active={path.startsWith("/app/saved")} search={navSearch} collapsed={collapsed} />
+        <DesktopNavItem to="/app/wallet" label="Wallet" icon={Wallet} active={path.startsWith("/app/wallet")} search={navSearch} collapsed={collapsed} />
         <DesktopNavItem to="/app/referrals" label="Referrals" icon={Gift} active={path.startsWith("/app/referrals")} search={navSearch} collapsed={collapsed} />
         <DesktopNavItem to="/app/profile/$userId" label="Profile" icon={UserIcon} active={path.startsWith("/app/profile")} params={{ userId: "me" }} search={navSearch} collapsed={collapsed} />
       </nav>
