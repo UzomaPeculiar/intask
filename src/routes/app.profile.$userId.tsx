@@ -257,18 +257,7 @@ function ProfilePage() {
           <section className="mb-5 rounded-[18px] border border-[#c4deb8] bg-[linear-gradient(145deg,#f4fbf0,#eaf3f8)] p-7">
             <div className="flex items-start gap-5">
               <div className="shrink-0">
-                {isOwn ? (
-                  <AvatarUpload
-                    userId={profile.id}
-                    currentUrl={profile.avatar_url}
-                    name={profile.full_name}
-                    size={80}
-                    editable={true}
-                    onUpload={() => qc.invalidateQueries({ queryKey: ["profile", targetId] })}
-                  />
-                ) : (
-                  <InitialsAvatar name={profile.full_name} size={80} avatarUrl={profile.avatar_url} />
-                )}
+                <InitialsAvatar name={profile.full_name} size={80} avatarUrl={profile.avatar_url} />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -636,7 +625,9 @@ function EditPanel({ profile, student, company, onDone }: any) {
   const isStudentOrAlumni = profile.role === "student" || profile.role === "alumni";
   const isCompany = profile.role === "company";
   const isIndividual = profile.role === "individual";
+  const qc = useQueryClient();
   const saveProfile = useServerFn(saveProfileEdits);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [bio, setBio] = useState(profile.bio ?? "");
   const [fullName, setFullName] = useState(profile.full_name ?? "");
@@ -654,14 +645,31 @@ function EditPanel({ profile, student, company, onDone }: any) {
   const [location, setLocation] = useState(company?.location ?? "");
   const [website, setWebsite] = useState(company?.website ?? "");
 
+  const [logoUrl, setLogoUrl] = useState(profile.avatar_url ?? null);
+  const [logoUploading, setLogoUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // university state holds the selected name or custom-typed name directly.
   const resolvedUniversity = university.trim() || null;
+
+  async function uploadLogo(file: File) {
+    if (!file || !profile.id) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
+    setLogoUploading(true);
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${profile.id}/logo.${ext}`;
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (error) { toast.error("Upload failed"); setLogoUploading(false); return; }
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    setLogoUrl(`${urlData.publicUrl}?t=${Date.now()}`);
+    setLogoUploading(false);
+  }
 
   async function save() {
     setSaving(true);
-    const profileUpdate: any = { bio: bio.slice(0, 200) || null };
+    const profileUpdate: any = {
+      bio: bio.slice(0, 200) || null,
+      avatar_url: logoUrl || null,
+    };
     if (isIndividual || isCompany) {
       profileUpdate.full_name = fullName.trim() || profile.full_name;
       profileUpdate.email = email.trim() || null;
@@ -679,6 +687,7 @@ function EditPanel({ profile, student, company, onDone }: any) {
       industry: industry.trim() || null,
       location: location.trim() || null,
       website: website.trim() || null,
+
     } : undefined;
     try {
       await saveProfile({ data: { profileUpdate, studentUpdate, companyUpdate } });
@@ -692,16 +701,153 @@ function EditPanel({ profile, student, company, onDone }: any) {
     onDone();
   }
 
+  // ── Company edit: Freeio-style layout ──
+  if (isCompany) {
+    return (
+      <section className="space-y-0">
+        <h2 className="px-4 pt-5 font-['Space_Grotesk',sans-serif] text-[1.4rem] font-bold text-[#1a1e16]">Edit Profile</h2>
+
+        <div className="mt-4 border border-[#e4efe0] bg-white p-6">
+          <h3 className="mb-4 text-[0.95rem] font-semibold text-[#1a1e16]">My Profile</h3>
+          <div className="border-t border-[#e4efe0] pt-4">
+            <p className="mb-3 text-[0.8rem] font-medium text-[#1a1e16]">Logo Image</p>
+            <div className="flex items-start gap-4">
+              <div className="relative size-24 shrink-0 overflow-hidden border border-[#e4efe0] bg-[#f9fdf7]">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="size-full object-cover" />
+                ) : (
+                  <div className="flex size-full items-center justify-center">
+                    <Building2 className="size-8 text-[#c4deb8]" />
+                  </div>
+                )}
+                {logoUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <Loader2 className="size-5 animate-spin text-white" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="border border-dashed border-[#c4deb8] bg-[#fef4f4] px-4 py-2 text-[0.8rem] font-medium text-[#1a1e16] transition-colors hover:bg-[#fde8e8]"
+                >
+                  Browse
+                </button>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); }}
+                />
+                <p className="mt-1 text-[0.7rem] text-[#9eb79c]">JPG, PNG or WebP · Max 5MB</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 border border-[#e4efe0] bg-white p-6">
+          <div className="grid grid-cols-1 gap-x-8 gap-y-5 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Employer name</Label>
+              <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Employer" className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem]" />
+            </div>
+            <div className="space-y-1.5">
+
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Profile url</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-[0.8rem] text-[#6a8064]">/app/profile/{profile.id?.slice(0, 8)}…</span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Categories</Label>
+              <select
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="flex h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.85rem] text-[#1a1e16]"
+              >
+                <option value="">Select category</option>
+                <option value="Digital Marketing">Digital Marketing</option>
+                <option value="Technology">Technology</option>
+                <option value="Finance">Finance</option>
+                <option value="Education">Education</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Media">Media</option>
+                <option value="Consulting">Consulting</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Email</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="employer@company.com" className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem]" />
+            </div>
+            <div className="space-y-1.5">
+
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Website</Label>
+              <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="envato.com" className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem]" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Phone Number</Label>
+              <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(+234)000-000-0000" className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem]" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Location</Label>
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="flex h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.85rem] text-[#1a1e16]"
+              >
+                <option value="">Select location</option>
+                <option value="Lagos">Lagos</option>
+                <option value="Abuja">Abuja</option>
+                <option value="Port Harcourt">Port Harcourt</option>
+                <option value="Ibadan">Ibadan</option>
+                <option value="Kano">Kano</option>
+                <option value="Enugu">Enugu</option>
+                <option value="Remote">Remote</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-1.5">              <Label className="text-[0.8rem] font-medium text-[#1a1e16]">Description</Label>
+            <Textarea
+              rows={6}
+              maxLength={200}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Tell students about your business and the kind of work you typically post."
+              className="border-[#e4efe0] bg-[#f9fdf7] text-[0.85rem] leading-relaxed"
+            />
+            <p className="text-right text-[0.7rem] text-[#9eb79c]">{bio.length}/200</p>
+          </div>
+        </div>
+
+        <div className="mt-6 pb-6">
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="inline-flex items-center gap-2 bg-[#3dcb6c] px-7 py-3 text-[0.9rem] font-semibold text-white shadow-[0_4px_14px_rgba(61,203,108,0.3)] transition-all hover:bg-[#34b85e] hover:shadow-[0_6px_20px_rgba(61,203,108,0.4)] disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save Profile"}
+            {!saving && <span className="text-[1.1rem]">↗</span>}
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // ── Student / Alumni / Individual edit: existing layout ──
   return (
     <section className="space-y-4 px-4 pt-4">
-      {(isIndividual || isCompany) && (
+      {(isIndividual) && (
         <>
-          {isCompany && (
-            <div className="space-y-1.5">
-              <Label>Business or organisation name</Label>
-              <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-            </div>
-          )}
           <div className="space-y-1.5">
             <Label>Full name</Label>
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
@@ -714,22 +860,6 @@ function EditPanel({ profile, student, company, onDone }: any) {
             <Label>Phone number</Label>
             <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
-          {isCompany && (
-            <>
-              <div className="space-y-1.5">
-                <Label>Industry</Label>
-                <Input value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Fintech, Education, Media" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>City and location</Label>
-                <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Lagos, Nigeria" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Website</Label>
-                <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://" />
-              </div>
-            </>
-          )}
         </>
       )}
 
@@ -741,9 +871,7 @@ function EditPanel({ profile, student, company, onDone }: any) {
           value={bio}
           onChange={(e) => setBio(e.target.value)}
           placeholder={
-            isCompany
-              ? "Tell students about your business and the kind of work you typically post."
-              : isIndividual
+            isIndividual
               ? "Tell students a bit about yourself and what you need help with."
               : "Tell posters what you do and what makes you good at it."
           }

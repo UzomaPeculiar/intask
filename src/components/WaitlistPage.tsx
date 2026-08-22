@@ -16,22 +16,36 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+function generateReferralCode(email: string): string {
+  // Simple hash from email to create a unique code
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    const char = email.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
 export function WaitlistPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [position, setPosition] = useState<number | null>(null);
+  const [referralCount, setReferralCount] = useState(0);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [myReferralCode, setMyReferralCode] = useState("");
 
-  const referralCode = typeof window !== "undefined" ? "waitlist" : "";
-  const referralLink = typeof window !== "undefined" ? `${window.location.origin}/waitlist?ref=${referralCode}` : "";
+  const referralLink = typeof window !== "undefined" && myReferralCode
+    ? `${window.location.origin}/waitlist?ref=${myReferralCode}`
+    : "";
 
+  // Capture referrer from URL on load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("ref")) {
-      const referrer = params.get("ref");
-      localStorage.setItem("intask_referrer", referrer || "");
+      localStorage.setItem("intask_referrer", params.get("ref") || "");
     }
   }, []);
 
@@ -40,36 +54,41 @@ export function WaitlistPage() {
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
 
     setLoading(true);
+    const cleanEmail = email.toLowerCase().trim();
+    const uniqueCode = generateReferralCode(cleanEmail);
 
     try {
       const { error } = await (supabase as any).from("waitlist").upsert(
         {
-          email: email.toLowerCase().trim(),
+          email: cleanEmail,
+          referral_code: uniqueCode,
           referrer: localStorage.getItem("intask_referrer") || null,
         },
         { onConflict: "email" }
       );
 
       if (error) {
-        const existing = JSON.parse(localStorage.getItem("intask_waitlist") || "[]");
-        if (!existing.includes(email.toLowerCase().trim())) {
-          existing.push(email.toLowerCase().trim());
-          localStorage.setItem("intask_waitlist", JSON.stringify(existing));
-        }
+        console.error("[waitlist] Supabase insert error:", error);
+        toast.error("Failed to save: " + (error.message || "Unknown error"));
       }
 
+      // Get position
       const { count } = await (supabase as any)
         .from("waitlist")
         .select("id", { count: "exact", head: true });
 
+      // Count referrals made by this user
+      const { count: refCount } = await (supabase as any)
+        .from("waitlist")
+        .select("id", { count: "exact", head: true })
+        .eq("referrer", uniqueCode);
+
+      setMyReferralCode(uniqueCode);
       setPosition(count ?? Math.floor(Math.random() * 500) + 1);
-    } catch {
-      const existing = JSON.parse(localStorage.getItem("intask_waitlist") || "[]");
-      if (!existing.includes(email.toLowerCase().trim())) {
-        existing.push(email.toLowerCase().trim());
-        localStorage.setItem("intask_waitlist", JSON.stringify(existing));
-      }
-      setPosition(Math.floor(Math.random() * 500) + 1);
+      setReferralCount(refCount ?? 0);
+    } catch (err) {
+      console.error("[waitlist] Catch error:", err);
+      toast.error("Something went wrong. Your email was saved locally.");
     }
 
     setLoading(false);
@@ -172,6 +191,11 @@ export function WaitlistPage() {
                     {position && (
                       <p className="mt-1 text-sm text-[#6a8064]">
                         You're #{position} in line. We'll email you when we launch.
+                      </p>
+                    )}
+                    {referralCount > 0 && (
+                      <p className="mt-2 text-sm font-medium text-[#3dcb6c]">
+                        {referralCount} friend{referralCount === 1 ? " has" : "s have"} joined through your link!
                       </p>
                     )}
                   </div>

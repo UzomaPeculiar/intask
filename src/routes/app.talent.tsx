@@ -218,7 +218,7 @@ function TalentSearchPage() {
       </header>
 
       {MVP_FEATURES.subscriptions && !canSearchTalent && (
-        <div className="mb-4 flex items-start justify-between gap-3 rounded-[14px] border border-[#e6c79a] bg-[#f7ecd9] p-4 shadow-sm">
+        <div className="mb-4 flex items-start justify-between gap-3 border border-[#e6c79a] bg-[#f7ecd9] p-4 shadow-sm">
           <div>
             <p className="text-[0.85rem] font-semibold text-[#8b5f17]">Pro feature</p>
             <p className="mt-0.5 text-[0.8rem] text-[#8b5f17]/90">
@@ -260,7 +260,7 @@ function TalentSearchPage() {
         <select
           value={skill}
           onChange={(e) => setSkill(e.target.value)}
-          className="h-9 rounded-lg border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+          className="h-9 border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
         >
           <option value="All Skills">All Skills</option>
           {SKILLS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -268,21 +268,21 @@ function TalentSearchPage() {
         <select
           value={university}
           onChange={(e) => setUniversity(e.target.value)}
-          className="h-9 rounded-lg border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+          className="h-9 border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
         >
           {UNIVERSITIES.map((u) => <option key={u} value={u}>{u}</option>)}
         </select>
         <select
           value={yearLevel}
           onChange={(e) => setYearLevel(e.target.value)}
-          className="h-9 rounded-lg border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+          className="h-9 border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
         >
           {YEAR_LEVELS.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
         <select
           value={minRating}
           onChange={(e) => setMinRating(e.target.value)}
-          className="h-9 rounded-lg border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
+          className="h-9 border border-[#c4deb8] bg-white px-3 text-[0.8rem]"
         >
           <option value="">Rating: Any</option>
           <option value="3">3+ stars</option>
@@ -315,7 +315,7 @@ function TalentSearchPage() {
             return (
               <div
                 key={p.id}
-                className="flex min-h-[240px] flex-col rounded-[14px] border border-[#c4deb8] bg-white p-[18px]"
+                className="flex min-h-[240px] flex-col border border-[#c4deb8] bg-white p-[18px]"
               >
                 <div className="flex items-start gap-3">
                   <InitialsAvatar name={showFullProfile ? p.full_name : "??"} size={44} />
@@ -349,10 +349,10 @@ function TalentSearchPage() {
                 {p.student?.skills && p.student.skills.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1">
                     {p.student.skills.slice(0, 3).map((s: string) => (
-                      <span key={s} className="rounded-full bg-[#f4fbf0] px-2 py-0.5 text-[0.6rem] font-medium text-[#6a8064]">{s}</span>
+                      <span key={s} className="bg-[#f4fbf0] px-2 py-0.5 text-[0.6rem] font-medium text-[#6a8064]">{s}</span>
                     ))}
                     {p.student.skills.length > 3 && (
-                      <span className="rounded-full bg-[#f4fbf0] px-2 py-0.5 text-[0.6rem] font-medium text-[#6a8064]">+{p.student.skills.length - 3}</span>
+                      <span className="bg-[#f4fbf0] px-2 py-0.5 text-[0.6rem] font-medium text-[#6a8064]">+{p.student.skills.length - 3}</span>
                     )}
                   </div>
                 )}
@@ -360,7 +360,7 @@ function TalentSearchPage() {
                 {p.badges && p.badges.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {p.badges.slice(0, 2).map((b: string) => (
-                      <span key={b} className="inline-flex items-center gap-1 rounded-full border border-[#1a7a42] bg-[#d8f5e4] px-2 py-0.5 text-[0.6rem] font-medium text-[#1a7a42]">
+                      <span key={b} className="inline-flex items-center gap-1 border border-[#1a7a42] bg-[#d8f5e4] px-2 py-0.5 text-[0.6rem] font-medium text-[#1a7a42]">
                         <Award className="size-2.5" /> {b}
                       </span>
                     ))}

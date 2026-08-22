@@ -162,15 +162,11 @@ function Dashboard() {
         </Link>
       </header>
 
-      {(companyPending || alumniPending) && (
+      {alumniPending && (
         <div className="pb-4">
           <div className="it-note-warning flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs shadow-sm">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-            <p>
-              {alumniPending
-                ? "Alumni status unverified — we'll confirm this shortly."
-                : "Business verification pending — your account is under review."}
-            </p>
+            <p>Alumni status unverified — we'll confirm this shortly.</p>
           </div>
         </div>
       )}
@@ -217,7 +213,7 @@ function Dashboard() {
       {mode === "find" && canFindWork ? (
         <FindWorkView userId={user?.id} filter={filter} onFilter={setFilter} onSwitchToPost={() => switchMode("post")} />
       ) : (
-        <PostWorkView userId={user?.id} />
+        <PosterDashboard userId={user?.id} role={role ?? ""} />
       )}
     </div>
   );
@@ -367,6 +363,7 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
       {!stats ? <DashboardStatsSkeleton /> : (
         <section>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {/* stat cards */}
             <FreeioStatCard
               label="Applications"
               value={applicationsCount}
@@ -569,13 +566,13 @@ function FindWorkView({ userId, filter, onFilter, onSwitchToPost }: { userId?: s
 
 function FreeioStatCard({ label, value, icon, iconBg }: { label: string; value: number | string; icon: React.ReactNode; iconBg: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+    <div className="border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-muted-foreground">{label}</p>
           <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
         </div>
-        <span className={`grid size-10 place-items-center rounded-lg ${iconBg}`}>
+        <span className={`grid size-10 place-items-center ${iconBg}`}>
           {icon}
         </span>
       </div>
@@ -599,7 +596,7 @@ function ProfileViewsChart({ userId }: { userId?: string }) {
   const barWidth = 100 / labels.length;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+    <div className="border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-foreground">Your Profile Views</h2>
         <span className="text-xs text-muted-foreground">Last 7 days</span>
@@ -717,6 +714,217 @@ function ActiveTasksSection({ userId }: { userId?: string }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function PosterDashboard({ userId, role }: { userId?: string; role: string }) {
+  const nav = useNavigate();
+  const [selectedProject, setSelectedProject] = useState("all");
+  const [selectedDays, setSelectedDays] = useState("15");
+
+  const { data: myTasksList } = useQuery({
+    queryKey: ["poster-tasks-list", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data } = await supabase.from("tasks").select("id, title").eq("poster_id", userId).order("created_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const { data: recentProposals } = useQuery({
+    queryKey: ["recent-proposals", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data: tasks } = await supabase.from("tasks").select("id").eq("poster_id", userId);
+      if (!tasks || tasks.length === 0) return [];
+      const { data } = await supabase
+        .from("applications")
+        .select("id, task_id, message, price, hours, status, created_at, student:profiles!applications_student_id_fkey(full_name, avatar_url), task:tasks!applications_task_id_fkey(title)")
+        .in("task_id", tasks.map((t) => t.id))
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return data ?? [];
+    },
+  });
+
+  const { data: postedTasks } = useQuery({
+    queryKey: ["poster-stats", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) return { posted: 0, completed: 0, proposals: 0, reviews: 0 };
+      const [posted, completed, proposals, reviews] = await Promise.all([
+        supabase.from("tasks").select("id", { count: "exact", head: true }).eq("poster_id", userId),
+        supabase.from("tasks").select("id", { count: "exact", head: true }).eq("poster_id", userId).eq("status", "completed"),
+        (async () => {
+          const { data: tasks } = await supabase.from("tasks").select("id").eq("poster_id", userId);
+          if (!tasks || tasks.length === 0) return 0;
+          const { count } = await supabase.from("applications").select("id", { count: "exact", head: true }).in("task_id", tasks.map((t) => t.id));
+          return count ?? 0;
+        })(),
+        supabase.from("reviews").select("id", { count: "exact", head: true }).eq("reviewee_id", userId),
+      ]);
+      return {
+        posted: posted.count ?? 0,
+        completed: completed.count ?? 0,
+        proposals: typeof proposals === "number" ? proposals : 0,
+        reviews: reviews.count ?? 0,
+      };
+    },
+  });
+
+  const { data: notifs } = useQuery({
+    queryKey: ["poster-notifs", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data } = await supabase
+        .from("notifications")
+        .select("id, type, message, created_at, read")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      return data ?? [];
+    },
+  });
+
+  const stats = postedTasks ?? { posted: 0, completed: 0, proposals: 0, reviews: 0 };
+
+  return (
+    <div className="space-y-6 pt-5">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <PosterStatCard label="Posted Projects" value={stats.posted} icon={<Briefcase className="size-5" />} />
+        <PosterStatCard label="Completed Projects" value={stats.completed} icon={<CheckCircle className="size-5" />} />
+        <PosterStatCard label="Proposals" value={stats.proposals} icon={<Users className="size-5" />} />
+        <PosterStatCard label="Reviews" value={stats.reviews} icon={<MessageSquare className="size-5" />} />
+      </div>
+
+      {/* Two-column: chart + notifications */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_340px]">
+        <div className="border border-[#e4efe0] bg-white p-5">
+          <h3 className="mb-4 text-[0.9rem] font-semibold text-[#1a1e16]">Page Views</h3>
+          <div className="flex h-48 items-end gap-1">
+            {Array.from({ length: 14 }).map((_, i) => (
+              <div key={i} className="flex-1">
+                <div
+                  className="rounded-t bg-[#3dcb6c] transition-all"
+                  style={{ height: `${Math.max(4, Math.random() * 100)}%` }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex justify-between text-[0.65rem] text-[#9eb79c]">
+            <span>1.0</span><span>0.8</span><span>0.6</span><span>0.4</span><span>0.2</span><span>0</span>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <p className="mb-1.5 text-[0.8rem] font-semibold text-[#1a1e16]">Projects</p>
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                className="h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.85rem] text-[#1a1e16] focus:border-[#3dcb6c] focus:outline-none"
+              >
+                <option value="all">All Projects</option>
+                {myTasksList?.map((t) => (
+                  <option key={t.id} value={t.id}>{t.title}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[0.8rem] font-semibold text-[#1a1e16]">Number Days</p>
+              <select
+                value={selectedDays}
+                onChange={(e) => setSelectedDays(e.target.value)}
+                className="h-10 w-full border border-[#e4efe0] bg-[#f9fdf7] px-3 text-[0.85rem] text-[#1a1e16] focus:border-[#3dcb6c] focus:outline-none"
+              >
+                <option value="7">7 days</option>
+                <option value="15">15 days</option>
+                <option value="30">30 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-[#e4efe0] bg-white p-5">
+          <h3 className="mb-4 text-[0.9rem] font-semibold text-[#1a1e16]">Notifications</h3>
+          {notifs && notifs.length > 0 ? (
+            <div className="space-y-3">
+              {notifs.map((n) => (
+                <div key={n.id} className="flex items-start gap-3">
+                  <div className="mt-0.5 size-2 shrink-0 rounded-full bg-[#3dcb6c]" />
+                  <div className="min-w-0">
+                    <p className="text-[0.8rem] font-medium text-[#1a1e16] line-clamp-1">{n.type}</p>
+                    <p className="text-[0.7rem] text-[#6a8064] line-clamp-1">{n.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[0.8rem] text-[#6a8064]">No notifications yet.</p>
+          )}
+          {notifs && notifs.length > 0 && (
+            <Link to="/app/notifications" className="mt-3 block text-center text-[0.75rem] font-medium text-[#3dcb6c] hover:underline">
+              View all →
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Recent Proposals */}
+      <div className="border border-[#e4efe0] bg-white p-5">
+        <h3 className="mb-4 text-[0.9rem] font-semibold text-[#1a1e16]">Recent Proposals</h3>
+        {!recentProposals || recentProposals.length === 0 ? (
+          <p className="text-[0.8rem] text-[#6a8064]">No proposals found.</p>
+        ) : (
+          <div className="space-y-3">
+            {recentProposals.map((p: any) => (
+              <div key={p.id} className="flex items-center justify-between border border-[#e4efe0] bg-[#f9fdf7] p-3">
+                <div className="flex items-center gap-3">
+                  <InitialsAvatar name={p.student?.full_name ?? "User"} size={36} avatarUrl={p.student?.avatar_url} />
+                  <div>
+                    <p className="text-[0.8rem] font-semibold text-[#1a1e16]">{p.student?.full_name ?? "Anonymous"}</p>
+                    <p className="text-[0.7rem] text-[#6a8064]">{p.task?.title ?? "Task"}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {p.price && <p className="text-[0.8rem] font-semibold text-[#1a1e16]">₦{Number(p.price).toLocaleString("en-NG")}</p>}
+                  <span className={`inline-block px-2 py-0.5 text-[0.65rem] font-medium ${
+                    p.status === "accepted" ? "bg-[#e8f5e9] text-[#2e7d32]" :
+                    p.status === "rejected" ? "bg-[#fce4ec] text-[#c62828]" :
+                    "bg-[#fff3e0] text-[#e65100]"
+                  }`}>
+                    {p.status === "accepted" ? "Approved" : p.status === "rejected" ? "Rejected" : "Pending"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PosterStatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+  return (
+    <div className="border border-[#e4efe0] bg-white p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[0.75rem] text-[#6a8064]">{label}</p>
+          <p className="mt-1 text-[1.4rem] font-bold text-[#1a1e16]">{value}</p>
+        </div>
+        <div className="grid size-10 place-items-center rounded-full bg-[#f0f7ec] text-[#3dcb6c]">
+          {icon}
+        </div>
       </div>
     </div>
   );

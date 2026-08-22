@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hasSupabaseClientConfig } from "@/integrations/supabase/env";
 import { AuthProvider } from "@/hooks/useAuth.tsx";
-import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2, PanelLeft, Search, Gift, Heart, Wallet } from "lucide-react";
+import { Home, Compass, MessageCircle, User as UserIcon, Bell, Loader2, PanelLeft, Search, Gift, Heart, Wallet, FolderGit2, Users } from "lucide-react";
 import { getRuntimePlatformSettings } from "@/lib/platform-settings.functions";
 
 export const Route = createFileRoute("/app")({
@@ -121,7 +121,7 @@ function AppLayout() {
     <AuthProvider>
       <div className="min-h-screen bg-background">
         {!path.startsWith("/app/messages/") && <DesktopSidebar path={path} mode={dashboardMode} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((value) => !value)} />}
-        <div className={`${path.startsWith("/app/messages/") ? "" : sidebarCollapsed ? "pb-20 lg:pb-0 lg:pl-20" : "pb-20 lg:pb-0 lg:pl-72"}`}>
+        <div className={`${path.startsWith("/app/messages/") ? "" : sidebarCollapsed ? "pb-20 lg:pb-0 lg:pl-16" : "pb-20 lg:pb-0 lg:pl-60"}`}>
           <Outlet />
         </div>
         {!path.startsWith("/app/messages/") && <BottomNav path={path} mode={dashboardMode} />}
@@ -181,7 +181,7 @@ function DesktopSidebar({ path, mode, collapsed, onToggleCollapsed }: { path: st
   });
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-30 hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex lg:flex-col ${collapsed ? "w-20" : "w-72"}`}>
+    <aside className={`fixed inset-y-0 left-0 z-30 hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground lg:flex lg:flex-col ${collapsed ? "w-16" : "w-60"}`}>
       <div className={`flex items-center justify-between gap-3 border-b border-sidebar-border ${collapsed ? "px-3 py-5" : "px-6 py-5"}`}>
         <Link to="/app" className={`flex items-center font-semibold tracking-tight text-sidebar-foreground ${collapsed ? "justify-center" : "text-lg"}`} aria-label="InTask home">
           {collapsed ? (
@@ -208,9 +208,15 @@ function DesktopSidebar({ path, mode, collapsed, onToggleCollapsed }: { path: st
         ) : (
           <DesktopNavItem to="/app/browse" label={browseLabel} icon={Compass} active={path.startsWith("/app/browse") || path.startsWith("/app/tasks")} search={navSearch} collapsed={collapsed} />
         )}
+        {isPoster && (
+          <>
+            <DesktopNavItem to="/app/my-tasks" label="My Tasks" icon={FolderGit2} active={path.startsWith("/app/my-tasks")} search={navSearch} collapsed={collapsed} />
+            <DesktopNavItem to="/app/applicants" label="Applicants" icon={Users} active={path.startsWith("/app/applicants")} search={navSearch} collapsed={collapsed} />
+          </>
+        )}
         <DesktopNavItem to="/app/messages" label="Messages" icon={MessageCircle} active={path.startsWith("/app/messages")} badge={path.startsWith("/app/messages") ? 0 : unreadMsgs} search={navSearch} collapsed={collapsed} />
         <DesktopNavItem to="/app/notifications" label="Alerts" icon={Bell} active={path.startsWith("/app/notifications")} badge={unreadNotifs} search={navSearch} collapsed={collapsed} />
-        <DesktopNavItem to="/app/saved" label="Saved Tasks" icon={Heart} active={path.startsWith("/app/saved")} search={navSearch} collapsed={collapsed} />
+        {!isPoster && <DesktopNavItem to="/app/saved" label="Saved Tasks" icon={Heart} active={path.startsWith("/app/saved")} search={navSearch} collapsed={collapsed} />}
         <DesktopNavItem to="/app/wallet" label="Wallet" icon={Wallet} active={path.startsWith("/app/wallet")} search={navSearch} collapsed={collapsed} />
         <DesktopNavItem to="/app/referrals" label="Referrals" icon={Gift} active={path.startsWith("/app/referrals")} search={navSearch} collapsed={collapsed} />
         <DesktopNavItem to="/app/profile/$userId" label="Profile" icon={UserIcon} active={path.startsWith("/app/profile")} params={{ userId: "me" }} search={navSearch} collapsed={collapsed} />

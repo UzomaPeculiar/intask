@@ -31,12 +31,14 @@ import { Route as AppSavedRouteImport } from './routes/app.saved'
 import { Route as AppReferralsRouteImport } from './routes/app.referrals'
 import { Route as AppPartnershipRouteImport } from './routes/app.partnership'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
+import { Route as AppMyTasksRouteImport } from './routes/app.my-tasks'
 import { Route as AppMessagesRouteImport } from './routes/app.messages'
 import { Route as AppMentorshipRouteImport } from './routes/app.mentorship'
 import { Route as AppLearnRouteImport } from './routes/app.learn'
 import { Route as AppInternshipsRouteImport } from './routes/app.internships'
 import { Route as AppBrowseRouteImport } from './routes/app.browse'
 import { Route as AppAssessmentsRouteImport } from './routes/app.assessments'
+import { Route as AppApplicantsRouteImport } from './routes/app.applicants'
 import { Route as AppAlumniProRouteImport } from './routes/app.alumni-pro'
 import { Route as AppTasksCreateRouteImport } from './routes/app.tasks.create'
 import { Route as AppRoomsRoomIdRouteImport } from './routes/app.rooms.$roomId'
@@ -168,6 +170,11 @@ const AppNotificationsRoute = AppNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMyTasksRoute = AppMyTasksRouteImport.update({
+  id: '/my-tasks',
+  path: '/my-tasks',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMessagesRoute = AppMessagesRouteImport.update({
   id: '/messages',
   path: '/messages',
@@ -196,6 +203,11 @@ const AppBrowseRoute = AppBrowseRouteImport.update({
 const AppAssessmentsRoute = AppAssessmentsRouteImport.update({
   id: '/assessments',
   path: '/assessments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppApplicantsRoute = AppApplicantsRouteImport.update({
+  id: '/applicants',
+  path: '/applicants',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAlumniProRoute = AppAlumniProRouteImport.update({
@@ -314,12 +326,14 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/waitlist': typeof WaitlistRoute
   '/app/alumni-pro': typeof AppAlumniProRoute
+  '/app/applicants': typeof AppApplicantsRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/internships': typeof AppInternshipsRoute
   '/app/learn': typeof AppLearnRouteWithChildren
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
+  '/app/my-tasks': typeof AppMyTasksRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/referrals': typeof AppReferralsRoute
@@ -363,12 +377,14 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/waitlist': typeof WaitlistRoute
   '/app/alumni-pro': typeof AppAlumniProRoute
+  '/app/applicants': typeof AppApplicantsRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/internships': typeof AppInternshipsRoute
   '/app/learn': typeof AppLearnRouteWithChildren
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
+  '/app/my-tasks': typeof AppMyTasksRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/referrals': typeof AppReferralsRoute
@@ -414,12 +430,14 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/waitlist': typeof WaitlistRoute
   '/app/alumni-pro': typeof AppAlumniProRoute
+  '/app/applicants': typeof AppApplicantsRoute
   '/app/assessments': typeof AppAssessmentsRoute
   '/app/browse': typeof AppBrowseRoute
   '/app/internships': typeof AppInternshipsRoute
   '/app/learn': typeof AppLearnRouteWithChildren
   '/app/mentorship': typeof AppMentorshipRouteWithChildren
   '/app/messages': typeof AppMessagesRouteWithChildren
+  '/app/my-tasks': typeof AppMyTasksRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/partnership': typeof AppPartnershipRoute
   '/app/referrals': typeof AppReferralsRoute
@@ -466,12 +484,14 @@ export interface FileRouteTypes {
     | '/terms'
     | '/waitlist'
     | '/app/alumni-pro'
+    | '/app/applicants'
     | '/app/assessments'
     | '/app/browse'
     | '/app/internships'
     | '/app/learn'
     | '/app/mentorship'
     | '/app/messages'
+    | '/app/my-tasks'
     | '/app/notifications'
     | '/app/partnership'
     | '/app/referrals'
@@ -515,12 +535,14 @@ export interface FileRouteTypes {
     | '/terms'
     | '/waitlist'
     | '/app/alumni-pro'
+    | '/app/applicants'
     | '/app/assessments'
     | '/app/browse'
     | '/app/internships'
     | '/app/learn'
     | '/app/mentorship'
     | '/app/messages'
+    | '/app/my-tasks'
     | '/app/notifications'
     | '/app/partnership'
     | '/app/referrals'
@@ -565,12 +587,14 @@ export interface FileRouteTypes {
     | '/terms'
     | '/waitlist'
     | '/app/alumni-pro'
+    | '/app/applicants'
     | '/app/assessments'
     | '/app/browse'
     | '/app/internships'
     | '/app/learn'
     | '/app/mentorship'
     | '/app/messages'
+    | '/app/my-tasks'
     | '/app/notifications'
     | '/app/partnership'
     | '/app/referrals'
@@ -778,6 +802,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/my-tasks': {
+      id: '/app/my-tasks'
+      path: '/my-tasks'
+      fullPath: '/app/my-tasks'
+      preLoaderRoute: typeof AppMyTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/messages': {
       id: '/app/messages'
       path: '/messages'
@@ -818,6 +849,13 @@ declare module '@tanstack/react-router' {
       path: '/assessments'
       fullPath: '/app/assessments'
       preLoaderRoute: typeof AppAssessmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/applicants': {
+      id: '/app/applicants'
+      path: '/applicants'
+      fullPath: '/app/applicants'
+      preLoaderRoute: typeof AppApplicantsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/alumni-pro': {
@@ -1018,12 +1056,14 @@ const AppMessagesRouteWithChildren = AppMessagesRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAlumniProRoute: typeof AppAlumniProRoute
+  AppApplicantsRoute: typeof AppApplicantsRoute
   AppAssessmentsRoute: typeof AppAssessmentsRoute
   AppBrowseRoute: typeof AppBrowseRoute
   AppInternshipsRoute: typeof AppInternshipsRoute
   AppLearnRoute: typeof AppLearnRouteWithChildren
   AppMentorshipRoute: typeof AppMentorshipRouteWithChildren
   AppMessagesRoute: typeof AppMessagesRouteWithChildren
+  AppMyTasksRoute: typeof AppMyTasksRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPartnershipRoute: typeof AppPartnershipRoute
   AppReferralsRoute: typeof AppReferralsRoute
@@ -1047,12 +1087,14 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAlumniProRoute: AppAlumniProRoute,
+  AppApplicantsRoute: AppApplicantsRoute,
   AppAssessmentsRoute: AppAssessmentsRoute,
   AppBrowseRoute: AppBrowseRoute,
   AppInternshipsRoute: AppInternshipsRoute,
   AppLearnRoute: AppLearnRouteWithChildren,
   AppMentorshipRoute: AppMentorshipRouteWithChildren,
   AppMessagesRoute: AppMessagesRouteWithChildren,
+  AppMyTasksRoute: AppMyTasksRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPartnershipRoute: AppPartnershipRoute,
   AppReferralsRoute: AppReferralsRoute,

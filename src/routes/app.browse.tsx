@@ -93,7 +93,7 @@ function BrowsePage() {
           </p>
 
           {/* Search Bar */}
-          <div className="mt-6 flex max-w-2xl gap-0 overflow-hidden rounded-xl">
+          <div className="mt-6 flex max-w-2xl gap-0 overflow-hidden">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -120,7 +120,7 @@ function BrowsePage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(true)}
-              className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              className="flex items-center gap-2 border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
             >
               <SlidersHorizontal className="size-4" />
               Filter
@@ -129,7 +129,7 @@ function BrowsePage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="appearance-none rounded-lg border border-border bg-card px-4 py-2 pr-8 text-sm font-medium text-foreground"
+                className="appearance-none border border-border bg-card px-4 py-2 pr-8 text-sm font-medium text-foreground"
               >
                 <option value="default">Sort by (Default)</option>
                 <option value="newest">Newest</option>
@@ -357,7 +357,7 @@ function FilterDrawer({
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-5 py-4">
           <h2 className="text-lg font-semibold text-foreground">All Filters</h2>
-          <button onClick={onClose} className="grid size-9 place-items-center rounded-lg border border-border bg-muted text-foreground transition-colors hover:bg-accent">
+          <button onClick={onClose} className="grid size-9 place-items-center border border-border bg-muted text-foreground transition-colors hover:bg-accent">
             <X className="size-4" />
           </button>
         </div>
@@ -395,7 +395,7 @@ function FilterDrawer({
             <select
               value={workType}
               onChange={(e) => setWorkType(e.target.value)}
-              className="w-full rounded-lg border border-border bg-card px-4 py-2.5 text-sm text-foreground"
+              className="w-full border border-border bg-card px-4 py-2.5 text-sm text-foreground"
             >
               <option value="all">All types</option>
               <option value="remote">Remote</option>
@@ -413,9 +413,9 @@ function FilterDrawer({
               <span className="rounded-md border border-border bg-muted px-2 py-1 text-xs text-foreground">{naira(budgetMax)}</span>
             </div>
             <div className="relative h-2">
-              <div className="absolute inset-0 rounded-full bg-border" />
+              <div className="absolute inset-0 bg-border" />
               <div
-                className="absolute inset-y-0 rounded-full bg-[#3dcb6c]"
+                className="absolute inset-y-0 bg-[#3dcb6c]"
                 style={{
                   left: `${(budgetMin / 100000) * 100}%`,
                   right: `${100 - (budgetMax / 100000) * 100}%`,
@@ -502,7 +502,7 @@ function BrowseTaskCard({ task, userId }: { task: any; userId?: string }) {
 
   return (
     <Link to="/app/tasks/$taskId" params={{ taskId: task.id }} className="group block">
-      <article className="relative flex h-full flex-col rounded-xl border border-border bg-card p-4 transition-all hover:shadow-md">
+      <article className="relative flex h-full flex-col border border-border bg-card p-4 transition-all hover:shadow-md">
         {/* Poster info */}
         <div className="mb-3 flex items-center gap-3">
           <InitialsAvatar name={posterName} size={40} avatarUrl={task.poster?.avatar_url} />
@@ -540,7 +540,7 @@ function BrowseTaskCard({ task, userId }: { task: any; userId?: string }) {
             {tags.map((tag: string) => (
               <span
                 key={tag}
-                className="rounded-full bg-[#f4fbf0] px-2.5 py-0.5 text-[10px] font-medium text-[#3a7a4a]"
+                className="bg-[#f4fbf0] px-2.5 py-0.5 text-[10px] font-medium text-[#3a7a4a]"
               >
                 {tag}
               </span>
